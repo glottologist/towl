@@ -1,0 +1,17 @@
+[package]
+name = "cargo-towl"
+version = "0.0.1"
+authors = ["Jason Ridgway-Taylor <jason@glottologist.co.uk>"]
+description = "Watches over your Cargo project’s source"
+keywords = ["cargo", "towl", "todo", "comments"]
+categories = ["command-line-utilities", "development-tools"]
+documentation = "https://glottologist.github.io/docs/#cargo-watch"
+homepage = "https://glottologist.github.io/towl/"
+repository = "https://github.com/glottologist/towl"
+readme = "README.md"
+edition = "2024"
+
+[[bin]]
+name = "cargo-towl"
+
+[dependencies]
