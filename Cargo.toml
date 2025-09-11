@@ -5,13 +5,32 @@ authors = ["Jason Ridgway-Taylor <jason@glottologist.co.uk>"]
 description = "Watches over your Cargo project’s source"
 keywords = ["cargo", "towl", "todo", "comments"]
 categories = ["command-line-utilities", "development-tools"]
-documentation = "https://glottologist.github.io/docs/#cargo-watch"
+documentation = "https://glottologist.github.io/towl"
 homepage = "https://glottologist.github.io/towl/"
 repository = "https://github.com/glottologist/towl"
 readme = "README.md"
-edition = "2024"
+edition = "2021"
+
+[lib]
+path = "src/lib/mod.rs"
 
 [[bin]]
 name = "cargo-towl"
+path = "src/bin/towl.rs"
 
 [dependencies]
+# Core
+tokio = { version = "1.35", features = ["full"] }
+
+# CLI and configuration
+clap = { version = "4.4", features = ["derive", "env"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+toml = "0.8"
+anyhow = "1.0"
+thiserror = "1.0"
+
+# Logging and progress
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["fmt", "env-filter"] }
+indicatif = "0.17"
