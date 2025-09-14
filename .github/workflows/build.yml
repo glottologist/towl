@@ -1,0 +1,87 @@
+name: Build
+on:
+  workflow_dispatch:
+  push:
+
+permissions:
+  contents: write
+  packages: write
+
+env:
+  PROJECT_NAME: cargo-towl
+  WINDOWS_TARGET: "x86_64-pc-windows-msvc"
+
+jobs:
+  build-windows-msvc:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: rust
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      - name: Cargo build
+        run: |
+          cargo build --release --target ${{ env.WINDOWS_TARGET }}
+          mv target/${{ env.WINDOWS_TARGET }}/release/${{env.PROJECT_NAME}}.exe ${{env.PROJECT_NAME}}_${{ env.WINDOWS_TARGET }}_${{ github.ref_name }}.exe
+
+  build:
+    runs-on: ${{ matrix.runner }}
+    defaults:
+      run:
+        working-directory: rust
+    strategy:
+      matrix:
+        include:
+          - name: ubuntu-x86_64-gnu
+            runner: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - name: macos-aarch64-gnu
+            runner: macos-latest
+            target: aarch64-apple-darwin
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Install dependencies (macos)
+        if: ${{ startsWith(matrix.runner, 'macos') }}
+        run: |
+          brew update
+          brew install openssl@3 pkg-config
+
+      - name: Install dependencies (ubuntu)
+        if: ${{ startsWith(matrix.runner, 'ubuntu') }}
+        run: |
+          sudo apt-get update
+          if [[ "${{ matrix.target }}" == "aarch64-unknown-linux-gnu" ]]; then
+            # Cross-compiler & ARM64 OpenSSL
+            sudo apt-get install -y \
+              gcc-aarch64-linux-gnu \
+              binutils-aarch64-linux-gnu \
+              libssl-dev:arm64 \
+              pkg-config
+
+            # Make pkg-config allow cross-compilation
+            export PKG_CONFIG_ALLOW_CROSS=1
+            export PKG_CONFIG_PATH="/usr/lib/aarch64-linux-gnu/pkgconfig"
+          else
+            # Native x86_64 build
+            sudo apt-get install -y \
+              libssl-dev \
+              pkg-config
+          fi
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: "${{ matrix.target }}"
+
+      - name: Run sccache-cache
+        uses: mozilla-actions/sccache-action@v0.0.5
+
+      - name: Build Binary
+        run: |
+          cargo build --release --target "${{matrix.target}}"
+          mv target/${{matrix.target}}/release/${{env.PROJECT_NAME}} ${{env.PROJECT_NAME}}_${{matrix.target}}_${{ github.ref_name }}
+
