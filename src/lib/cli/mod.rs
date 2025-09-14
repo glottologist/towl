@@ -1,5 +1,7 @@
-use clap::{Parser, Subcommand, ValueEnum, Args};
+use clap::{ Parser, Subcommand, ValueEnum};
 use std::path::PathBuf;
+
+use crate::config::config::DEFAULT_CONFIG_PATH;
 
 #[derive(Debug, Parser)]
 #[command(
@@ -28,17 +30,9 @@ pub enum Commands {
 pub enum TowlCommands {
     /// Initialize a new .towl.toml configuration file
     Init {
-        /// GitHub repository owner/organization
-        #[arg(long)]
-        owner: String,
-
-        /// GitHub repository name
-        #[arg(long)]
-        repo: String,
-
-        /// GitHub personal access token (can also be set via GITHUB_TOKEN env var)
-        #[arg(long, env = "GITHUB_TOKEN")]
-        token: Option<String>,
+        /// Path to the config file (defaults to .towl.toml)
+        #[arg(long, short = 'p', default_value = DEFAULT_CONFIG_PATH)]
+        path: PathBuf,
 
         /// Force overwrite existing config
         #[arg(long, short = 'f')]
@@ -67,7 +61,6 @@ pub enum TowlCommands {
         #[arg(long, short = 'v')]
         verbose: bool,
     },
-
 
     /// Show tOwl configuration
     Config {

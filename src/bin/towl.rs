@@ -1,11 +1,10 @@
 use cargo_towl::{
     cli::{Cli, Commands, OutputFormat, TowlCommands},
+    config::config::TowlConfig,
     error::TowlError,
 };
 use clap::Parser;
-use std::env;
 use std::path::PathBuf;
-use tracing::info;
 use tracing_subscriber;
 
 #[tokio::main]
@@ -27,12 +26,7 @@ async fn main() -> Result<(), TowlError> {
 async fn run_cli(cli: Cli) -> Result<(), TowlError> {
     match cli.command {
         Commands::Towl { subcommand } => match subcommand {
-            TowlCommands::Init {
-                owner,
-                repo,
-                token,
-                force,
-            } => init_config(owner, repo, token, force).await,
+            TowlCommands::Init { path, force } => init_config(path, force).await,
             TowlCommands::Scan {
                 path,
                 format,
@@ -45,12 +39,9 @@ async fn run_cli(cli: Cli) -> Result<(), TowlError> {
     }
 }
 
-async fn init_config(
-    _owner: String,
-    _repo: String,
-    _token: Option<String>,
-    _force: bool,
-) -> Result<(), TowlError> {
+async fn init_config(path: PathBuf, _force: bool) -> Result<(), TowlError> {
+    TowlConfig::init(&path).await?;
+    println!("Initialized config file at: {}", path.display());
     Ok(())
 }
 

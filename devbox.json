@@ -41,9 +41,10 @@
     }
   },
     "languages": {
+        
+
     "rust": {
-      "version": "nightly",
-      "targets": ["wasm32-unknown-unknown"]
+      "version": "1.88"
     }
   }
 

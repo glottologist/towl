@@ -1,6 +1,8 @@
+use crate::config::error::TowlConfigError;
 use thiserror::Error;
-use std::path::PathBuf;
 
 #[derive(Error, Debug)]
-pub enum TowlError {}
-
+pub enum TowlError {
+    #[error("Configuration error: {0} ")]
+    Config(#[from] TowlConfigError),
+}

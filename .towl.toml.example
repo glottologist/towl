@@ -1,0 +1,33 @@
+[parsing]
+file_extensions = [
+    "rs",
+    "sh",
+    "toml",
+    "json",
+    "yaml",
+    "yml",
+    "sh",
+    "bash",
+]
+exclude_patterns = [
+    "target/*",
+    ".git/*",
+]
+include_context_lines = 3
+todo_patterns = [
+    '(?i)TODO:?\s*(.*)',
+    '(?i)FIXME:?\s*(.*)',
+    '(?i)HACK:?\s*(.*)',
+    '(?i)NOTE:?\s*(.*)',
+    '(?i)BUG:?\s*(.*)',
+]
+
+[output]
+dry_run = false
+backup_files = true
+progress_bar = true
+verbose = false
+
+[github]
+owner = "glottologist"
+repo = "towl"
