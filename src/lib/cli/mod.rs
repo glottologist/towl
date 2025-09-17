@@ -1,74 +1,53 @@
-use clap::{ Parser, Subcommand, ValueEnum};
+use clap::{Parser, Subcommand, ValueEnum};
 use std::path::PathBuf;
-
-use crate::config::config::DEFAULT_CONFIG_PATH;
 
 #[derive(Debug, Parser)]
 #[command(
-    name = "cargo-towl",
-    bin_name = "cargo",
+    name = "towl",
     author,
     version,
-    about = "Convert TODO comments to GitHub issues automatically",
-    long_about = "tOwl - A cargo plugin that scans your codebase for TODO comments and converts them into GitHub issues"
+    about = "Watches over your project's source code for TODO comments",
+    long_about = "tOwl - Scans your codebase for TODO comments and outputs them in various formats"
 )]
 pub struct Cli {
     #[command(subcommand)]
-    pub command: Commands,
-}
-
-#[derive(Debug, Subcommand)]
-pub enum Commands {
-    /// Run tOwl commands
-    Towl {
-        #[command(subcommand)]
-        subcommand: TowlCommands,
-    },
+    pub command: TowlCommands,
 }
 
 #[derive(Debug, Subcommand)]
 pub enum TowlCommands {
-    /// Initialize a new .towl.toml configuration file
     Init {
-        /// Path to the config file (defaults to .towl.toml)
-        #[arg(long, short = 'p', default_value = DEFAULT_CONFIG_PATH)]
+        #[arg(long, short = 'p', default_value = ".towl.toml")]
         path: PathBuf,
 
-        /// Force overwrite existing config
         #[arg(long, short = 'f')]
         force: bool,
     },
 
-    /// Scan for TODO comments in the codebase
     Scan {
-        /// Path to scan (defaults to current directory)
         #[arg(default_value = ".")]
         path: PathBuf,
 
-        /// Output format
-        #[arg(long, short = 'f', value_enum, default_value = "table")]
+        #[arg(long, short = 'f', value_enum, default_value = "terminal")]
         format: OutputFormat,
 
-        /// Filter by TODO type
+        #[arg(long, short = 'o')]
+        output: Option<PathBuf>,
+
         #[arg(long, short = 't')]
         todo_type: Option<String>,
 
-        /// Show context lines
         #[arg(long, short = 'c')]
         context: bool,
 
-        /// Verbose output
         #[arg(long, short = 'v')]
         verbose: bool,
     },
 
-    /// Show tOwl configuration
     Config {
-        /// Show full configuration including defaults
         #[arg(long, short = 'a')]
         all: bool,
 
-        /// Validate configuration
         #[arg(long)]
         validate: bool,
     },
@@ -79,5 +58,7 @@ pub enum OutputFormat {
     Table,
     Json,
     Csv,
+    Toml,
     Markdown,
+    Terminal,
 }

@@ -14,12 +14,25 @@ exclude_patterns = [
     ".git/*",
 ]
 include_context_lines = 3
+comment_prefixes = [
+    "//",
+    '^\s*#',
+    '/\*',
+    '^\s*\*',
+]
 todo_patterns = [
-    '(?i)TODO:?\s*(.*)',
-    '(?i)FIXME:?\s*(.*)',
-    '(?i)HACK:?\s*(.*)',
-    '(?i)NOTE:?\s*(.*)',
-    '(?i)BUG:?\s*(.*)',
+    '(?i)\bTODO:\s*(.*)',
+    '(?i)\bFIXME:\s*(.*)',
+    '(?i)\bHACK:\s*(.*)',
+    '(?i)\bNOTE:\s*(.*)',
+    '(?i)\bBUG:\s*(.*)',
+]
+function_patterns = [
+    '^\s*(pub\s+)?fn\s+(\w+)',
+    '^\s*def\s+(\w+)',
+    '^\s*(async\s+)?function\s+(\w+)',
+    '^\s*(public|private|protected)?\s*(static\s+)?\w+\s+(\w+)\s*\(',
+    '^\s*func\s+(\w+)',
 ]
 
 [output]

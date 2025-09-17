@@ -1,9 +1,9 @@
 [package]
-name = "cargo-towl"
+name = "towl"
 version = "0.0.1"
 authors = ["Jason Ridgway-Taylor <jason@glottologist.co.uk>"]
-description = "Watches over your Cargo project’s source"
-keywords = ["cargo", "towl", "todo", "comments"]
+description = "Watches over your project's source code for TODO comments"
+keywords = ["todo", "comments", "code-analysis", "development-tools"]
 categories = ["command-line-utilities", "development-tools"]
 documentation = "https://glottologist.github.io/towl"
 homepage = "https://glottologist.github.io/towl/"
@@ -15,15 +15,13 @@ edition = "2021"
 path = "src/lib/mod.rs"
 
 [[bin]]
-name = "cargo-towl"
+name = "towl"
 path = "src/bin/towl.rs"
 
 [dependencies]
-# Core
 tokio = { version = "1.35", features = ["full"] }
 async-trait = "0.1"
 
-# CLI and configuration
 clap = { version = "4.4", features = ["derive", "env"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
@@ -32,10 +30,16 @@ anyhow = "1.0"
 config = "0.14"
 thiserror = "1.0"
 
-# Git
 git2 = "0.19"
 
-# Logging and progress
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["fmt", "env-filter"] }
 indicatif = "0.17"
+ignore = "0.4.23"
+regex = "1.11.2"
+
+[dev-dependencies]
+rstest = "0.18"
+proptest = "1.4" 
+tempfile = "3.8"
+tokio-test = "0.4"

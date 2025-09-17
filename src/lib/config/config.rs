@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
+use tracing::debug;
 
 pub const DEFAULT_CONFIG_PATH: &str = ".towl.toml";
 
@@ -91,6 +92,96 @@ impl Default for TowlConfig {
         }
     }
 }
+
+impl fmt::Display for TowlConfig {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "📋 Towl Configuration")?;
+        writeln!(f, "┌─ Parsing")?;
+        writeln!(
+            f,
+            "│  ├─ File Extensions: {}",
+            self.parsing.file_extensions.join(", ")
+        )?;
+        writeln!(
+            f,
+            "│  ├─ Exclude Patterns: {}",
+            self.parsing.exclude_patterns.join(", ")
+        )?;
+        writeln!(
+            f,
+            "│  ├─ Context Lines: {}",
+            self.parsing.include_context_lines
+        )?;
+        writeln!(f, "│  ├─ Comment Prefixes:")?;
+        for (i, pattern) in self.parsing.comment_prefixes.iter().enumerate() {
+            let prefix = if i == self.parsing.comment_prefixes.len() - 1 {
+                "│  │  └─"
+            } else {
+                "│  │  ├─"
+            };
+            writeln!(f, "{} {}", prefix, pattern)?;
+        }
+        writeln!(f, "│  ├─ TODO Patterns:")?;
+        for (i, pattern) in self.parsing.todo_patterns.iter().enumerate() {
+            let prefix = if i == self.parsing.todo_patterns.len() - 1 {
+                "│  │  └─"
+            } else {
+                "│  │  ├─"
+            };
+            writeln!(f, "{} {}", prefix, pattern)?;
+        }
+        writeln!(f, "│  └─ Function Patterns:")?;
+        for (i, pattern) in self.parsing.function_patterns.iter().enumerate() {
+            let prefix = if i == self.parsing.function_patterns.len() - 1 {
+                "│     └─"
+            } else {
+                "│     ├─"
+            };
+            writeln!(f, "{} {}", prefix, pattern)?;
+        }
+        writeln!(f, "├─ Output")?;
+        writeln!(
+            f,
+            "│  ├─ Dry Run: {}",
+            if self.output.dry_run { "✓" } else { "✗" }
+        )?;
+        writeln!(
+            f,
+            "│  ├─ Backup Files: {}",
+            if self.output.backup_files {
+                "✓"
+            } else {
+                "✗"
+            }
+        )?;
+        writeln!(
+            f,
+            "│  ├─ Progress Bar: {}",
+            if self.output.progress_bar {
+                "✓"
+            } else {
+                "✗"
+            }
+        )?;
+        writeln!(
+            f,
+            "│  └─ Verbose: {}",
+            if self.output.verbose { "✓" } else { "✗" }
+        )?;
+        writeln!(f, "└─ GitHub")?;
+        writeln!(f, "   ├─ Owner: {}", self.github.owner)?;
+        writeln!(f, "   ├─ Repo: {}", self.github.repo)?;
+        write!(
+            f,
+            "   └─ Token: {}",
+            if self.github.token.is_empty() {
+                "not set"
+            } else {
+                "configured"
+            }
+        )
+    }
+}
 impl TowlConfig {
     pub async fn init(path: &PathBuf) -> Result<(), TowlConfigError> {
         let git_repo_info = GitRepoInfo::from_path(".")?;
@@ -115,8 +206,12 @@ pub struct ParsingConfig {
     pub exclude_patterns: Vec<String>,
     #[serde(default = "default_include_context_lines")]
     pub include_context_lines: usize,
+    #[serde(default = "default_comment_prefixes")]
+    pub comment_prefixes: Vec<String>,
     #[serde(default = "default_todo_patterns")]
     pub todo_patterns: Vec<String>,
+    #[serde(default = "default_function_patterns")]
+    pub function_patterns: Vec<String>,
 }
 
 impl Default for ParsingConfig {
@@ -125,7 +220,9 @@ impl Default for ParsingConfig {
             file_extensions: default_file_extensions(),
             exclude_patterns: default_exclude_patterns(),
             include_context_lines: default_include_context_lines(),
+            comment_prefixes: default_comment_prefixes(),
             todo_patterns: default_todo_patterns(),
+            function_patterns: default_function_patterns(),
         }
     }
 }
@@ -192,11 +289,10 @@ pub trait SaveConfig {
 #[async_trait]
 impl SaveConfig for TowlConfig {
     async fn save(&self, path: &Path) -> Result<(), TowlConfigError> {
-        let _ = Self::validate_path(path);
+        let _ = Self::validate_path(path)?;
 
         let mut config_to_save = self.clone();
 
-        // Overwrite token for security
         config_to_save.github.token = String::new();
 
         let toml_string =
@@ -210,31 +306,38 @@ impl SaveConfig for TowlConfig {
 }
 
 pub trait LoadConfig {
-    fn load(&self, path: Option<&Path>) -> Result<TowlConfig, TowlConfigError>;
+    fn load(path: Option<&PathBuf>) -> Result<TowlConfig, TowlConfigError>;
 }
 impl LoadConfig for TowlConfig {
-    fn load(&self, path: Option<&Path>) -> Result<TowlConfig, TowlConfigError> {
+    fn load(path: Option<&PathBuf>) -> Result<TowlConfig, TowlConfigError> {
         let config_path = match path {
-            Some(p) => p.to_path_buf(),
-            None => PathBuf::from(DEFAULT_CONFIG_PATH),
+            Some(p) => p,
+            None => &PathBuf::from(DEFAULT_CONFIG_PATH),
         };
-
-        let _ = Self::validate_path(&config_path);
+        let _ = Self::validate_path(&config_path)?;
 
         let mut builder = ConfigBuilder::builder().add_source(
             config::Config::try_from(&TowlConfig::default())
                 .map_err(|e| TowlConfigError::CouldNotCreateConfig(e))?,
         );
 
-        // Only add the file source if it exists
         if config_path.exists() {
             builder = builder.add_source(File::from(config_path.as_path()));
+        } else {
+            debug!("Config file {} does not exist", config_path.display());
         }
 
-        // Add environment variables with TOWL_ prefix
         builder = builder.add_source(Environment::with_prefix("TOWL").separator("_"));
 
-        let config: TowlConfig = builder.build()?.try_deserialize()?;
+        let built: config::Config = builder.build().map_err(|e| {
+            tracing::error!("Config build error: {:?}", e);
+            TowlConfigError::CouldNotCreateConfig(e)
+        })?;
+
+        let config: TowlConfig = built.try_deserialize().map_err(|e| {
+            tracing::error!("Config deserialization error: {:?}", e);
+            TowlConfigError::CouldNotCreateConfig(e)
+        })?;
         Ok(config)
     }
 }
@@ -260,13 +363,22 @@ fn default_include_context_lines() -> usize {
     3
 }
 
+fn default_comment_prefixes() -> Vec<String> {
+    vec![
+        r"//".to_string(),     // C-style single-line comments (anywhere on line)
+        r"^\s*#".to_string(),  // Shell/Python style comments (start of line only)
+        r"/\*".to_string(),    // Start of C-style multi-line comments
+        r"^\s*\*".to_string(), // Continuation of multi-line comments
+    ]
+}
+
 fn default_todo_patterns() -> Vec<String> {
     vec![
-        r"(?i)TODO:?\s*(.*)".to_string(),
-        r"(?i)FIXME:?\s*(.*)".to_string(),
-        r"(?i)HACK:?\s*(.*)".to_string(),
-        r"(?i)NOTE:?\s*(.*)".to_string(),
-        r"(?i)BUG:?\s*(.*)".to_string(),
+        r"(?i)\bTODO:\s*(.*)".to_string(),
+        r"(?i)\bFIXME:\s*(.*)".to_string(),
+        r"(?i)\bHACK:\s*(.*)".to_string(),
+        r"(?i)\bNOTE:\s*(.*)".to_string(),
+        r"(?i)\bBUG:\s*(.*)".to_string(),
     ]
 }
 
@@ -276,4 +388,14 @@ fn default_backup_files() -> bool {
 
 fn default_progress_bar() -> bool {
     true
+}
+
+fn default_function_patterns() -> Vec<String> {
+    vec![
+        r"^\s*(pub\s+)?fn\s+(\w+)".to_string(),         // Rust
+        r"^\s*def\s+(\w+)".to_string(),                 // Python
+        r"^\s*(async\s+)?function\s+(\w+)".to_string(), // JavaScript
+        r"^\s*(public|private|protected)?\s*(static\s+)?\w+\s+(\w+)\s*\(".to_string(), // Java/C#
+        r"^\s*func\s+(\w+)".to_string(),                // Go
+    ]
 }

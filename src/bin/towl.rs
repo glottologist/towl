@@ -1,15 +1,17 @@
-use cargo_towl::{
-    cli::{Cli, Commands, OutputFormat, TowlCommands},
-    config::config::TowlConfig,
-    error::TowlError,
-};
 use clap::Parser;
 use std::path::PathBuf;
+use towl::{
+    cli::{Cli, OutputFormat, TowlCommands},
+    config::config::{LoadConfig, TowlConfig},
+    error::TowlError,
+    output::Output,
+    scanner::scanner::Scanner,
+};
+use tracing::info;
 use tracing_subscriber;
 
 #[tokio::main]
 async fn main() -> Result<(), TowlError> {
-    // Initialize logging to stderr to avoid interfering with stdout
     tracing_subscriber::fmt()
         .with_writer(std::io::stderr)
         .init();
@@ -25,36 +27,67 @@ async fn main() -> Result<(), TowlError> {
 
 async fn run_cli(cli: Cli) -> Result<(), TowlError> {
     match cli.command {
-        Commands::Towl { subcommand } => match subcommand {
-            TowlCommands::Init { path, force } => init_config(path, force).await,
-            TowlCommands::Scan {
-                path,
-                format,
-                todo_type,
-                context,
-                verbose,
-            } => scan_todos(path, format, todo_type, context, verbose).await,
-            TowlCommands::Config { all, validate } => show_config(all, validate).await,
-        },
+        TowlCommands::Init { path, force } => init_config(path, force).await,
+        TowlCommands::Scan {
+            path,
+            format,
+            output,
+            todo_type,
+            context,
+            verbose,
+        } => scan_todos(path, format, output, todo_type, context, verbose).await,
+        TowlCommands::Config { all, validate } => show_config(all, validate).await,
     }
 }
 
 async fn init_config(path: PathBuf, _force: bool) -> Result<(), TowlError> {
     TowlConfig::init(&path).await?;
-    println!("Initialized config file at: {}", path.display());
+    tracing::info!("Initialized config file at: {}", path.display());
     Ok(())
 }
 
 async fn scan_todos(
-    _path: PathBuf,
-    _format: OutputFormat,
-    _todo_type: Option<String>,
+    path: PathBuf,
+    format: OutputFormat,
+    output: Option<PathBuf>,
+    todo_type: Option<String>,
     _context: bool,
-    _verbose: bool,
+    verbose: bool,
 ) -> Result<(), TowlError> {
+    info!("Scanning {}", path.display());
+    let config = TowlConfig::load(None)?;
+    info!("Scan config\n{}", config);
+    let scanner = Scanner::new(config.parsing)?;
+
+    let todos = scanner.scan(path).await?;
+
+    let filtered_todos: Vec<_> = if let Some(filter_type) = todo_type {
+        todos
+            .into_iter()
+            .filter(|todo| {
+                format!("{:?}", todo.todo_type).to_lowercase() == filter_type.to_lowercase()
+            })
+            .collect()
+    } else {
+        todos
+    };
+
+    if verbose {
+        tracing::info!("Found {} TODO comments", filtered_todos.len());
+        if let Some(ref output_path) = output {
+            tracing::info!("Writing to: {}", output_path.display());
+        }
+    }
+
+    tracing::info!("Found {} TODO comments", filtered_todos.len());
+    let outputter = Output::new(format, output)?;
+    let _ = outputter.save(&filtered_todos).await;
+
     Ok(())
 }
 
 async fn show_config(_show_all: bool, _validate: bool) -> Result<(), TowlError> {
+    let config = TowlConfig::load(None)?;
+    info!("Scan config\n{}", config);
     Ok(())
 }
