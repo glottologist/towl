@@ -162,6 +162,8 @@ impl Parser {
     }
 
     fn find_function_context(&self, lines: &[&str], current_line: usize) -> Option<String> {
+        // LIMITATION: Only searches backwards from current line
+        // May miss function context if TODO appears before function declaration
         for i in (0..=current_line).rev() {
             let line = lines[i];
 

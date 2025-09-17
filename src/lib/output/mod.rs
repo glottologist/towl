@@ -29,6 +29,8 @@ impl Output {
         output_path: Option<PathBuf>,
     ) -> Result<Self, TowlOutputError> {
         let (formatter, writer): (Box<dyn Formatter>, Box<dyn Writer>) = match output_format {
+            // Terminal and Table formats use stdout and cannot write to files
+            // due to their interactive nature and formatting dependencies
             OutputFormat::Terminal => {
                 if output_path.is_some() {
                     return Err(TowlOutputError::InvalidOutputPath(

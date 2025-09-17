@@ -26,6 +26,7 @@ impl Scanner {
             return false;
         }
 
+        // Security: Prevent path traversal attacks via ".." sequences
         if path.to_string_lossy().contains("..") {
             return false;
         }
@@ -41,6 +42,7 @@ impl Scanner {
     async fn scan_file(&self, path: &Path) -> Result<Vec<TodoComment>, TowlScannerError> {
         match path.canonicalize() {
             Ok(canonical) => {
+                // Additional security check on canonicalized path
                 if canonical.to_string_lossy().contains("..") {
                     return Err(TowlScannerError::PathTraversalAttempt {
                         path: path.to_path_buf(),

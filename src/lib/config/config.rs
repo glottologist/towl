@@ -343,9 +343,9 @@ impl LoadConfig for TowlConfig {
 }
 
 fn default_file_extensions() -> Vec<String> {
+    // Extensions ordered by expected frequency in typical Rust projects
     vec![
         "rs".to_string(),
-        "sh".to_string(),
         "toml".to_string(),
         "json".to_string(),
         "yaml".to_string(),
@@ -364,6 +364,8 @@ fn default_include_context_lines() -> usize {
 }
 
 fn default_comment_prefixes() -> Vec<String> {
+    // Comment patterns ordered by frequency for performance
+    // Matches: '//' anywhere, '#' at line start, '/*' start, '*' continuation
     vec![
         r"//".to_string(),     // C-style single-line comments (anywhere on line)
         r"^\s*#".to_string(),  // Shell/Python style comments (start of line only)
