@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::collections::HashMap;
 
 use crate::{
@@ -11,14 +12,14 @@ impl TableFormatter {
     fn calculate_column_widths(
         todos_map: &HashMap<&TodoType, Vec<&TodoComment>>,
     ) -> (usize, usize, usize, usize, usize) {
-        let mut type_width = 4; // "Type"
-        let mut desc_width = 11; // "Description"
-        let mut file_width = 4; // "File"
-        let mut line_width = 4; // "Line"
-        let mut func_width = 8; // "Function"
+        let mut type_width = 4;
+        let mut desc_width = 11;
+        let mut file_width = 4;
+        let mut line_width = 4;
+        let mut func_width = 8;
 
         for (todo_type, todos_of_type) in todos_map {
-            let type_str = format!("{:?}", todo_type);
+            let type_str = todo_type.to_string();
             type_width = type_width.max(type_str.len());
 
             for todo in todos_of_type {
@@ -51,23 +52,11 @@ impl TableFormatter {
 
         if is_header {
             format!(
-                "│ {:<width_type$} │ {:<width_desc$} │ {:<width_file$} │ {:<width_line$} │ {:<width_func$} │",
-                type_truncated, desc_truncated, file_truncated, line_truncated, func_truncated,
-                width_type = type_width,
-                width_desc = desc_width,
-                width_file = file_width,
-                width_line = line_width,
-                width_func = func_width
+                "│ {type_truncated:<type_width$} │ {desc_truncated:<desc_width$} │ {file_truncated:<file_width$} │ {line_truncated:<line_width$} │ {func_truncated:<func_width$} │"
             )
         } else {
             format!(
-                "│ {:<width_type$} │ {:<width_desc$} │ {:<width_file$} │ {:>width_line$} │ {:<width_func$} │",
-                type_truncated, desc_truncated, file_truncated, line_truncated, func_truncated,
-                width_type = type_width,
-                width_desc = desc_width,
-                width_file = file_width,
-                width_line = line_width,
-                width_func = func_width
+                "│ {type_truncated:<type_width$} │ {desc_truncated:<desc_width$} │ {file_truncated:<file_width$} │ {line_truncated:>line_width$} │ {func_truncated:<func_width$} │"
             )
         }
     }
@@ -107,11 +96,12 @@ impl TableFormatter {
         )
     }
 
-    fn truncate_string(s: &str, max_len: usize) -> String {
-        if s.len() <= max_len {
-            s.to_string()
+    fn truncate_string(s: &str, max_len: usize) -> Cow<'_, str> {
+        if s.chars().count() <= max_len {
+            Cow::Borrowed(s)
         } else {
-            format!("{}…", &s[0..max_len.saturating_sub(1)])
+            let truncated: String = s.chars().take(max_len.saturating_sub(1)).collect();
+            Cow::Owned(format!("{truncated}…"))
         }
     }
 }
@@ -122,7 +112,7 @@ impl Formatter for TableFormatter {
         todos_map: &HashMap<&TodoType, Vec<&TodoComment>>,
         total_count: usize,
     ) -> Result<Vec<String>, FormatterError> {
-        let mut output = Vec::new();
+        let mut output = Vec::with_capacity(total_count.saturating_add(5));
 
         if total_count == 0 {
             output.push("No TODO comments found.".to_string());
@@ -136,7 +126,7 @@ impl Formatter for TableFormatter {
             todos_map.len(),
             if todos_map.len() == 1 { "" } else { "s" }
         ));
-        output.push("".to_string());
+        output.push(String::new());
 
         let widths = Self::calculate_column_widths(todos_map);
 
@@ -150,14 +140,10 @@ impl Formatter for TableFormatter {
 
         for (todo_type, todos_of_type) in todos_map {
             for todo in todos_of_type {
-                let type_str = format!("{:?}", todo_type);
+                let type_str = todo_type.to_string();
                 let file_str = todo.file_path.display().to_string();
                 let line_str = todo.line_number.to_string();
-                let func_str = todo
-                    .function_context
-                    .as_ref()
-                    .map(|s| s.as_str())
-                    .unwrap_or("");
+                let func_str = todo.function_context.as_deref().unwrap_or("");
 
                 output.push(Self::format_row(
                     (
@@ -176,5 +162,87 @@ impl Formatter for TableFormatter {
         output.push(Self::format_bottom(widths));
 
         Ok(output)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::output::formatter::formatters::test_helpers::create_test_todo;
+    use proptest::prelude::*;
+
+    #[test]
+    fn test_empty_todos() {
+        let formatter = TableFormatter;
+        let todos_map = HashMap::new();
+
+        let result = formatter.format(&todos_map, 0).unwrap();
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0], "No TODO comments found.");
+    }
+
+    #[test]
+    fn test_single_todo_formatting() {
+        let formatter = TableFormatter;
+        let todo = create_test_todo("Test description", TodoType::Todo, Some("main"), false);
+        let mut todos_map = HashMap::new();
+        todos_map.insert(&todo.todo_type, vec![&todo]);
+
+        let result = formatter.format(&todos_map, 1).unwrap();
+        let output = result.join("\n");
+
+        assert!(output.contains("Found 1 TODO comment in 1 group"));
+        assert!(output.contains("Type"));
+        assert!(output.contains("Description"));
+        assert!(output.contains("File"));
+        assert!(output.contains("Line"));
+        assert!(output.contains("Function"));
+        assert!(output.contains("TODO"));
+        assert!(output.contains("Test description"));
+        assert!(output.contains("test.rs"));
+        assert!(output.contains("42"));
+        assert!(output.contains("main"));
+    }
+
+    #[test]
+    fn test_multiple_types() {
+        let formatter = TableFormatter;
+        let todo1 = create_test_todo("Fix bug", TodoType::Todo, None, false);
+        let todo2 = create_test_todo("Broken", TodoType::Bug, None, false);
+
+        let mut todos_map = HashMap::new();
+        todos_map.insert(&TodoType::Todo, vec![&todo1]);
+        todos_map.insert(&TodoType::Bug, vec![&todo2]);
+
+        let result = formatter.format(&todos_map, 2).unwrap();
+        let output = result.join("\n");
+
+        assert!(output.contains("Found 2 TODO comments in 2 groups"));
+        assert!(output.contains("TODO"));
+        assert!(output.contains("BUG"));
+    }
+
+    #[test]
+    fn test_truncation() {
+        let long_str = "a".repeat(100);
+        let truncated = TableFormatter::truncate_string(&long_str, 10);
+        assert_eq!(truncated.chars().count(), 10);
+        assert!(truncated.ends_with('…'));
+    }
+
+    proptest! {
+        #[test]
+        fn prop_truncate_string_respects_max_len(
+            s in ".{0,200}",
+            max_len in 1usize..50
+        ) {
+            let truncated = TableFormatter::truncate_string(&s, max_len);
+            prop_assert!(
+                truncated.chars().count() <= max_len,
+                "Truncated string ({} chars) exceeds max_len ({})",
+                truncated.chars().count(),
+                max_len
+            );
+        }
     }
 }

@@ -1,0 +1,13 @@
+[book]
+authors = ["Jason Ridgway-Taylor"]
+language = "en"
+multilingual = false
+src = "src"
+title = "towl Documentation"
+description = "Documentation for towl - a fast CLI tool to scan codebases for TODO comments"
+
+[output.html]
+default-theme = "navy"
+preferred-dark-theme = "navy"
+git-repository-url = "https://github.com/glottologist/towl"
+edit-url-template = "https://github.com/glottologist/towl/edit/main/docs/src/{path}"

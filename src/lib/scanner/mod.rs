@@ -1,2 +1,4 @@
 pub mod error;
-pub mod scanner;
+mod types;
+
+pub use types::{ScanResult, Scanner};

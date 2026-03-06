@@ -9,8 +9,6 @@
     "openssl",
     "libiconv",
     "pkg-config",
-    "rustc@latest",
-    "cargo@latest",
     "bacon",
     "cargo-nextest",
     "cargo-udeps",

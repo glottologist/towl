@@ -1,10 +1,9 @@
-use async_trait::async_trait;
-
 use crate::output::writer::{error::WriterError, Writer};
-pub struct StdoutWriter;
+pub(crate) struct StdoutWriter;
 
 impl StdoutWriter {
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self
     }
 }
@@ -15,11 +14,10 @@ impl Default for StdoutWriter {
     }
 }
 
-#[async_trait]
 impl Writer for StdoutWriter {
     async fn write(&self, content: Vec<String>) -> Result<(), WriterError> {
         for item in content {
-            println!("{}", item);
+            println!("{item}");
         }
 
         Ok(())

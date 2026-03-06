@@ -1,15 +1,17 @@
 [package]
 name = "towl"
-version = "0.0.1"
+version = "0.1.0"
 authors = ["Jason Ridgway-Taylor <jason@glottologist.co.uk>"]
-description = "Watches over your project's source code for TODO comments"
+description = "A fast CLI tool to scan codebases for TODO comments and output them in multiple formats"
+license = "MIT"
 keywords = ["todo", "comments", "code-analysis", "development-tools"]
 categories = ["command-line-utilities", "development-tools"]
-documentation = "https://glottologist.github.io/towl"
+documentation = "https://docs.rs/towl"
 homepage = "https://glottologist.github.io/towl/"
 repository = "https://github.com/glottologist/towl"
 readme = "README.md"
 edition = "2021"
+rust-version = "1.75"
 
 [lib]
 path = "src/lib/mod.rs"
@@ -20,26 +22,23 @@ path = "src/bin/towl.rs"
 
 [dependencies]
 tokio = { version = "1.35", features = ["full"] }
-async-trait = "0.1"
-
 clap = { version = "4.4", features = ["derive", "env"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 toml = "0.8"
-anyhow = "1.0"
 config = "0.14"
 thiserror = "1.0"
-
-git2 = "0.19"
+secrecy = { version = "0.10", features = ["serde"] }
 
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["fmt", "env-filter"] }
-indicatif = "0.17"
 ignore = "0.4.23"
 regex = "1.11.2"
+tempfile = "3.8"
 
 [dev-dependencies]
 rstest = "0.18"
-proptest = "1.4" 
-tempfile = "3.8"
+proptest = "1.4"
 tokio-test = "0.4"
+assert_cmd = "2.0"
+predicates = "3.0"

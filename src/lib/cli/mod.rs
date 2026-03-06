@@ -1,3 +1,4 @@
+use crate::comment::todo::TodoType;
 use clap::{Parser, Subcommand, ValueEnum};
 use std::path::PathBuf;
 
@@ -20,7 +21,7 @@ pub enum TowlCommands {
         #[arg(long, short = 'p', default_value = ".towl.toml")]
         path: PathBuf,
 
-        #[arg(long, short = 'f')]
+        #[arg(long, short = 'F')]
         force: bool,
     },
 
@@ -34,26 +35,17 @@ pub enum TowlCommands {
         #[arg(long, short = 'o')]
         output: Option<PathBuf>,
 
-        #[arg(long, short = 't')]
-        todo_type: Option<String>,
-
-        #[arg(long, short = 'c')]
-        context: bool,
+        #[arg(long, short = 't', value_enum)]
+        todo_type: Option<TodoType>,
 
         #[arg(long, short = 'v')]
         verbose: bool,
     },
 
-    Config {
-        #[arg(long, short = 'a')]
-        all: bool,
-
-        #[arg(long)]
-        validate: bool,
-    },
+    Config,
 }
 
-#[derive(Debug, Clone, ValueEnum)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 pub enum OutputFormat {
     Table,
     Json,

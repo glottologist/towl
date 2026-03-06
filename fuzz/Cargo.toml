@@ -1,0 +1,29 @@
+[package]
+name = "towl-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+tempfile = "3"
+
+[dependencies.towl]
+path = ".."
+
+[[bin]]
+name = "parse_config"
+path = "fuzz_targets/parse_config.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "regex_patterns"
+path = "fuzz_targets/regex_patterns.rs"
+test = false
+doc = false
+bench = false

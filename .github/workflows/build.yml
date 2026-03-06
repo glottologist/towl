@@ -1,87 +1,94 @@
 name: Build
+
 on:
   workflow_dispatch:
   push:
+    branches: [main]
+  pull_request:
+    branches: [main]
 
 permissions:
-  contents: write
-  packages: write
+  contents: read
 
 env:
-  PROJECT_NAME: cargo-towl
-  WINDOWS_TARGET: "x86_64-pc-windows-msvc"
+  CARGO_TERM_COLOR: always
 
 jobs:
-  build-windows-msvc:
-    runs-on: windows-latest
-    defaults:
-      run:
-        working-directory: rust
+  test:
+    name: Test
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
-      - name: Cargo build
-        run: |
-          cargo build --release --target ${{ env.WINDOWS_TARGET }}
-          mv target/${{ env.WINDOWS_TARGET }}/release/${{env.PROJECT_NAME}}.exe ${{env.PROJECT_NAME}}_${{ env.WINDOWS_TARGET }}_${{ github.ref_name }}.exe
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Run tests
+        run: cargo test --all-targets
+
+      - name: Run clippy
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Check formatting
+        run: cargo fmt -- --check
 
   build:
+    name: Build (${{ matrix.name }})
+    needs: test
     runs-on: ${{ matrix.runner }}
-    defaults:
-      run:
-        working-directory: rust
     strategy:
       matrix:
         include:
-          - name: ubuntu-x86_64-gnu
+          - name: linux-x86_64
             runner: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-          - name: macos-aarch64-gnu
+          - name: linux-aarch64
+            runner: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+          - name: macos-x86_64
+            runner: macos-13
+            target: x86_64-apple-darwin
+          - name: macos-aarch64
             runner: macos-latest
             target: aarch64-apple-darwin
+          - name: windows-x86_64
+            runner: windows-latest
+            target: x86_64-pc-windows-msvc
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-
-      - name: Install dependencies (macos)
-        if: ${{ startsWith(matrix.runner, 'macos') }}
-        run: |
-          brew update
-          brew install openssl@3 pkg-config
-
-      - name: Install dependencies (ubuntu)
-        if: ${{ startsWith(matrix.runner, 'ubuntu') }}
-        run: |
-          sudo apt-get update
-          if [[ "${{ matrix.target }}" == "aarch64-unknown-linux-gnu" ]]; then
-            # Cross-compiler & ARM64 OpenSSL
-            sudo apt-get install -y \
-              gcc-aarch64-linux-gnu \
-              binutils-aarch64-linux-gnu \
-              libssl-dev:arm64 \
-              pkg-config
-
-            # Make pkg-config allow cross-compilation
-            export PKG_CONFIG_ALLOW_CROSS=1
-            export PKG_CONFIG_PATH="/usr/lib/aarch64-linux-gnu/pkgconfig"
-          else
-            # Native x86_64 build
-            sudo apt-get install -y \
-              libssl-dev \
-              pkg-config
-          fi
+      - uses: actions/checkout@v4
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: "${{ matrix.target }}"
+          targets: ${{ matrix.target }}
 
-      - name: Run sccache-cache
-        uses: mozilla-actions/sccache-action@v0.0.5
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
 
-      - name: Build Binary
-        run: |
-          cargo build --release --target "${{matrix.target}}"
-          mv target/${{matrix.target}}/release/${{env.PROJECT_NAME}} ${{env.PROJECT_NAME}}_${{matrix.target}}_${{ github.ref_name }}
+      - name: Build
+        run: cargo build --release --target ${{ matrix.target }}
 
+      - name: Rename binary (unix)
+        if: runner.os != 'Windows'
+        run: mv target/${{ matrix.target }}/release/towl towl-${{ matrix.target }}
+
+      - name: Rename binary (windows)
+        if: runner.os == 'Windows'
+        run: mv target/${{ matrix.target }}/release/towl.exe towl-${{ matrix.target }}.exe
+
+      - name: Upload artifact (unix)
+        if: runner.os != 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: towl-${{ matrix.target }}
+          path: towl-${{ matrix.target }}
+
+      - name: Upload artifact (windows)
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: towl-${{ matrix.target }}
+          path: towl-${{ matrix.target }}.exe
