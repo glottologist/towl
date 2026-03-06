@@ -35,6 +35,7 @@ tracing-subscriber = { version = "0.3", features = ["fmt", "env-filter"] }
 ignore = "0.4.23"
 regex = "1.11.2"
 tempfile = "3.8"
+octocrab = "0.44"
 
 [dev-dependencies]
 rstest = "0.18"

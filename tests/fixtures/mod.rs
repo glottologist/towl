@@ -1,4 +1,5 @@
-use towl::config::{GitHubConfig, ParsingConfig, TowlConfig};
+use secrecy::SecretString;
+use towl::config::{GitHubConfig, Owner, ParsingConfig, Repo, TowlConfig};
 
 #[must_use]
 pub fn mock_towl_config() -> TowlConfig {
@@ -28,5 +29,15 @@ pub fn mock_towl_config() -> TowlConfig {
             include_context_lines: 3,
         },
         github: GitHubConfig::default(),
+    }
+}
+
+#[must_use]
+pub fn mock_github_config() -> GitHubConfig {
+    GitHubConfig {
+        token: SecretString::from("test-token-12345"),
+        owner: Owner::new("test-owner"),
+        repo: Repo::new("test-repo"),
+        rate_limit_delay_ms: 0,
     }
 }

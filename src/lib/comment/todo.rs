@@ -35,6 +35,22 @@ impl TodoType {
             Self::Bug => "bug",
         }
     }
+
+    #[must_use]
+    pub const fn github_label(&self) -> &'static str {
+        self.as_filter_str()
+    }
+
+    #[must_use]
+    pub const fn priority(&self) -> u8 {
+        match self {
+            Self::Bug => 1,
+            Self::Fixme => 2,
+            Self::Hack => 3,
+            Self::Todo => 4,
+            Self::Note => 5,
+        }
+    }
 }
 
 impl TryFrom<&str> for TodoType {
@@ -127,6 +143,15 @@ mod tests {
         ) {
             let result = TodoType::try_from(s.as_str());
             prop_assert!(result.is_err());
+        }
+
+        #[test]
+        fn prop_priority_is_bounded(
+            keyword in prop::sample::select(vec!["TODO", "FIXME", "HACK", "NOTE", "BUG"])
+        ) {
+            let todo_type = TodoType::try_from(keyword).unwrap();
+            prop_assert!(todo_type.priority() >= 1);
+            prop_assert!(todo_type.priority() <= 5);
         }
 
         #[test]

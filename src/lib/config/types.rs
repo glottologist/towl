@@ -123,14 +123,19 @@ impl fmt::Display for TowlConfig {
         writeln!(f, "└─ GitHub")?;
         writeln!(f, "   ├─ Owner: {}", self.github.owner)?;
         writeln!(f, "   ├─ Repo: {}", self.github.repo)?;
-        write!(
+        writeln!(
             f,
-            "   └─ Token: {}",
+            "   ├─ Token: {}",
             if self.github.token.expose_secret().is_empty() {
                 "not set"
             } else {
                 "configured"
             }
+        )?;
+        write!(
+            f,
+            "   └─ Rate Limit Delay: {}ms",
+            self.github.rate_limit_delay_ms
         )
     }
 }
@@ -222,6 +227,7 @@ impl TowlConfig {
                 token: SecretString::default(),
                 owner: git_repo_info.owner,
                 repo: git_repo_info.repo,
+                ..Default::default()
             },
             ..Default::default()
         };
@@ -298,12 +304,29 @@ impl Default for ParsingConfig {
     }
 }
 
-#[derive(Clone, Serialize, Deserialize, Default)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct GitHubConfig {
     #[serde(skip)]
     pub token: SecretString,
     pub owner: Owner,
     pub repo: Repo,
+    #[serde(default = "default_rate_limit_delay_ms")]
+    pub rate_limit_delay_ms: u64,
+}
+
+impl Default for GitHubConfig {
+    fn default() -> Self {
+        Self {
+            token: SecretString::default(),
+            owner: Owner::default(),
+            repo: Repo::default(),
+            rate_limit_delay_ms: default_rate_limit_delay_ms(),
+        }
+    }
+}
+
+const fn default_rate_limit_delay_ms() -> u64 {
+    1000
 }
 
 impl fmt::Debug for GitHubConfig {
@@ -312,13 +335,16 @@ impl fmt::Debug for GitHubConfig {
             .field("token", &"[REDACTED]")
             .field("owner", &self.owner)
             .field("repo", &self.repo)
+            .field("rate_limit_delay_ms", &self.rate_limit_delay_ms)
             .finish()
     }
 }
 
 impl PartialEq for GitHubConfig {
     fn eq(&self, other: &Self) -> bool {
-        self.owner == other.owner && self.repo == other.repo
+        self.owner == other.owner
+            && self.repo == other.repo
+            && self.rate_limit_delay_ms == other.rate_limit_delay_ms
     }
 }
 
@@ -547,6 +573,7 @@ mod tests {
                     token: SecretString::default(),
                     owner: Owner::new(&owner_name),
                     repo: Repo::new(&repo_name),
+                    ..Default::default()
                 },
             };
 

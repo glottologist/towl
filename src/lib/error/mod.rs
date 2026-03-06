@@ -1,5 +1,5 @@
 use crate::{
-    config::error::TowlConfigError, output::error::TowlOutputError,
+    config::error::TowlConfigError, github::error::TowlGitHubError, output::error::TowlOutputError,
     scanner::error::TowlScannerError,
 };
 use thiserror::Error;
@@ -12,4 +12,6 @@ pub enum TowlError {
     Scanner(#[from] TowlScannerError),
     #[error("Output error: {0}")]
     Output(#[from] TowlOutputError),
+    #[error("GitHub error: {0}")]
+    GitHub(#[from] TowlGitHubError),
 }
