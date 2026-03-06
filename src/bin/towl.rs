@@ -67,34 +67,66 @@ async fn scan_todos(
         );
     }
 
-    let filtered_todos: Vec<_> = if let Some(filter_type) = todo_type {
-        scan_result
-            .todos
+    let files_scanned = scan_result.files_scanned;
+    let files_skipped = scan_result.files_skipped;
+    let files_errored = scan_result.files_errored;
+    let duration = scan_result.duration;
+    let filtered_todos = filter_todos(scan_result.todos, todo_type);
+
+    if verbose {
+        log_scan_verbose(
+            &filtered_todos,
+            files_scanned,
+            files_skipped,
+            files_errored,
+            duration,
+            output.as_ref(),
+        );
+    }
+
+    save_output(format, output, &filtered_todos, verbose).await
+}
+
+fn filter_todos(
+    todos: Vec<towl::comment::todo::TodoComment>,
+    todo_type: Option<TodoType>,
+) -> Vec<towl::comment::todo::TodoComment> {
+    if let Some(filter_type) = todo_type {
+        todos
             .into_iter()
             .filter(|todo| todo.todo_type == filter_type)
             .collect()
     } else {
-        scan_result.todos
-    };
-
-    if verbose {
-        tracing::info!(
-            "Found {} TODO comments ({} files scanned, {} skipped, {} errored in {:?})",
-            filtered_todos.len(),
-            scan_result.files_scanned,
-            scan_result.files_skipped,
-            scan_result.files_errored,
-            scan_result.duration,
-        );
-        if let Some(ref output_path) = output {
-            tracing::info!("Writing to: {}", output_path.display());
-        }
+        todos
     }
+}
 
+fn log_scan_verbose(
+    filtered_todos: &[towl::comment::todo::TodoComment],
+    files_scanned: usize,
+    files_skipped: usize,
+    files_errored: usize,
+    duration: std::time::Duration,
+    output: Option<&PathBuf>,
+) {
+    tracing::info!(
+        "Found {} TODO comments ({files_scanned} files scanned, {files_skipped} skipped, {files_errored} errored in {duration:?})",
+        filtered_todos.len(),
+    );
+    if let Some(output_path) = output {
+        tracing::info!("Writing to: {}", output_path.display());
+    }
+}
+
+async fn save_output(
+    format: OutputFormat,
+    output: Option<PathBuf>,
+    filtered_todos: &[towl::comment::todo::TodoComment],
+    verbose: bool,
+) -> Result<(), TowlError> {
     let outputter = Output::new(format, output)?;
 
-    // Intentionally ignore save errors - scanner succeeded, output is best-effort
-    match outputter.save(&filtered_todos).await {
+    match outputter.save(filtered_todos).await {
         Ok(()) => {
             if verbose {
                 info!(

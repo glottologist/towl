@@ -13,7 +13,8 @@ impl Formatter for MarkdownFormatter {
         todos_map: &HashMap<&TodoType, Vec<&TodoComment>>,
         total_count: usize,
     ) -> Result<Vec<String>, FormatterError> {
-        let mut output: Vec<String> = vec![];
+        let capacity = 2 + todos_map.len() + total_count.saturating_mul(2);
+        let mut output: Vec<String> = Vec::with_capacity(capacity);
 
         output.push("# TODO Comments\n\n".to_string());
         output.push(format!(

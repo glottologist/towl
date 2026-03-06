@@ -10,7 +10,7 @@ pub struct CreatedIssue {
 
 impl CreatedIssue {
     #[must_use]
-    pub fn new(number: u64, title: String, html_url: String, todo_id: String) -> Self {
+    pub const fn new(number: u64, title: String, html_url: String, todo_id: String) -> Self {
         Self {
             number,
             title,
@@ -35,9 +35,9 @@ mod tests {
             let url = format!("https://github.com/owner/repo/issues/{number}");
             let issue = CreatedIssue::new(
                 number,
-                title.clone(), // clone: proptest needs owned value for assertion
-                url.clone(), // clone: proptest needs owned value for assertion
-                todo_id.clone(), // clone: proptest needs owned value for assertion
+                title,
+                url,
+                todo_id,
             );
 
             let json = serde_json::to_string(&issue).unwrap();
