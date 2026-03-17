@@ -2,17 +2,25 @@
 
 The `towl scan` command walks a directory tree, reads each matching file, and extracts TODO-style comments using compiled regex patterns.
 
-## Basic Usage
+## Interactive Mode (Default)
+
+By default, `towl scan` opens an interactive TUI:
 
 ```bash
-# Scan current directory
 towl scan
-
-# Scan a specific directory
 towl scan src/
+```
 
-# Verbose output (file counts, timing)
-towl scan -v
+See [Interactive TUI](./tui.md) for details on the TUI interface.
+
+## Non-Interactive Mode
+
+Use `--non-interactive` / `-N` to disable the TUI (for CI/scripting):
+
+```bash
+towl scan -N
+towl scan -N src/
+towl scan -N -v
 ```
 
 ## How Scanning Works
@@ -20,15 +28,16 @@ towl scan -v
 1. **Directory walk** -- Uses the `ignore` crate to traverse the file tree, respecting `.gitignore` rules automatically
 2. **Extension filter** -- Only files matching `file_extensions` in config are read (default: `rs`, `toml`, `json`, `yaml`, `yml`, `sh`, `bash`)
 3. **Exclude patterns** -- Files matching `exclude_patterns` are skipped (default: `target/*`, `.git/*`)
-4. **Content parsing** -- Each file is read and scanned for lines matching `comment_prefixes`, then checked against `todo_patterns`
-5. **Context extraction** -- Surrounding lines and enclosing function names are captured
+4. **Concurrent scanning** -- Matching files are scanned concurrently with bounded parallelism (up to 64 files at once)
+5. **Content parsing** -- Each file is read and scanned for lines matching `comment_prefixes`, then checked against `todo_patterns`
+6. **Context extraction** -- Surrounding lines and enclosing function names are captured
 
 ## Verbose Mode
 
-The `-v` / `--verbose` flag prints scan metrics to stderr:
+The `-v` / `--verbose` flag prints scan metrics to stderr (non-interactive mode only):
 
 ```bash
-towl scan -v
+towl scan -N -v
 ```
 
 ```text
@@ -43,14 +52,30 @@ Scan duration: 12ms
 Restrict results to a single TODO type:
 
 ```bash
-towl scan -t todo      # Only TODO comments
-towl scan -t fixme     # Only FIXME comments
-towl scan -t hack      # Only HACK comments
-towl scan -t note      # Only NOTE comments
-towl scan -t bug       # Only BUG comments
+towl scan -N -t todo      # Only TODO comments
+towl scan -N -t fixme     # Only FIXME comments
+towl scan -N -t hack      # Only HACK comments
+towl scan -N -t note      # Only NOTE comments
+towl scan -N -t bug       # Only BUG comments
 ```
 
 The filter value is case-insensitive on the command line but stored lowercase internally.
+
+## GitHub Issue Creation
+
+Create GitHub issues from found TODOs:
+
+```bash
+# Create issues
+towl scan -N -g
+
+# Preview without creating
+towl scan -N -g -n
+```
+
+When issues are created, towl automatically replaces the TODO comment in source files with a link to the created issue. Duplicate detection prevents creating issues for TODOs that already have a matching open issue.
+
+In interactive mode, select TODOs with `Space` and press `Enter` to create issues.
 
 ## Combining Options
 
@@ -58,7 +83,10 @@ Options compose freely:
 
 ```bash
 # Scan src/, output FIXME comments as JSON to a file, verbose
-towl scan src/ -t fixme -f json -o fixmes.json -v
+towl scan -N src/ -t fixme -f json -o fixmes.json -v
+
+# Scan and create GitHub issues for TODO comments only
+towl scan -N -t todo -g
 ```
 
 ## Resource Limits

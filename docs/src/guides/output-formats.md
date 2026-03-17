@@ -1,14 +1,16 @@
 # Output Formats
 
-towl supports five output formats. Terminal-based formats write to stdout; file-based formats require the `-o` flag with a matching file extension.
+In non-interactive mode (`-N`), towl supports five output formats. Terminal-based formats write to stdout; file-based formats require the `-o` flag with a matching file extension.
+
+> **Note:** Output format flags only apply in non-interactive mode. The interactive TUI has its own display. Use `towl scan -N -f <format>` to select a format.
 
 ## Terminal / Table (default)
 
 ```bash
-towl scan
+towl scan -N
 # or explicitly:
-towl scan -f table
-towl scan -f terminal
+towl scan -N -f table
+towl scan -N -f terminal
 ```
 
 Renders an ASCII table to stdout:
@@ -27,7 +29,7 @@ Renders an ASCII table to stdout:
 ## JSON
 
 ```bash
-towl scan -f json -o todos.json
+towl scan -N -f json -o todos.json
 ```
 
 Produces structured JSON with a summary and TODOs grouped by type:
@@ -63,7 +65,7 @@ Produces structured JSON with a summary and TODOs grouped by type:
 ## CSV
 
 ```bash
-towl scan -f csv -o todos.csv
+towl scan -N -f csv -o todos.csv
 ```
 
 Produces a CSV file with a header row:
@@ -78,7 +80,7 @@ Context lines are joined with `|` separators within a single quoted field.
 ## Markdown
 
 ```bash
-towl scan -f markdown -o todos.md
+towl scan -N -f markdown -o todos.md
 ```
 
 Produces a Markdown document with sections grouped by TODO type:
@@ -102,7 +104,7 @@ Produces a Markdown document with sections grouped by TODO type:
 ## TOML
 
 ```bash
-towl scan -f toml -o todos.toml
+towl scan -N -f toml -o todos.toml
 ```
 
 Produces a TOML file with a summary table and grouped items:
@@ -143,7 +145,8 @@ Error: Invalid output path: expected .json extension for JSON format
 
 | Use case | Format |
 |----------|--------|
-| Quick terminal check | `table` (default) |
+| Interactive browsing | TUI (default, no `-N`) |
+| Quick terminal check | `table` (`-N`, default format) |
 | CI/CD integration | `json` |
 | Spreadsheet import | `csv` |
 | Documentation / reports | `markdown` |

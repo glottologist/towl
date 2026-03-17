@@ -11,6 +11,7 @@
 # User Guides
 
 - [Scanning for TODOs](./guides/scanning.md)
+- [Interactive TUI](./guides/tui.md)
 - [Output Formats](./guides/output-formats.md)
 - [Filtering](./guides/filtering.md)
 

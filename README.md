@@ -2,16 +2,18 @@
 
 ![TODOOwl](./docs/media/towl_trans_small.png)
 
-A fast command-line tool that scans your codebase for TODO comments and outputs them in various formats (JSON, CSV, Markdown, TOML, and more).
+A fast command-line tool that scans your codebase for TODO comments, lets you browse them in an interactive TUI, and optionally creates GitHub issues from them.
 
 ## Features
 
-- 🔍 **Smart Detection**: Finds TODO, FIXME, HACK, NOTE, and BUG comments
-- 📁 **Multiple Output Formats**: JSON, CSV, Markdown, TOML, Terminal table
-- 🎯 **Filtering**: Filter by TODO type
-- ⚡ **Fast**: Built with Rust for maximum performance
-- 🔧 **Configurable**: Customize file extensions, patterns, and exclusions
-- 📍 **Context-Aware**: Shows surrounding code and function context
+- **Interactive TUI**: Browse, filter, sort, and peek at TODOs in a full-screen terminal interface
+- **GitHub Integration**: Create GitHub issues from selected TODOs and replace comments with issue links
+- **Smart Detection**: Finds TODO, FIXME, HACK, NOTE, and BUG comments
+- **Multiple Output Formats**: JSON, CSV, Markdown, TOML, terminal table (non-interactive mode)
+- **Filtering & Sorting**: Filter by TODO type, sort by file, line, type, or priority
+- **Fast**: Async I/O, concurrent file scanning, compiled regex patterns
+- **Configurable**: Customise file extensions, patterns, and exclusions via `.towl.toml`
+- **Context-Aware**: Shows surrounding code lines and enclosing function names
 
 ## Installation
 
@@ -22,16 +24,25 @@ cargo install towl
 ## Quick Start
 
 ```bash
-# Scan current directory
+# Scan current directory (opens interactive TUI)
 towl scan
 
+# Scan in non-interactive mode (CI/scripting)
+towl scan -N
+
 # Output to JSON file
-towl scan -f json -o todos.json
+towl scan -N -f json -o todos.json
 
 # Filter by type
-towl scan -t todo
+towl scan -N -t todo
 
-# Initialize config
+# Create GitHub issues from TODOs
+towl scan -N -g
+
+# Preview GitHub issues without creating them
+towl scan -N -g -n
+
+# Initialise config
 towl init
 
 # Show current config
@@ -44,21 +55,44 @@ towl config
 towl scan [OPTIONS] [PATH]
 
 Options:
-  -f, --format <FORMAT>       Output format [default: terminal]
-                              [possible values: table, json, csv, toml, markdown, terminal]
-  -o, --output <OUTPUT>       Output file path (required for json, csv, toml, markdown)
-  -t, --todo-type <TYPE>      Filter by TODO type
-                              [possible values: todo, fixme, hack, note, bug]
-  -v, --verbose               Enable verbose output
+  -N, --non-interactive     Disable interactive TUI mode (for CI/scripting)
+  -f, --format <FORMAT>     Output format (non-interactive only) [default: terminal]
+                            [possible values: table, json, csv, toml, markdown, terminal]
+  -o, --output <OUTPUT>     Output file path (required for json, csv, toml, markdown)
+  -t, --todo-type <TYPE>    Filter by TODO type
+                            [possible values: todo, fixme, hack, note, bug]
+  -v, --verbose             Enable verbose output
+  -g, --github              Create GitHub issues for found TODOs
+  -n, --dry-run             Preview GitHub issues without creating them
 
 towl init [OPTIONS]
 
 Options:
-  -p, --path <PATH>           Config file path [default: .towl.toml]
-  -F, --force                 Overwrite existing config file
+  -p, --path <PATH>         Config file path [default: .towl.toml]
+  -F, --force               Overwrite existing config file
 
-towl config                   Show current configuration
+towl config                 Show current configuration
 ```
+
+## Interactive TUI
+
+By default, `towl scan` opens an interactive terminal interface:
+
+| Key | Action |
+|-----|--------|
+| `j` / `Down` | Move cursor down |
+| `k` / `Up` | Move cursor up |
+| `Space` | Toggle selection |
+| `a` | Select all visible |
+| `n` | Deselect all |
+| `f` | Cycle type filter |
+| `s` | Cycle sort field (file, line, type, priority) |
+| `r` | Reverse sort order |
+| `p` | Peek at source code around the TODO |
+| `Enter` | Confirm selection and create GitHub issues |
+| `q` / `Esc` | Quit |
+
+Use `--non-interactive` / `-N` to bypass the TUI for CI pipelines and scripting.
 
 ## Configuration
 
