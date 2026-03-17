@@ -29,7 +29,7 @@ impl GitRepoInfo {
             let stderr = String::from_utf8_lossy(&output.stderr);
             if stderr.contains("not a git repository") {
                 return Err(TowlConfigError::GitRepoNotFound {
-                    message: "Not a git repository".to_string(),
+                    message: "Not a git repository".to_string(), // clone: &str → owned String for error field
                 });
             }
             return Err(TowlConfigError::GitRemoteNotFound {
@@ -48,7 +48,7 @@ impl GitRepoInfo {
             .strip_prefix("git@github.com:")
             .or_else(|| url.strip_prefix("https://github.com/"))
             .ok_or_else(|| TowlConfigError::GitInvalidUrl {
-                url: url.to_string(),
+                url: url.to_string(), // clone: error owns String
                 message: "URL is not a GitHub repository".to_string(),
             })?
             .trim_end_matches(".git");
@@ -56,14 +56,14 @@ impl GitRepoInfo {
         let parts: Vec<&str> = path.split('/').collect();
         if parts.len() != 2 {
             return Err(TowlConfigError::GitInvalidUrl {
-                url: url.to_string(),
+                url: url.to_string(), // clone: error owns String
                 message: "Invalid URL format: expected owner/repo".to_string(),
             });
         }
 
         Ok(Self {
-            owner: Owner::new(parts[0]),
-            repo: Repo::new(parts[1]),
+            owner: Owner::try_new(parts[0])?,
+            repo: Repo::try_new(parts[1])?,
         })
     }
 }
@@ -96,8 +96,8 @@ mod tests {
 
             prop_assert!(result.is_ok());
             let info = result.unwrap();
-            prop_assert_eq!(info.owner, Owner::new(owner));
-            prop_assert_eq!(info.repo, Repo::new(repo));
+            prop_assert_eq!(info.owner, Owner::new_unchecked(owner));
+            prop_assert_eq!(info.repo, Repo::new_unchecked(repo));
         }
 
         #[test]
@@ -110,8 +110,8 @@ mod tests {
 
             prop_assert!(result.is_ok());
             let info = result.unwrap();
-            prop_assert_eq!(info.owner, Owner::new(owner));
-            prop_assert_eq!(info.repo, Repo::new(repo));
+            prop_assert_eq!(info.owner, Owner::new_unchecked(owner));
+            prop_assert_eq!(info.repo, Repo::new_unchecked(repo));
         }
 
         #[test]
@@ -155,22 +155,22 @@ mod tests {
 
             prop_assert!(result.is_ok());
             let info = result.unwrap();
-            prop_assert_eq!(info.owner, Owner::new(owner));
-            prop_assert_eq!(info.repo, Repo::new(repo));
+            prop_assert_eq!(info.owner, Owner::new_unchecked(owner));
+            prop_assert_eq!(info.repo, Repo::new_unchecked(repo));
         }
     }
 
     #[test]
-    fn test_very_long_url() {
+    fn test_very_long_url_rejected() {
         let long_owner = "a".repeat(1000);
         let long_repo = "b".repeat(1000);
         let url = format!("git@github.com:{long_owner}/{long_repo}.git");
 
         let result = GitRepoInfo::parse_github_url(&url);
-        assert!(result.is_ok());
-        let info = result.unwrap();
-        assert_eq!(info.owner, Owner::new(long_owner));
-        assert_eq!(info.repo, Repo::new(long_repo));
+        assert!(
+            result.is_err(),
+            "Values exceeding MAX_CONFIG_STRING_LENGTH should be rejected"
+        );
     }
 
     #[test]
@@ -178,7 +178,7 @@ mod tests {
         let result = GitRepoInfo::parse_github_url("git@github.com:café/señor.git");
         assert!(result.is_ok());
         let info = result.unwrap();
-        assert_eq!(info.owner, Owner::new("café"));
-        assert_eq!(info.repo, Repo::new("señor"));
+        assert_eq!(info.owner, Owner::new_unchecked("café"));
+        assert_eq!(info.repo, Repo::new_unchecked("señor"));
     }
 }

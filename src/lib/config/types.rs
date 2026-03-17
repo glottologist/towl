@@ -1,59 +1,19 @@
+use super::defaults::{
+    default_comment_prefixes, default_exclude_patterns, default_file_extensions,
+    default_function_patterns, default_include_context_lines, default_rate_limit_delay_ms,
+    default_todo_patterns,
+};
 use super::error::TowlConfigError;
 use super::git::GitRepoInfo;
+use super::newtypes::{Owner, Repo};
 use config::{Config as ConfigBuilder, File};
-use secrecy::{ExposeSecret, SecretString};
+use secrecy::SecretString;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::fmt;
 use std::path::{Path, PathBuf};
 
 pub const DEFAULT_CONFIG_PATH: &str = ".towl.toml";
-const MAX_CONFIG_PATTERNS: usize = 100;
-const MAX_CONFIG_STRING_LENGTH: usize = 512;
-const MIN_CONTEXT_LINES: usize = 1;
-const MAX_CONTEXT_LINES: usize = 50;
-
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
-pub struct Owner(String);
-
-impl Owner {
-    pub fn new(s: impl Into<String>) -> Self {
-        Self(s.into())
-    }
-}
-
-impl fmt::Display for Owner {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
-impl Default for Owner {
-    fn default() -> Self {
-        Self::new("no owner")
-    }
-}
-
-#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
-pub struct Repo(String);
-
-impl Repo {
-    pub fn new(s: impl Into<String>) -> Self {
-        Self(s.into())
-    }
-}
-
-impl fmt::Display for Repo {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
-impl Default for Repo {
-    fn default() -> Self {
-        Self::new("no repo")
-    }
-}
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
 pub struct TowlConfig {
@@ -63,156 +23,7 @@ pub struct TowlConfig {
     pub github: GitHubConfig,
 }
 
-fn fmt_list_section(
-    f: &mut fmt::Formatter<'_>,
-    label: &str,
-    items: &[String],
-    is_last: bool,
-) -> fmt::Result {
-    let branch = if is_last {
-        "│  └─"
-    } else {
-        "│  ├─"
-    };
-    writeln!(f, "{branch} {label}:")?;
-    let (mid, end) = if is_last {
-        ("│     ├─", "│     └─")
-    } else {
-        ("│  │  ├─", "│  │  └─")
-    };
-    for (i, item) in items.iter().enumerate() {
-        let prefix = if i == items.len() - 1 { end } else { mid };
-        writeln!(f, "{prefix} {item}")?;
-    }
-    Ok(())
-}
-
-impl fmt::Display for TowlConfig {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "📋 Towl Configuration")?;
-        writeln!(f, "┌─ Parsing")?;
-        let mut sorted_extensions: Vec<_> = self.parsing.file_extensions.iter().collect();
-        sorted_extensions.sort();
-        writeln!(
-            f,
-            "│  ├─ File Extensions: {}",
-            sorted_extensions
-                .iter()
-                .map(|s| s.as_str())
-                .collect::<Vec<_>>()
-                .join(", ")
-        )?;
-        writeln!(
-            f,
-            "│  ├─ Exclude Patterns: {}",
-            self.parsing.exclude_patterns.join(", ")
-        )?;
-        writeln!(
-            f,
-            "│  ├─ Context Lines: {}",
-            self.parsing.include_context_lines
-        )?;
-        fmt_list_section(f, "Comment Prefixes", &self.parsing.comment_prefixes, false)?;
-        fmt_list_section(f, "TODO Patterns", &self.parsing.todo_patterns, false)?;
-        fmt_list_section(
-            f,
-            "Function Patterns",
-            &self.parsing.function_patterns,
-            true,
-        )?;
-        writeln!(f, "└─ GitHub")?;
-        writeln!(f, "   ├─ Owner: {}", self.github.owner)?;
-        writeln!(f, "   ├─ Repo: {}", self.github.repo)?;
-        writeln!(
-            f,
-            "   ├─ Token: {}",
-            if self.github.token.expose_secret().is_empty() {
-                "not set"
-            } else {
-                "configured"
-            }
-        )?;
-        write!(
-            f,
-            "   └─ Rate Limit Delay: {}ms",
-            self.github.rate_limit_delay_ms
-        )
-    }
-}
 impl TowlConfig {
-    /// Validates that a config path does not contain traversal components.
-    ///
-    /// # Errors
-    /// Returns `TowlConfigError::PathTraversalAttempt` if the path contains `..`.
-    fn validate_path(path: &Path) -> Result<(), TowlConfigError> {
-        if crate::contains_path_traversal(path) {
-            return Err(TowlConfigError::PathTraversalAttempt(path.to_path_buf()));
-        }
-        Ok(())
-    }
-
-    fn check_string_length(field: &str, value: &str) -> Result<(), TowlConfigError> {
-        if value.len() > MAX_CONFIG_STRING_LENGTH {
-            return Err(TowlConfigError::ConfigValueTooLong {
-                field: field.to_string(),
-                length: value.len(),
-                max_length: MAX_CONFIG_STRING_LENGTH,
-            });
-        }
-        Ok(())
-    }
-
-    fn validate_string_lengths(parsing: &ParsingConfig) -> Result<(), TowlConfigError> {
-        for ext in &parsing.file_extensions {
-            Self::check_string_length("file_extensions", ext)?;
-        }
-        let vec_fields: &[(&str, &[String])] = &[
-            ("exclude_patterns", &parsing.exclude_patterns),
-            ("comment_prefixes", &parsing.comment_prefixes),
-            ("todo_patterns", &parsing.todo_patterns),
-            ("function_patterns", &parsing.function_patterns),
-        ];
-        for &(field, values) in vec_fields {
-            for value in values {
-                Self::check_string_length(field, value)?;
-            }
-        }
-        Ok(())
-    }
-
-    const fn validate_context_lines(parsing: &ParsingConfig) -> Result<(), TowlConfigError> {
-        if parsing.include_context_lines < MIN_CONTEXT_LINES
-            || parsing.include_context_lines > MAX_CONTEXT_LINES
-        {
-            return Err(TowlConfigError::ContextLinesOutOfRange {
-                value: parsing.include_context_lines,
-                min: MIN_CONTEXT_LINES,
-                max: MAX_CONTEXT_LINES,
-            });
-        }
-        Ok(())
-    }
-
-    fn validate_pattern_counts(parsing: &ParsingConfig) -> Result<(), TowlConfigError> {
-        let checks: &[(&str, usize)] = &[
-            ("file_extensions", parsing.file_extensions.len()),
-            ("exclude_patterns", parsing.exclude_patterns.len()),
-            ("comment_prefixes", parsing.comment_prefixes.len()),
-            ("todo_patterns", parsing.todo_patterns.len()),
-            ("function_patterns", parsing.function_patterns.len()),
-        ];
-        for &(field, count) in checks {
-            if count > MAX_CONFIG_PATTERNS {
-                return Err(TowlConfigError::TooManyConfigPatterns {
-                    field: field.to_string(),
-                    count,
-                    max_allowed: MAX_CONFIG_PATTERNS,
-                });
-            }
-        }
-        Ok(())
-    }
-
     /// Initializes a new config file at the given path.
     ///
     /// # Errors
@@ -235,43 +46,79 @@ impl TowlConfig {
         let toml_string =
             toml::to_string_pretty(&config).map_err(TowlConfigError::UnableToParseToml)?;
 
-        if !force && path.exists() {
-            return Err(TowlConfigError::ConfigAlreadyExists(path.to_path_buf()));
+        if force {
+            crate::atomic_write(path, toml_string.as_bytes())
+                .await
+                .map_err(|e| {
+                    TowlConfigError::WriteToFileError(path.to_path_buf(), e) // clone: error owns PathBuf
+                })?;
+        } else {
+            use tokio::io::AsyncWriteExt;
+            let mut file = tokio::fs::OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(path)
+                .await
+                .map_err(|e| {
+                    if e.kind() == std::io::ErrorKind::AlreadyExists {
+                        TowlConfigError::ConfigAlreadyExists(path.to_path_buf())
+                    // clone: error owns PathBuf
+                    } else {
+                        TowlConfigError::WriteToFileError(path.to_path_buf(), e)
+                        // clone: error owns PathBuf
+                    }
+                })?;
+            file.write_all(toml_string.as_bytes()).await.map_err(|e| {
+                TowlConfigError::WriteToFileError(path.to_path_buf(), e) // clone: error owns PathBuf
+            })?;
         }
-        Self::atomic_write(path, toml_string.as_bytes()).await?;
 
         Ok(())
     }
 
-    async fn atomic_write(target: &Path, content: &[u8]) -> Result<(), TowlConfigError> {
-        use tokio::io::AsyncWriteExt;
+    /// Loads configuration from a file, falling back to defaults.
+    ///
+    /// # Errors
+    /// Returns `TowlConfigError` if the config file is malformed or cannot be parsed.
+    pub fn load(path: Option<&PathBuf>) -> Result<Self, TowlConfigError> {
+        let default_path = PathBuf::from(DEFAULT_CONFIG_PATH);
+        let config_path = path.unwrap_or(&default_path);
+        Self::validate_path(config_path)?;
 
-        let parent = target.parent().unwrap_or_else(|| Path::new("."));
-        let temp = tempfile::Builder::new()
-            .prefix(".towl_")
-            .tempfile_in(parent)
-            .map_err(|e| TowlConfigError::WriteToFileError(target.to_path_buf(), e))?;
+        let mut builder = ConfigBuilder::builder().add_source(
+            config::Config::try_from(&Self::default())
+                .map_err(TowlConfigError::CouldNotCreateConfig)?,
+        );
 
-        let (std_file, temp_path) = temp.into_parts();
-        let mut file = tokio::fs::File::from_std(std_file);
+        builder = builder.add_source(File::from(config_path.as_path()).required(false));
 
-        if let Err(e) = file.write_all(content).await {
-            drop(file);
-            drop(temp_path);
-            return Err(TowlConfigError::WriteToFileError(target.to_path_buf(), e));
+        let built: config::Config = builder.build().map_err(|e| {
+            tracing::error!("Config build error: {:?}", e);
+            TowlConfigError::CouldNotCreateConfig(e)
+        })?;
+
+        let mut config: Self = built.try_deserialize().map_err(|e| {
+            tracing::error!("Config deserialization error: {:?}", e);
+            TowlConfigError::CouldNotCreateConfig(e)
+        })?;
+
+        if let Ok(token) = std::env::var("TOWL_GITHUB_TOKEN") {
+            Self::check_string_length("TOWL_GITHUB_TOKEN", &token)?;
+            config.github.token = SecretString::from(token);
+        }
+        if let Ok(owner) = std::env::var("TOWL_GITHUB_OWNER") {
+            config.github.owner = Owner::try_new(owner)?;
+        }
+        if let Ok(repo) = std::env::var("TOWL_GITHUB_REPO") {
+            config.github.repo = Repo::try_new(repo)?;
         }
 
-        if let Err(e) = file.flush().await {
-            drop(file);
-            drop(temp_path);
-            return Err(TowlConfigError::WriteToFileError(target.to_path_buf(), e));
-        }
+        Self::validate_pattern_counts(&config.parsing)?;
+        Self::validate_string_lengths(&config.parsing)?;
+        Self::validate_context_lines(&config.parsing)?;
+        Self::validate_rate_limit_delay(&config.github)?;
 
-        drop(file);
-
-        temp_path
-            .persist(target)
-            .map_err(|e| TowlConfigError::WriteToFileError(target.to_path_buf(), e.error))
+        Ok(config)
     }
 }
 
@@ -325,10 +172,6 @@ impl Default for GitHubConfig {
     }
 }
 
-const fn default_rate_limit_delay_ms() -> u64 {
-    1000
-}
-
 impl fmt::Debug for GitHubConfig {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("GitHubConfig")
@@ -357,99 +200,10 @@ impl TowlConfig {
 
         let toml_string =
             toml::to_string_pretty(self).map_err(TowlConfigError::UnableToParseToml)?;
-        Self::atomic_write(path, toml_string.as_bytes()).await
+        crate::atomic_write(path, toml_string.as_bytes())
+            .await
+            .map_err(|e| TowlConfigError::WriteToFileError(path.to_path_buf(), e))
     }
-}
-
-impl TowlConfig {
-    /// Loads configuration from a file, falling back to defaults.
-    ///
-    /// # Errors
-    /// Returns `TowlConfigError` if the config file is malformed or cannot be parsed.
-    pub fn load(path: Option<&PathBuf>) -> Result<Self, TowlConfigError> {
-        let default_path = PathBuf::from(DEFAULT_CONFIG_PATH);
-        let config_path = path.unwrap_or(&default_path);
-        Self::validate_path(config_path)?;
-
-        let mut builder = ConfigBuilder::builder().add_source(
-            config::Config::try_from(&Self::default())
-                .map_err(TowlConfigError::CouldNotCreateConfig)?,
-        );
-
-        builder = builder.add_source(File::from(config_path.as_path()).required(false));
-
-        let built: config::Config = builder.build().map_err(|e| {
-            tracing::error!("Config build error: {:?}", e);
-            TowlConfigError::CouldNotCreateConfig(e)
-        })?;
-
-        let mut config: Self = built.try_deserialize().map_err(|e| {
-            tracing::error!("Config deserialization error: {:?}", e);
-            TowlConfigError::CouldNotCreateConfig(e)
-        })?;
-
-        if let Ok(token) = std::env::var("TOWL_GITHUB_TOKEN") {
-            config.github.token = SecretString::from(token);
-        }
-        if let Ok(owner) = std::env::var("TOWL_GITHUB_OWNER") {
-            config.github.owner = Owner::new(owner);
-        }
-        if let Ok(repo) = std::env::var("TOWL_GITHUB_REPO") {
-            config.github.repo = Repo::new(repo);
-        }
-
-        Self::validate_pattern_counts(&config.parsing)?;
-        Self::validate_string_lengths(&config.parsing)?;
-        Self::validate_context_lines(&config.parsing)?;
-
-        Ok(config)
-    }
-}
-
-fn default_file_extensions() -> HashSet<String> {
-    [
-        "rs".to_string(),
-        "toml".to_string(),
-        "json".to_string(),
-        "yaml".to_string(),
-        "yml".to_string(),
-        "sh".to_string(),
-        "bash".to_string(),
-    ]
-    .into_iter()
-    .collect()
-}
-
-fn default_exclude_patterns() -> Vec<String> {
-    vec!["target/*".to_string(), ".git/*".to_string()]
-}
-
-const fn default_include_context_lines() -> usize {
-    3
-}
-
-const RUST_COMMENT_PREFIX: &str = r"//";
-const SHELL_COMMENT_PREFIX: &str = r"^\s*#";
-const C_MULTILINE_START: &str = r"/\*";
-const MULTILINE_CONTINUATION: &str = r"^\s*\*";
-
-fn default_comment_prefixes() -> Vec<String> {
-    vec![
-        RUST_COMMENT_PREFIX.to_string(),
-        SHELL_COMMENT_PREFIX.to_string(),
-        C_MULTILINE_START.to_string(),
-        MULTILINE_CONTINUATION.to_string(),
-    ]
-}
-
-fn default_todo_patterns() -> Vec<String> {
-    vec![
-        r"(?i)\bTODO:\s*(.*)".to_string(),
-        r"(?i)\bFIXME:\s*(.*)".to_string(),
-        r"(?i)\bHACK:\s*(.*)".to_string(),
-        r"(?i)\bNOTE:\s*(.*)".to_string(),
-        r"(?i)\bBUG:\s*(.*)".to_string(),
-    ]
 }
 
 #[cfg(test)]
@@ -481,20 +235,11 @@ pub fn test_parsing_config() -> ParsingConfig {
     }
 }
 
-fn default_function_patterns() -> Vec<String> {
-    vec![
-        r"^\s*(pub\s+)?fn\s+(\w+)".to_string(),
-        r"^\s*def\s+(\w+)".to_string(),
-        r"^\s*(async\s+)?function\s+(\w+)".to_string(),
-        r"^\s*(public|private|protected)?\s*(static\s+)?\w+\s+(\w+)\s*\(".to_string(),
-        r"^\s*func\s+(\w+)".to_string(),
-    ]
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use proptest::prelude::*;
+    use rstest::rstest;
 
     #[test]
     fn test_load_without_file_returns_defaults() {
@@ -571,8 +316,8 @@ mod tests {
                 },
                 github: GitHubConfig {
                     token: SecretString::default(),
-                    owner: Owner::new(&owner_name),
-                    repo: Repo::new(&repo_name),
+                    owner: Owner::new_unchecked(&owner_name),
+                    repo: Repo::new_unchecked(&repo_name),
                     ..Default::default()
                 },
             };
@@ -588,30 +333,11 @@ mod tests {
             let loaded = TowlConfig::load(Some(&config_path)).unwrap();
 
             prop_assert_eq!(loaded.parsing.include_context_lines, context_lines);
-            prop_assert_eq!(loaded.github.owner, Owner::new(&owner_name));
-            prop_assert_eq!(loaded.github.repo, Repo::new(&repo_name));
+            prop_assert_eq!(loaded.github.owner, Owner::new_unchecked(&owner_name));
+            prop_assert_eq!(loaded.github.repo, Repo::new_unchecked(&repo_name));
             prop_assert_eq!(loaded.parsing.file_extensions, config.parsing.file_extensions);
             prop_assert_eq!(loaded.parsing.exclude_patterns, config.parsing.exclude_patterns);
         }
-    }
-
-    #[tokio::test]
-    async fn test_atomic_write_produces_valid_file() {
-        let temp_dir = tempfile::TempDir::new().unwrap();
-        let target = temp_dir.path().join("atomic_test.toml");
-        let content = b"[parsing]\ninclude_context_lines = 5\n";
-
-        TowlConfig::atomic_write(&target, content).await.unwrap();
-
-        let read_back = std::fs::read_to_string(&target).unwrap();
-        assert_eq!(read_back.as_bytes(), content);
-
-        let temp_files: Vec<_> = std::fs::read_dir(temp_dir.path())
-            .unwrap()
-            .filter_map(Result::ok)
-            .filter(|e| e.file_name().to_string_lossy().starts_with(".towl_"))
-            .collect();
-        assert!(temp_files.is_empty(), "Temp file should be cleaned up");
     }
 
     #[tokio::test]
@@ -621,9 +347,7 @@ mod tests {
 
         std::fs::write(&target, "old content").unwrap();
 
-        TowlConfig::atomic_write(&target, b"new content")
-            .await
-            .unwrap();
+        crate::atomic_write(&target, b"new content").await.unwrap();
 
         let read_back = std::fs::read_to_string(&target).unwrap();
         assert_eq!(read_back, "new content");
@@ -634,10 +358,8 @@ mod tests {
         let temp_dir = tempfile::TempDir::new().unwrap();
         let config_path = temp_dir.path().join("fresh.toml");
 
-        // Should succeed on a fresh (non-existent) path
         let result = TowlConfig::init(&config_path, false).await;
 
-        // This will only succeed if we're in a git repo with an origin remote
         if result.is_ok() {
             assert!(config_path.exists());
             let loaded = TowlConfig::load(Some(&config_path));
@@ -687,43 +409,18 @@ mod tests {
         ));
     }
 
-    #[test]
-    fn test_validate_string_lengths_accepts_valid() {
-        let parsing = ParsingConfig::default();
-        let result = TowlConfig::validate_string_lengths(&parsing);
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_validate_context_lines_rejects_zero() {
+    #[rstest]
+    #[case(0, true)]
+    #[case(1, false)]
+    #[case(25, false)]
+    #[case(50, false)]
+    #[case(51, true)]
+    fn test_validate_context_lines(#[case] value: usize, #[case] should_err: bool) {
         let result = TowlConfig::validate_context_lines(&ParsingConfig {
-            include_context_lines: 0,
+            include_context_lines: value,
             ..Default::default()
         });
-        assert!(matches!(
-            result,
-            Err(TowlConfigError::ContextLinesOutOfRange {
-                value: 0,
-                min: 1,
-                max: 50
-            })
-        ));
-    }
-
-    #[test]
-    fn test_validate_context_lines_rejects_excess() {
-        let result = TowlConfig::validate_context_lines(&ParsingConfig {
-            include_context_lines: 51,
-            ..Default::default()
-        });
-        assert!(matches!(
-            result,
-            Err(TowlConfigError::ContextLinesOutOfRange {
-                value: 51,
-                min: 1,
-                max: 50
-            })
-        ));
+        assert_eq!(result.is_err(), should_err);
     }
 
     #[test]

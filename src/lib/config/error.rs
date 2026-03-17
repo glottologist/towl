@@ -6,7 +6,7 @@ const MAX_URL_DISPLAY_LEN: usize = 500;
 
 fn truncate_url(url: &str) -> String {
     if url.len() <= MAX_URL_DISPLAY_LEN {
-        url.to_string()
+        url.to_string() // clone: &str → owned String for return
     } else {
         let boundary = url
             .char_indices()
@@ -54,6 +54,8 @@ pub enum TowlConfigError {
         min: usize,
         max: usize,
     },
+    #[error("Config rate_limit_delay_ms value {value} exceeds maximum ({max})")]
+    RateLimitDelayTooHigh { value: u64, max: u64 },
 }
 
 #[cfg(test)]

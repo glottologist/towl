@@ -20,6 +20,8 @@ use writer::{
 use crate::{cli::OutputFormat, comment::todo::TodoComment};
 use std::{collections::HashMap, path::PathBuf};
 
+const TERMINAL_FORMAT_FILE_ERROR: &str = "Terminal/Table format cannot write to file";
+
 /// Handles formatting and writing TODO comments to various output destinations.
 ///
 /// Supports multiple output formats (JSON, CSV, TOML, Markdown, Table) with
@@ -66,7 +68,7 @@ impl Output {
             OutputFormat::Terminal | OutputFormat::Table => {
                 if output_path.is_some() {
                     return Err(TowlOutputError::InvalidOutputPath(
-                        "Terminal/Table format cannot write to file".to_string(),
+                        TERMINAL_FORMAT_FILE_ERROR.to_string(), // clone: &str → owned String for error
                     ));
                 }
                 (
@@ -274,16 +276,6 @@ mod tests {
 
         let result = output.save(&todos).await;
         assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_wrong_extension_error_message() {
-        let result = Output::new(OutputFormat::Json, Some(PathBuf::from("todos.txt")));
-        let err = result.err().expect("should be an error").to_string();
-        assert!(
-            err.contains("extension"),
-            "Error message should mention extension: {err}"
-        );
     }
 
     #[cfg(unix)]

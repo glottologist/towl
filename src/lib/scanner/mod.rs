@@ -1,4 +1,7 @@
 pub mod error;
+mod limits;
 mod types;
+mod walker;
 
-pub use types::{ScanResult, Scanner};
+pub use limits::ScanResult;
+pub use types::Scanner;

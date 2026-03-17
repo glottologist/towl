@@ -25,6 +25,4 @@ pub enum TowlScannerError {
         count: usize,
         max_allowed: usize,
     },
-    #[error("Too many files scanned ({count} exceeds limit of {max_allowed})")]
-    TooManyFiles { count: usize, max_allowed: usize },
 }

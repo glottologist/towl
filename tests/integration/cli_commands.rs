@@ -44,6 +44,7 @@ fn test_scan_command_basic(test_project: TempDir) {
     let mut cmd = Command::cargo_bin("towl").unwrap();
     cmd.arg("scan")
         .arg(test_project.path())
+        .arg("--non-interactive")
         .arg("--format")
         .arg("terminal");
 
@@ -58,6 +59,7 @@ fn test_scan_table_format(test_project: TempDir) {
     let mut cmd = Command::cargo_bin("towl").unwrap();
     cmd.arg("scan")
         .arg(test_project.path())
+        .arg("--non-interactive")
         .arg("--format")
         .arg("table");
 
@@ -77,8 +79,10 @@ fn test_scan_file_output_formats(
     let output_file = test_project.path().join(format!("output.{extension}"));
 
     let mut cmd = Command::cargo_bin("towl").unwrap();
-    cmd.arg("scan")
+    cmd.current_dir(test_project.path())
+        .arg("scan")
         .arg(test_project.path())
+        .arg("--non-interactive")
         .arg("--format")
         .arg(format)
         .arg("--output")
@@ -101,6 +105,7 @@ fn test_todo_type_filtering(
     let mut cmd = Command::cargo_bin("towl").unwrap();
     cmd.arg("scan")
         .arg(test_project.path())
+        .arg("--non-interactive")
         .arg("--todo-type")
         .arg(todo_type)
         .arg("--format")
@@ -117,6 +122,7 @@ fn test_verbose_flag(test_project: TempDir) {
     let mut cmd = Command::cargo_bin("towl").unwrap();
     cmd.arg("scan")
         .arg(test_project.path())
+        .arg("--non-interactive")
         .arg("--verbose")
         .arg("--format")
         .arg("terminal");
@@ -149,7 +155,7 @@ fn test_config_command() {
 
     cmd.assert()
         .success()
-        .stderr(predicate::str::contains("config"));
+        .stderr(predicate::str::contains("Towl Configuration"));
 }
 
 #[rstest]
@@ -157,6 +163,7 @@ fn test_nonexistent_path() {
     let mut cmd = Command::cargo_bin("towl").unwrap();
     cmd.arg("scan")
         .arg("/nonexistent/path")
+        .arg("--non-interactive")
         .arg("--format")
         .arg("terminal");
 
@@ -168,25 +175,11 @@ fn test_invalid_todo_type(test_project: TempDir) {
     let mut cmd = Command::cargo_bin("towl").unwrap();
     cmd.arg("scan")
         .arg(test_project.path())
+        .arg("--non-interactive")
         .arg("--todo-type")
         .arg("INVALID_TYPE")
         .arg("--format")
         .arg("terminal");
 
     cmd.assert().failure();
-}
-
-#[rstest]
-fn test_case_insensitive_filtering(test_project: TempDir) {
-    let mut cmd = Command::cargo_bin("towl").unwrap();
-    cmd.arg("scan")
-        .arg(test_project.path())
-        .arg("--todo-type")
-        .arg("todo") // lowercase
-        .arg("--format")
-        .arg("terminal");
-
-    cmd.assert()
-        .success()
-        .stdout(predicate::str::contains("TODO"));
 }

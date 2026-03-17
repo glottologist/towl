@@ -22,7 +22,7 @@ impl Formatter for JsonFormatter {
             for todo in todos_of_type {
                 let mut todo_json = json!({
                     "description": todo.description.trim(),
-                    "file": todo.file_path.display().to_string(),
+                    "file": todo.file_path.display().to_string(), // clone: Display → owned String
                     "line": todo.line_number,
                     "column_start": todo.column_start,
                     "column_end": todo.column_end,
@@ -38,7 +38,7 @@ impl Formatter for JsonFormatter {
             }
 
             groups.push(json!({
-                "type": todo_type.to_string(),
+                "type": todo_type.to_string(), // clone: Display → owned String
                 "count": todos_of_type.len(),
                 "items": group_todos
             }));
@@ -53,7 +53,7 @@ impl Formatter for JsonFormatter {
         });
 
         let json_string = serde_json::to_string_pretty(&result)
-            .map_err(|e| FormatterError::SerializationError(e.to_string()))?;
+            .map_err(|e| FormatterError::SerializationError(e.to_string()))?; // clone: error to string
 
         Ok(vec![json_string])
     }

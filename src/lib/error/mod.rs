@@ -1,6 +1,6 @@
 use crate::{
     config::error::TowlConfigError, github::error::TowlGitHubError, output::error::TowlOutputError,
-    scanner::error::TowlScannerError,
+    processor::error::TowlProcessorError, scanner::error::TowlScannerError, tui::TowlTuiError,
 };
 use thiserror::Error;
 
@@ -14,4 +14,8 @@ pub enum TowlError {
     Output(#[from] TowlOutputError),
     #[error("GitHub error: {0}")]
     GitHub(#[from] TowlGitHubError),
+    #[error("Processor error: {0}")]
+    Processor(#[from] TowlProcessorError),
+    #[error("TUI error: {0}")]
+    Tui(#[from] TowlTuiError),
 }

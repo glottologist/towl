@@ -16,28 +16,28 @@ impl TomlFormatter {
     fn build_todo_table(todo: &TodoComment) -> Result<Table, FormatterError> {
         let mut table = Table::new();
         table.insert(
-            "description".to_string(),
-            Value::String(todo.description.trim().to_string()),
+            "description".to_string(), // clone: toml API requires owned key
+            Value::String(todo.description.trim().to_string()), // clone: Value::String requires owned
         );
         table.insert(
-            "file".to_string(),
-            Value::String(todo.file_path.display().to_string()),
+            "file".to_string(), // clone: toml API requires owned key
+            Value::String(todo.file_path.display().to_string()), // clone: Display → owned String for toml Value
         );
         table.insert(
-            "line".to_string(),
+            "line".to_string(), // clone: toml API requires owned key
             Value::Integer(Self::usize_to_i64(todo.line_number)?),
         );
         table.insert(
-            "column_start".to_string(),
+            "column_start".to_string(), // clone: toml API requires owned key
             Value::Integer(Self::usize_to_i64(todo.column_start)?),
         );
         table.insert(
-            "column_end".to_string(),
+            "column_end".to_string(), // clone: toml API requires owned key
             Value::Integer(Self::usize_to_i64(todo.column_end)?),
         );
         table.insert(
-            "original_text".to_string(),
-            Value::String(todo.original_text.trim().to_string()),
+            "original_text".to_string(), // clone: toml API requires owned key
+            Value::String(todo.original_text.trim().to_string()), // clone: Value::String requires owned
         );
         if !todo.context_lines.is_empty() {
             let context_values: Vec<Value> = todo
@@ -45,11 +45,12 @@ impl TomlFormatter {
                 .iter()
                 .map(|line| Value::String(line.clone())) // clone: Value::String requires owned String
                 .collect();
-            table.insert("context_lines".to_string(), Value::Array(context_values));
+            let key = "context_lines".to_string(); // clone: toml owned key
+            table.insert(key, Value::Array(context_values));
         }
         if let Some(ref func_context) = todo.function_context {
-            table.insert("function".to_string(), Value::String(func_context.clone()));
-            // clone: Value::String requires owned String
+            let val = Value::String(func_context.clone()); // clone: Value::String needs owned
+            table.insert("function".to_string(), val); // clone: toml API requires owned key
         }
         Ok(table)
     }
@@ -65,21 +66,21 @@ impl Formatter for TomlFormatter {
 
         let mut summary = Table::new();
         summary.insert(
-            "total_todos".to_string(),
+            "total_todos".to_string(), // clone: toml API requires owned key
             Value::Integer(Self::usize_to_i64(total_count)?),
         );
         summary.insert(
-            "total_groups".to_string(),
+            "total_groups".to_string(), // clone: toml API requires owned key
             Value::Integer(Self::usize_to_i64(todos_map.len())?),
         );
-        root.insert("summary".to_string(), Value::Table(summary));
+        root.insert("summary".to_string(), Value::Table(summary)); // clone: toml owned key
 
         for (todo_type, todos_of_type) in todos_map {
-            let type_name = todo_type.as_filter_str().to_string();
+            let type_name = todo_type.as_filter_str().to_string(); // clone: &str → owned String for toml key
             let mut group = Table::new();
 
             group.insert(
-                "count".to_string(),
+                "count".to_string(), // clone: toml API requires owned key
                 Value::Integer(Self::usize_to_i64(todos_of_type.len())?),
             );
 
@@ -88,12 +89,12 @@ impl Formatter for TomlFormatter {
                 .map(|todo| Self::build_todo_table(todo).map(Value::Table))
                 .collect::<Result<_, _>>()?;
 
-            group.insert("items".to_string(), Value::Array(items));
+            group.insert("items".to_string(), Value::Array(items)); // clone: toml owned key
             root.insert(type_name, Value::Table(group));
         }
 
         let toml_string = toml::to_string_pretty(&root)
-            .map_err(|e| FormatterError::SerializationError(e.to_string()))?;
+            .map_err(|e| FormatterError::SerializationError(e.to_string()))?; // clone: error to string
 
         Ok(vec![toml_string])
     }

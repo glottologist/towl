@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use octocrab::Octocrab;
 use secrecy::ExposeSecret;
-use tracing::{debug, info};
+use tracing::{debug, info, warn};
 
 use crate::comment::todo::TodoComment;
 use crate::config::GitHubConfig;
@@ -11,6 +11,8 @@ use super::error::TowlGitHubError;
 use super::types::CreatedIssue;
 
 const MAX_TITLE_LENGTH: usize = 50;
+const MAX_RATE_LIMIT_RETRIES: u32 = 3;
+const MAX_PAGES: u32 = 100;
 
 pub struct GitHubClient {
     client: Octocrab,
@@ -34,17 +36,18 @@ impl GitHubClient {
         }
 
         let client = Octocrab::builder()
-            .personal_token(token.to_string())
+            // SECURITY: Single exposure point for GitHub token from SecretString
+            .personal_token(token.to_string()) // clone: SecretString expose for API auth
             .build()
             .map_err(|e| TowlGitHubError::ApiError {
-                message: e.to_string(),
+                message: e.to_string(), // clone: owned String for error variant
                 source: Some(e),
             })?;
 
         Ok(Self {
             client,
-            owner: config.owner.to_string(),
-            repo: config.repo.to_string(),
+            owner: config.owner.to_string(), // clone: owned String for struct field
+            repo: config.repo.to_string(),   // clone: owned String for struct field
             existing_issue_titles: HashSet::new(),
             existing_todo_ids: HashSet::new(),
             rate_limit_delay_ms: config.rate_limit_delay_ms,
@@ -56,41 +59,11 @@ impl GitHubClient {
     /// # Errors
     /// Returns `TowlGitHubError` if the API call fails.
     pub async fn load_existing_issues(&mut self) -> Result<(), TowlGitHubError> {
-        let mut page = 1u32;
-
-        loop {
-            let issues = self
-                .client
-                .issues(&self.owner, &self.repo)
-                .list()
-                .state(octocrab::params::State::All)
-                .per_page(100)
-                .page(page)
-                .send()
-                .await
-                .map_err(|e| TowlGitHubError::from_octocrab(e, &self.owner, &self.repo))?;
-
-            if issues.items.is_empty() {
+        for page in 1..=MAX_PAGES {
+            let has_more = self.load_issues_page(page).await?;
+            if !has_more {
                 break;
             }
-
-            for issue in &issues.items {
-                self.existing_issue_titles.insert(issue.title.clone()); // clone: HashSet needs owned String
-
-                if let Some(ref body) = issue.body {
-                    if let Some(todo_id) = Self::extract_todo_id(body) {
-                        self.existing_todo_ids.insert(todo_id);
-                    }
-                }
-            }
-
-            debug!("Loaded page {} ({} items)", page, issues.items.len());
-
-            if issues.items.len() < 100 {
-                break;
-            }
-
-            page += 1;
         }
 
         info!(
@@ -100,6 +73,54 @@ impl GitHubClient {
         );
 
         Ok(())
+    }
+
+    async fn load_issues_page(&mut self, page: u32) -> Result<bool, TowlGitHubError> {
+        let issues = self.fetch_issues_page(page).await?;
+
+        if issues.items.is_empty() {
+            return Ok(false);
+        }
+
+        let count = issues.items.len();
+        for issue in &issues.items {
+            self.record_existing_issue(issue);
+        }
+
+        debug!("Loaded page {page} ({count} items)");
+
+        if count < 100 || page >= MAX_PAGES {
+            if page >= MAX_PAGES {
+                warn!("Pagination limit reached ({MAX_PAGES} pages), stopping issue loading");
+            }
+            return Ok(false);
+        }
+
+        Ok(true)
+    }
+
+    async fn fetch_issues_page(
+        &self,
+        page: u32,
+    ) -> Result<octocrab::Page<octocrab::models::issues::Issue>, TowlGitHubError> {
+        self.client
+            .issues(&self.owner, &self.repo)
+            .list()
+            .state(octocrab::params::State::All)
+            .per_page(100)
+            .page(page)
+            .send()
+            .await
+            .map_err(|e| TowlGitHubError::from_octocrab(e, &self.owner, &self.repo))
+    }
+
+    fn record_existing_issue(&mut self, issue: &octocrab::models::issues::Issue) {
+        self.existing_issue_titles.insert(issue.title.clone()); // clone: HashSet needs owned String
+        if let Some(ref body) = issue.body {
+            if let Some(todo_id) = Self::extract_todo_id(body) {
+                self.existing_todo_ids.insert(todo_id);
+            }
+        }
     }
 
     #[must_use]
@@ -126,22 +147,15 @@ impl GitHubClient {
             return Err(TowlGitHubError::IssueAlreadyExists { title });
         }
 
-        let body = Self::generate_issue_body(todo);
-        let label = todo.todo_type.github_label().to_string();
+        let body = Self::generate_issue_body(todo).map_err(|e| TowlGitHubError::ApiError {
+            message: format!("Failed to format issue body: {e}"),
+            source: None,
+        })?;
+        let label = todo.todo_type.github_label();
 
-        self.handle_rate_limiting().await;
+        let issue = self.create_issue_with_retry(&title, &body, label).await?;
 
-        let issue = self
-            .client
-            .issues(&self.owner, &self.repo)
-            .create(&title)
-            .body(&body)
-            .labels(vec![label])
-            .send()
-            .await
-            .map_err(|e| TowlGitHubError::from_octocrab(e, &self.owner, &self.repo))?;
-
-        let html_url = issue.html_url.to_string();
+        let html_url = issue.html_url.to_string(); // clone: Url → owned String for CreatedIssue
 
         self.existing_issue_titles.insert(title.clone()); // clone: insert needs owned, title reused below
         self.existing_todo_ids.insert(todo.id.clone()); // clone: insert needs owned String
@@ -174,50 +188,57 @@ impl GitHubClient {
         format!("{type_prefix} {truncated_desc} {location_suffix}")
     }
 
-    fn generate_issue_body(todo: &TodoComment) -> String {
+    fn generate_issue_body(todo: &TodoComment) -> Result<String, std::fmt::Error> {
         use std::fmt::Write;
         let mut body = String::new();
+        let file_display = todo.file_path.display().to_string(); // clone: owned String for format! interpolation
 
-        writeln!(body, "## TODO Details\n").unwrap_or_default();
-        writeln!(body, "**Type:** {}", todo.todo_type).unwrap_or_default();
-        writeln!(body, "**File:** `{}`", todo.file_path.display()).unwrap_or_default();
-        writeln!(body, "**Line:** {}", todo.line_number).unwrap_or_default();
-        writeln!(
-            body,
-            "**Column:** {}-{}",
-            todo.column_start, todo.column_end
-        )
-        .unwrap_or_default();
-
-        writeln!(body, "\n## Description\n").unwrap_or_default();
-        writeln!(body, "{}", todo.description.trim()).unwrap_or_default();
-
-        if let Some(ref func) = todo.function_context {
-            writeln!(body, "\n## Function Context\n").unwrap_or_default();
-            writeln!(body, "Found in function: `{func}`").unwrap_or_default();
-        }
-
-        writeln!(body, "\n## Original Comment\n\n```").unwrap_or_default();
-        writeln!(body, "{}", todo.original_text).unwrap_or_default();
-        writeln!(body, "```").unwrap_or_default();
-
-        if !todo.context_lines.is_empty() {
-            writeln!(body, "\n## Context\n\n```").unwrap_or_default();
-            for line in &todo.context_lines {
-                writeln!(body, "{line}").unwrap_or_default();
-            }
-            writeln!(body, "```").unwrap_or_default();
-        }
-
-        writeln!(body, "\n---").unwrap_or_default();
-        writeln!(body, "*TODO ID: {}*", todo.id).unwrap_or_default();
         write!(
             body,
-            "*This issue was automatically generated by [towl](https://github.com/glottologist/towl)*"
-        )
-        .unwrap_or_default();
+            "## TODO Details\n\n\
+             **Type:** {}\n\
+             **File:** {}\n\
+             **Line:** {}\n\
+             **Column:** {}-{}\n\n\
+             ## Description\n\n\
+             {}\n",
+            todo.todo_type,
+            sanitize_for_inline_code(&file_display),
+            todo.line_number,
+            todo.column_start,
+            todo.column_end,
+            escape_markdown(todo.description.trim()),
+        )?;
 
-        body
+        if let Some(ref func) = todo.function_context {
+            write!(
+                body,
+                "\n## Function Context\n\nFound in function: {}\n",
+                sanitize_for_inline_code(func),
+            )?;
+        }
+
+        write!(
+            body,
+            "\n## Original Comment\n\n{}\n",
+            code_block(&todo.original_text),
+        )?;
+
+        if !todo.context_lines.is_empty() {
+            let context = todo.context_lines.join("\n");
+            write!(body, "\n## Context\n\n{}\n", code_block(&context))?;
+        }
+
+        write!(
+            body,
+            "\n---\n\
+             *TODO ID: {}*\n\
+             *This issue was automatically generated by \
+             [towl](https://github.com/glottologist/towl)*",
+            todo.id,
+        )?;
+
+        Ok(body)
     }
 
     fn extract_todo_id(body: &str) -> Option<String> {
@@ -231,7 +252,46 @@ impl GitHubClient {
         if id.is_empty() {
             None
         } else {
-            Some(id.to_string())
+            Some(id.to_string()) // clone: owned String from borrowed slice
+        }
+    }
+
+    async fn create_issue_with_retry(
+        &self,
+        title: &str,
+        body: &str,
+        label: &str,
+    ) -> Result<octocrab::models::issues::Issue, TowlGitHubError> {
+        let mut attempts = 0u32;
+        loop {
+            self.handle_rate_limiting().await;
+            match self
+                .client
+                .issues(&self.owner, &self.repo)
+                .create(title)
+                .body(body)
+                .labels(vec![label.to_string()]) // clone: API requires owned String
+                .send()
+                .await
+            {
+                Ok(issue) => return Ok(issue),
+                Err(e) => {
+                    let err = TowlGitHubError::from_octocrab(e, &self.owner, &self.repo);
+                    if let TowlGitHubError::RateLimitExceeded { retry_after_secs } = &err {
+                        attempts = attempts.saturating_add(1);
+                        if attempts < MAX_RATE_LIMIT_RETRIES {
+                            warn!(
+                                "Rate limited, retrying after {retry_after_secs}s \
+                                 (attempt {attempts}/{MAX_RATE_LIMIT_RETRIES})"
+                            );
+                            tokio::time::sleep(std::time::Duration::from_secs(*retry_after_secs))
+                                .await;
+                            continue;
+                        }
+                    }
+                    return Err(err);
+                }
+            }
         }
     }
 
@@ -242,12 +302,55 @@ impl GitHubClient {
     }
 }
 
+fn max_backtick_run(s: &str) -> usize {
+    s.bytes()
+        .fold((0_usize, 0_usize), |(max, cur), b| {
+            if b == b'`' {
+                let next = cur.saturating_add(1);
+                (max.max(next), next)
+            } else {
+                (max, 0)
+            }
+        })
+        .0
+}
+
+fn escape_markdown(s: &str) -> String {
+    let mut out = String::with_capacity(s.len().saturating_add(s.len() / 4));
+    for ch in s.chars() {
+        if matches!(
+            ch,
+            '\\' | '`' | '*' | '_' | '[' | ']' | '#' | '!' | '<' | '>' | '~' | '|'
+        ) {
+            out.push('\\');
+        }
+        out.push(ch);
+    }
+    out
+}
+
+fn sanitize_for_inline_code(s: &str) -> String {
+    let max_run = max_backtick_run(s);
+    if max_run == 0 {
+        return format!("`{s}`");
+    }
+    let fence_len = max_run.saturating_add(1);
+    let fence: String = "`".repeat(fence_len);
+    format!("{fence} {s} {fence}")
+}
+
+fn code_block(content: &str) -> String {
+    let fence_len = max_backtick_run(content).saturating_add(1).max(3);
+    let fence: String = "`".repeat(fence_len);
+    format!("{fence}\n{content}\n{fence}")
+}
+
 fn truncate_at_word_boundary(s: &str, max_len: usize) -> String {
     if s.len() <= max_len {
-        return s.to_string();
+        return s.to_string(); // clone: &str → owned String for return
     }
     if max_len <= 3 {
-        return "...".to_string();
+        return "...".to_string(); // clone: &str → owned String for return
     }
 
     let target = max_len - 3;
@@ -271,54 +374,52 @@ fn truncate_at_word_boundary(s: &str, max_len: usize) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::comment::todo::test_support::TestTodoBuilder;
     use crate::comment::todo::TodoType;
     use proptest::prelude::*;
     use rstest::rstest;
-    use std::path::PathBuf;
 
     fn make_todo(desc: &str, todo_type: TodoType) -> TodoComment {
-        TodoComment {
-            id: "test.rs_L10_C5".to_string(),
-            file_path: PathBuf::from("src/main.rs"),
-            line_number: 10,
-            column_start: 5,
-            column_end: 30,
-            todo_type,
-            original_text: format!("// {todo_type}: {desc}"),
-            description: desc.to_string(),
-            context_lines: vec!["9: fn main() {".to_string(), "11: }".to_string()],
-            function_context: Some("main:9".to_string()),
-        }
-    }
-
-    #[test]
-    fn test_generate_title_short_description() {
-        let todo = make_todo("Fix bug", TodoType::Todo);
-        let title = GitHubClient::generate_issue_title(&todo);
-
-        assert!(title.starts_with("[TODO]"));
-        assert!(title.contains("Fix bug"));
-        assert!(title.contains("(main.rs:10)"));
+        TestTodoBuilder::new()
+            .description(desc)
+            .todo_type(todo_type)
+            .file_path("src/main.rs")
+            .line_number(10)
+            .column_start(5)
+            .column_end(30)
+            .context_lines(vec!["9: fn main() {".to_string(), "11: }".to_string()])
+            .function_context("main:9")
+            .build()
     }
 
     #[test]
     fn test_generate_body_contains_all_sections() {
         let todo = make_todo("Fix the cache", TodoType::Todo);
-        let body = GitHubClient::generate_issue_body(&todo);
+        let body = GitHubClient::generate_issue_body(&todo).unwrap();
 
         assert!(body.contains("## TODO Details"));
         assert!(body.contains("**Type:** TODO"));
-        assert!(body.contains("**File:** `src/main.rs`"));
+        assert!(body.contains("**File:** `src/main.rs`"), "body: {body}");
         assert!(body.contains("## Function Context"));
-        assert!(body.contains("*TODO ID: test.rs_L10_C5*"));
+        assert!(body.contains("*TODO ID: src/main.rs_L10*"));
     }
 
     #[test]
     fn test_generate_body_without_function_context() {
         let mut todo = make_todo("Fix bug", TodoType::Bug);
         todo.function_context = None;
-        let body = GitHubClient::generate_issue_body(&todo);
+        let body = GitHubClient::generate_issue_body(&todo).unwrap();
         assert!(!body.contains("## Function Context"));
+    }
+
+    #[test]
+    fn test_generate_body_without_context_lines() {
+        let mut todo = make_todo("Fix bug", TodoType::Bug);
+        todo.context_lines = vec![];
+        let body = GitHubClient::generate_issue_body(&todo).unwrap();
+        assert!(!body.contains("## Context"));
+        assert!(body.contains("## TODO Details"));
+        assert!(body.contains("*TODO ID:"));
     }
 
     #[rstest]
@@ -328,19 +429,6 @@ mod tests {
     #[case("prefix *TODO ID: my_id_123* suffix", Some("my_id_123".to_string()))]
     fn test_extract_todo_id(#[case] body: &str, #[case] expected: Option<String>) {
         assert_eq!(GitHubClient::extract_todo_id(body), expected);
-    }
-
-    #[rstest]
-    #[case("short", 20, "short")]
-    #[case("hello world this is long", 15, "hello world...")]
-    #[case("a", 5, "a")]
-    #[case("toolong", 3, "...")]
-    fn test_truncate_at_word_boundary(
-        #[case] input: &str,
-        #[case] max_len: usize,
-        #[case] expected: &str,
-    ) {
-        assert_eq!(truncate_at_word_boundary(input, max_len), expected);
     }
 
     proptest! {
@@ -365,7 +453,7 @@ mod tests {
         ) {
             let mut todo = make_todo(&desc, TodoType::Todo);
             todo.id = id.clone(); // clone: proptest needs owned for assertion
-            let body = GitHubClient::generate_issue_body(&todo);
+            let body = GitHubClient::generate_issue_body(&todo).unwrap();
             let expected = ["*TODO ID: ", &id, "*"].join("");
             prop_assert!(body.contains(&expected));
         }
@@ -386,5 +474,100 @@ mod tests {
         ) {
             let _ = truncate_at_word_boundary(&s, max_len);
         }
+
+        #[test]
+        fn prop_truncate_respects_max_len(
+            s in "\\PC{0,200}",
+            max_len in 3usize..100
+        ) {
+            let result = truncate_at_word_boundary(&s, max_len);
+            prop_assert!(
+                result.len() <= max_len,
+                "truncate({:?}, {}) produced {:?} (len {})",
+                s, max_len, result, result.len()
+            );
+        }
+
+        #[test]
+        fn prop_truncate_short_input_unchanged(
+            s in "[a-zA-Z0-9 ]{1,20}",
+            extra in 0usize..30
+        ) {
+            let max_len = s.len() + extra;
+            let result = truncate_at_word_boundary(&s, max_len);
+            prop_assert_eq!(result, s, "Input shorter than max_len should be unchanged");
+        }
+
+        #[test]
+        fn prop_truncate_ends_with_ellipsis_when_truncated(
+            s in "[a-zA-Z0-9 ]{10,200}",
+            max_len in 4usize..9
+        ) {
+            let result = truncate_at_word_boundary(&s, max_len);
+            prop_assert!(
+                result.ends_with("..."),
+                "Truncated result {:?} should end with '...'", result
+            );
+        }
+
+        #[test]
+        fn prop_truncate_max_len_lte_3_returns_ellipsis(
+            s in "[a-zA-Z0-9]{4,50}",
+            max_len in 0usize..=3
+        ) {
+            let result = truncate_at_word_boundary(&s, max_len);
+            prop_assert_eq!(result, "...");
+        }
+
+        #[test]
+        fn prop_code_block_contains_content(content in "\\PC{0,200}") {
+            let result = code_block(&content);
+            prop_assert!(result.contains(&content));
+            let lines: Vec<&str> = result.lines().collect();
+            prop_assert!(lines.len() >= 3);
+            prop_assert!(lines[0].chars().all(|c| c == '`'));
+            prop_assert!(lines.last().unwrap().chars().all(|c| c == '`'));
+        }
+
+        #[test]
+        fn prop_sanitize_inline_wraps_content(content in "[a-zA-Z0-9 ]{1,100}") {
+            let result = sanitize_for_inline_code(&content);
+            prop_assert!(result.contains(&content));
+            prop_assert!(result.starts_with('`'));
+            prop_assert!(result.ends_with('`'));
+        }
+
+        #[test]
+        fn prop_escape_preserves_alphanumeric(s in "[a-zA-Z0-9 ]{1,100}") {
+            let result = escape_markdown(&s);
+            prop_assert_eq!(result, s);
+        }
+    }
+
+    #[rstest]
+    #[case("hello world", "hello world")]
+    #[case("*bold*", "\\*bold\\*")]
+    #[case("`code`", "\\`code\\`")]
+    #[case("# heading", "\\# heading")]
+    #[case("<html>", "\\<html\\>")]
+    #[case("a | b", "a \\| b")]
+    #[case("~~strike~~", "\\~\\~strike\\~\\~")]
+    fn test_escape_markdown_metacharacters(#[case] input: &str, #[case] expected: &str) {
+        assert_eq!(escape_markdown(input), expected);
+    }
+
+    #[rstest]
+    #[case("no backticks", "`no backticks`")]
+    #[case("has ` one", "`` has ` one ``")]
+    #[case("has `` two", "``` has `` two ```")]
+    fn test_sanitize_inline_code_backticks(#[case] input: &str, #[case] expected: &str) {
+        assert_eq!(sanitize_for_inline_code(input), expected);
+    }
+
+    #[rstest]
+    #[case("normal text", "```\nnormal text\n```")]
+    #[case("has ``` triple", "````\nhas ``` triple\n````")]
+    fn test_code_block_fence_length(#[case] input: &str, #[case] expected: &str) {
+        assert_eq!(code_block(input), expected);
     }
 }

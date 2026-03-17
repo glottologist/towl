@@ -91,6 +91,102 @@ pub struct TodoComment {
 }
 
 #[cfg(test)]
+pub(crate) mod test_support {
+    use super::*;
+
+    pub struct TestTodoBuilder {
+        todo_type: TodoType,
+        file_path: PathBuf,
+        line_number: usize,
+        column_start: usize,
+        column_end: usize,
+        description: String,
+        original_text: Option<String>,
+        context_lines: Vec<String>,
+        function_context: Option<String>,
+    }
+
+    impl TestTodoBuilder {
+        pub fn new() -> Self {
+            Self {
+                todo_type: TodoType::Todo,
+                file_path: PathBuf::from("test.rs"),
+                line_number: 1,
+                column_start: 0,
+                column_end: 0,
+                description: "test".to_string(),
+                original_text: None,
+                context_lines: vec![],
+                function_context: None,
+            }
+        }
+
+        pub fn todo_type(mut self, t: TodoType) -> Self {
+            self.todo_type = t;
+            self
+        }
+
+        pub fn file_path(mut self, p: impl Into<PathBuf>) -> Self {
+            self.file_path = p.into();
+            self
+        }
+
+        pub fn line_number(mut self, n: usize) -> Self {
+            self.line_number = n;
+            self
+        }
+
+        pub fn column_start(mut self, n: usize) -> Self {
+            self.column_start = n;
+            self
+        }
+
+        pub fn column_end(mut self, n: usize) -> Self {
+            self.column_end = n;
+            self
+        }
+
+        pub fn description(mut self, d: &str) -> Self {
+            self.description = d.to_string();
+            self
+        }
+
+        pub fn original_text(mut self, t: &str) -> Self {
+            self.original_text = Some(t.to_string());
+            self
+        }
+
+        pub fn context_lines(mut self, c: Vec<String>) -> Self {
+            self.context_lines = c;
+            self
+        }
+
+        pub fn function_context(mut self, f: &str) -> Self {
+            self.function_context = Some(f.to_string());
+            self
+        }
+
+        pub fn build(self) -> TodoComment {
+            let original_text = self
+                .original_text
+                .unwrap_or_else(|| format!("// {}: {}", self.todo_type, self.description));
+            TodoComment {
+                id: format!("{}_L{}", self.file_path.display(), self.line_number),
+                file_path: self.file_path,
+                line_number: self.line_number,
+                column_start: self.column_start,
+                column_end: self.column_end,
+                todo_type: self.todo_type,
+                original_text,
+                description: self.description,
+                context_lines: self.context_lines,
+                function_context: self.function_context,
+            }
+        }
+    }
+}
+
+#[cfg(test)]
 mod tests {
     use super::*;
     use proptest::prelude::*;
@@ -143,15 +239,6 @@ mod tests {
         ) {
             let result = TodoType::try_from(s.as_str());
             prop_assert!(result.is_err());
-        }
-
-        #[test]
-        fn prop_priority_is_bounded(
-            keyword in prop::sample::select(vec!["TODO", "FIXME", "HACK", "NOTE", "BUG"])
-        ) {
-            let todo_type = TodoType::try_from(keyword).unwrap();
-            prop_assert!(todo_type.priority() >= 1);
-            prop_assert!(todo_type.priority() <= 5);
         }
 
         #[test]

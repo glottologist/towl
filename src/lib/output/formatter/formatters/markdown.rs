@@ -2,8 +2,24 @@ use std::collections::HashMap;
 
 use crate::{
     comment::todo::{TodoComment, TodoType},
-    output::formatter::{error::FormatterError, Formatter},
+    output::formatter::{error::FormatterError, formatters::pluralize, Formatter},
 };
+
+const INDENTED_CODE_FENCE: &str = "  ```";
+
+fn escape_markdown(s: &str) -> String {
+    let mut out = String::with_capacity(s.len().saturating_add(s.len() / 4));
+    for ch in s.chars() {
+        if matches!(
+            ch,
+            '\\' | '`' | '*' | '_' | '[' | ']' | '#' | '!' | '<' | '>' | '~' | '|'
+        ) {
+            out.push('\\');
+        }
+        out.push(ch);
+    }
+    out
+}
 
 pub struct MarkdownFormatter;
 
@@ -16,43 +32,37 @@ impl Formatter for MarkdownFormatter {
         let capacity = 2 + todos_map.len() + total_count.saturating_mul(2);
         let mut output: Vec<String> = Vec::with_capacity(capacity);
 
-        output.push("# TODO Comments\n\n".to_string());
+        output.push("# TODO Comments\n\n".to_string()); // clone: owned String for output Vec
         output.push(format!(
             "Found {total_count} TODO comment{}:\n\n",
-            if total_count == 1 { "" } else { "s" }
+            pluralize(total_count)
         ));
 
         for (todo_type, todos_of_type) in todos_map {
             output.push(format!(
                 "## {todo_type} ({} item{})\n\n",
                 todos_of_type.len(),
-                if todos_of_type.len() == 1 { "" } else { "s" }
+                pluralize(todos_of_type.len())
             ));
 
             for todo in todos_of_type {
                 let location = format!("{}:{}", todo.file_path.display(), todo.line_number);
 
+                let escaped_desc = escape_markdown(todo.description.trim());
                 if let Some(ref func_context) = todo.function_context {
                     output.push(format!(
-                        "- **{}** @ `{}` (in `{}`)",
-                        todo.description.trim(),
-                        location,
-                        func_context
+                        "- **{escaped_desc}** @ `{location}` (in `{func_context}`)"
                     ));
                 } else {
-                    output.push(format!(
-                        "- **{}** @ `{}`",
-                        todo.description.trim(),
-                        location
-                    ));
+                    output.push(format!("- **{escaped_desc}** @ `{location}`"));
                 }
 
                 if !todo.context_lines.is_empty() {
-                    output.push("  ```".to_string());
+                    output.push(INDENTED_CODE_FENCE.to_string()); // clone: owned String for output Vec
                     for context_line in &todo.context_lines {
                         output.push(format!("  {context_line}"));
                     }
-                    output.push("  ```".to_string());
+                    output.push(INDENTED_CODE_FENCE.to_string()); // clone: owned String for output Vec
                 }
                 output.push(String::new());
             }
@@ -66,6 +76,7 @@ impl Formatter for MarkdownFormatter {
 mod tests {
     use super::*;
     use crate::output::formatter::formatters::test_helpers::create_test_todo;
+    use proptest::prelude::*;
     use rstest::rstest;
 
     #[rstest]
@@ -165,5 +176,40 @@ mod tests {
 
         assert!(output.contains("(in `func1`)"));
         assert!(output.contains("(in `func3`)"));
+    }
+
+    proptest! {
+        #[test]
+        fn prop_markdown_structure_valid(
+            desc in "[a-zA-Z0-9 ]{1,50}",
+            count in 1usize..5,
+        ) {
+            let formatter = MarkdownFormatter;
+            let todos: Vec<_> = (0..count)
+                .map(|_| create_test_todo(&desc, TodoType::Todo, None, false))
+                .collect();
+            let refs: Vec<&TodoComment> = todos.iter().collect();
+            let mut todos_map = HashMap::new();
+            todos_map.insert(&TodoType::Todo, refs);
+
+            let result = formatter.format(&todos_map, count).unwrap();
+            let output = result.join("\n");
+
+            let expected_count = format!("Found {count} TODO comment");
+            let expected_items = format!("({count} item");
+
+            prop_assert!(output.contains("# TODO Comments"));
+            prop_assert!(output.contains(&expected_count));
+            prop_assert!(output.contains("## TODO"));
+            prop_assert!(output.contains(&expected_items));
+            for line in &result {
+                if line.starts_with("- **") {
+                    prop_assert!(
+                        line.contains("test.rs:42"),
+                        "Each item should have file:line location"
+                    );
+                }
+            }
+        }
     }
 }

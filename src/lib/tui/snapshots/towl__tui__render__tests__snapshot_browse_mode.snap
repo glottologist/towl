@@ -1,0 +1,23 @@
+---
+source: src/lib/tui/render.rs
+expression: output
+---
+┌ Todo Owl ────────────────────────────────────────────────────────────────────┐
+│ tOwl | 3/3 TODOs shown | 0 selected                                          │
+└──────────────────────────────────────────────────────────────────────────────┘
+ Filter: All | Sort: File (asc)
+┌ TODOs ───────────────────────────────────────────────────────────────────────▲
+│ [ ] [TODO] main.rs:10 - implement error handling                             █
+│ [ ] [FIXME] lib.rs:25 - fix memory leak                                      █
+│ [ ] [BUG] integration.rs:42 - race condition in tests                        █
+│                                                                              █
+│                                                                              █
+│                                                                              █
+│                                                                              █
+│                                                                              █
+│                                                                              █
+│                                                                              █
+│                                                                              █
+│                                                                              ║
+└──────────────────────────────────────────────────────────────────────────────▼
+ j/k:nav  space:toggle  a:all  n:none  f:filter  s:sort  r:reverse  p:peek  ente

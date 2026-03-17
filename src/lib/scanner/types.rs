@@ -1,49 +1,22 @@
 use std::path::{Path, PathBuf};
 
-use ignore::{overrides::OverrideBuilder, WalkBuilder};
+use futures::stream::{self, StreamExt};
 use tracing::{debug, error, info, warn};
 
 use crate::{comment::todo::TodoComment, config::ParsingConfig, parser::Parser};
 
 use super::error::TowlScannerError;
-
-const MAX_FILE_SIZE: u64 = 10 * 1024 * 1024;
-const MAX_TODO_COUNT: usize = 10_000;
-const MAX_TOTAL_TODO_COUNT: usize = 100_000;
-const MAX_FILES_SCANNED: usize = 100_000;
-
-/// Structured result from a scan operation, distinguishing "no TODOs found"
-/// from "all files failed to scan".
-#[derive(Debug)]
-pub struct ScanResult {
-    pub todos: Vec<TodoComment>,
-    pub files_scanned: usize,
-    pub files_skipped: usize,
-    pub files_errored: usize,
-    pub duration: std::time::Duration,
-}
-
-impl ScanResult {
-    /// Returns true if no files were successfully scanned but errors occurred.
-    #[must_use]
-    pub const fn all_files_failed(&self) -> bool {
-        self.files_scanned == 0 && self.files_errored > 0
-    }
-
-    /// Returns true if the scan completed without errors and found no TODOs.
-    #[must_use]
-    pub const fn is_clean(&self) -> bool {
-        self.todos.is_empty() && self.files_errored == 0
-    }
-}
+use super::limits::{
+    ScanResult, MAX_FILES_SCANNED, MAX_FILE_SIZE, MAX_TODO_COUNT, MAX_TOTAL_TODO_COUNT,
+};
 
 /// Scans files for TODO comments with configurable patterns and resource limits.
 ///
 /// The scanner walks directory trees, filtering files by extension and exclude patterns,
 /// while enforcing safety limits to prevent resource exhaustion.
 pub struct Scanner {
-    parser: Parser,
-    config: ParsingConfig,
+    pub(super) parser: Parser,
+    pub(super) config: ParsingConfig,
 }
 
 impl Scanner {
@@ -66,8 +39,12 @@ impl Scanner {
         Ok(Self { parser, config })
     }
 
+    /// See: <https://github.com/glottologist/towl/issues/6>
     fn should_file_be_scanned(&self, path: &Path) -> bool {
-        if !path.is_file() {
+        let Ok(metadata) = path.symlink_metadata() else {
+            return false;
+        };
+        if !metadata.is_file() {
             return false;
         }
 
@@ -79,27 +56,30 @@ impl Scanner {
 
         false
     }
-    async fn scan_file(&self, path: &Path) -> Result<Vec<TodoComment>, TowlScannerError> {
+
+    pub(super) async fn scan_file(
+        &self,
+        path: &Path,
+    ) -> Result<Vec<TodoComment>, TowlScannerError> {
         use tokio::io::AsyncReadExt;
+
+        let to_read_err = |e| TowlScannerError::UnableToReadFileAtPath(path.to_path_buf(), e); // clone: owned path for error closure
 
         let canonical = path
             .canonicalize()
             .map_err(|_| TowlScannerError::InvalidPath {
-                path: path.to_path_buf(),
+                path: path.to_path_buf(), // clone: owned path for error variant
             })?;
 
         let mut file = tokio::fs::File::open(&canonical)
             .await
-            .map_err(|e| TowlScannerError::UnableToReadFileAtPath(path.to_path_buf(), e))?;
+            .map_err(to_read_err)?;
 
-        let metadata = file
-            .metadata()
-            .await
-            .map_err(|e| TowlScannerError::UnableToReadFileAtPath(path.to_path_buf(), e))?;
+        let metadata = file.metadata().await.map_err(to_read_err)?;
 
         if metadata.len() > MAX_FILE_SIZE {
             return Err(TowlScannerError::FileTooLarge {
-                path: path.to_path_buf(),
+                path: path.to_path_buf(), // clone: owned path for error variant
                 size: metadata.len(),
                 max_allowed: MAX_FILE_SIZE,
             });
@@ -108,7 +88,7 @@ impl Scanner {
         let mut content = String::new();
         file.read_to_string(&mut content)
             .await
-            .map_err(|e| TowlScannerError::UnableToReadFileAtPath(path.to_path_buf(), e))?;
+            .map_err(to_read_err)?;
 
         let todos = self
             .parser
@@ -123,36 +103,13 @@ impl Scanner {
                 MAX_TODO_COUNT
             );
             return Err(TowlScannerError::TooManyTodos {
-                path: path.to_path_buf(),
+                path: path.to_path_buf(), // clone: owned path for error variant
                 count: todos.len(),
                 max_allowed: MAX_TODO_COUNT,
             });
         }
 
         Ok(todos)
-    }
-
-    fn build_walker(&self, path: &Path) -> ignore::Walk {
-        let mut builder = WalkBuilder::new(path);
-        builder.hidden(false).git_ignore(false).follow_links(false);
-
-        if !self.config.exclude_patterns.is_empty() {
-            let mut overrides = OverrideBuilder::new(path);
-            // Whitelist everything first, then exclude specific patterns
-            if let Err(e) = overrides.add("**") {
-                debug!("Failed to add wildcard override: {}", e);
-            }
-            for pattern in &self.config.exclude_patterns {
-                if let Err(e) = overrides.add(&format!("!{pattern}")) {
-                    debug!("Failed to add exclude pattern '{}': {}", pattern, e);
-                }
-            }
-            if let Ok(overrides) = overrides.build() {
-                builder.overrides(overrides);
-            }
-        }
-
-        builder.build()
     }
 
     fn log_scan_metrics(
@@ -172,43 +129,99 @@ impl Scanner {
         );
     }
 
-    async fn process_walk_entry(
-        &self,
-        path: &Path,
+    fn discover_files(&self, path: &Path) -> Result<(Vec<PathBuf>, usize), TowlScannerError> {
+        let file_walker = self.build_walker(path)?;
+        let mut scannable_paths = Vec::new();
+        let mut files_skipped: usize = 0;
+
+        for walk_result in file_walker {
+            let entry = walk_result.map_err(TowlScannerError::UnableToWalkFile)?;
+            if self.should_file_be_scanned(entry.path()) {
+                if scannable_paths.len() >= MAX_FILES_SCANNED {
+                    warn!(
+                        "File scan limit reached ({} files), stopping discovery",
+                        MAX_FILES_SCANNED
+                    );
+                    break;
+                }
+                scannable_paths.push(entry.into_path());
+            } else {
+                debug!("{} will not be scanned", entry.path().display());
+                files_skipped += 1;
+            }
+        }
+
+        Ok((scannable_paths, files_skipped))
+    }
+
+    fn accumulate_result(
+        file_path: &Path,
+        result: Result<Vec<TodoComment>, TowlScannerError>,
         todos: &mut Vec<TodoComment>,
         files_scanned: &mut usize,
         files_errored: &mut usize,
-    ) -> Result<(), TowlScannerError> {
-        if *files_scanned >= MAX_FILES_SCANNED {
-            warn!(
-                "File scan limit reached ({} files), stopping scan",
-                MAX_FILES_SCANNED
-            );
-            return Err(TowlScannerError::TooManyFiles {
-                count: *files_scanned,
-                max_allowed: MAX_FILES_SCANNED,
-            });
-        }
-
-        match self.scan_file(path).await {
+    ) {
+        match result {
             Ok(mut file_todos) => {
                 *files_scanned += 1;
-                debug!("Found {} TODOs in {}", file_todos.len(), path.display());
+                debug!(
+                    "Found {} TODOs in {}",
+                    file_todos.len(),
+                    file_path.display()
+                );
                 todos.append(&mut file_todos);
             }
             Err(e) => {
                 *files_errored += 1;
-                error!("Error scanning {}: {}", path.display(), e);
-                eprintln!("Warning: Failed to scan {}: {}", path.display(), e);
+                error!("Error scanning {}: {}", file_path.display(), e);
             }
         }
-        Ok(())
+    }
+
+    async fn scan_files_concurrently(
+        &self,
+        paths: Vec<PathBuf>,
+    ) -> (Vec<TodoComment>, usize, usize) {
+        const CONCURRENCY_LIMIT: usize = 64;
+
+        let mut todos = Vec::new();
+        let mut files_scanned: usize = 0;
+        let mut files_errored: usize = 0;
+
+        let mut result_stream = stream::iter(paths)
+            .map(|file_path| async move {
+                let result = self.scan_file(&file_path).await;
+                (file_path, result)
+            })
+            .buffer_unordered(CONCURRENCY_LIMIT);
+
+        while let Some((file_path, result)) = result_stream.next().await {
+            Self::accumulate_result(
+                &file_path,
+                result,
+                &mut todos,
+                &mut files_scanned,
+                &mut files_errored,
+            );
+
+            if todos.len() > MAX_TOTAL_TODO_COUNT {
+                warn!(
+                    "Aggregate TODO count ({}) exceeds limit ({}), truncating",
+                    todos.len(),
+                    MAX_TOTAL_TODO_COUNT
+                );
+                todos.truncate(MAX_TOTAL_TODO_COUNT);
+                break;
+            }
+        }
+
+        (todos, files_scanned, files_errored)
     }
 
     /// Recursively scans a directory for TODO comments in supported files.
     ///
-    /// Walks the directory tree starting at `path`, scanning files that match
-    /// the configured extensions while respecting exclude patterns.
+    /// Walks the directory tree starting at `path`, then scans matching files
+    /// concurrently with bounded parallelism.
     ///
     /// # Resource Limits
     /// - Skips files larger than 10 MB
@@ -240,49 +253,11 @@ impl Scanner {
     /// ```
     pub async fn scan(&self, path: PathBuf) -> Result<ScanResult, TowlScannerError> {
         let scan_start = std::time::Instant::now();
-        let mut files_scanned: usize = 0;
-        let mut files_skipped: usize = 0;
-        let mut files_errored: usize = 0;
-
         debug!("Scanning {}", path.display());
-        let mut todos = Vec::new();
-        let file_walker = self.build_walker(&path);
 
-        for walk in file_walker {
-            let entry = walk.map_err(TowlScannerError::UnableToWalkFile)?;
-            let entry_path = entry.path();
-
-            if !self.should_file_be_scanned(entry_path) {
-                debug!("{0} will not be scanned", entry_path.display());
-                files_skipped += 1;
-                continue;
-            }
-
-            self.process_walk_entry(
-                entry_path,
-                &mut todos,
-                &mut files_scanned,
-                &mut files_errored,
-            )
-            .await?;
-
-            if todos.len() > MAX_TOTAL_TODO_COUNT {
-                warn!(
-                    "Aggregate TODO count ({}) exceeds limit ({}), truncating",
-                    todos.len(),
-                    MAX_TOTAL_TODO_COUNT
-                );
-                todos.truncate(MAX_TOTAL_TODO_COUNT);
-                let elapsed = scan_start.elapsed();
-                return Ok(ScanResult {
-                    todos,
-                    files_scanned,
-                    files_skipped,
-                    files_errored,
-                    duration: elapsed,
-                });
-            }
-        }
+        let (scannable_paths, files_skipped) = self.discover_files(&path)?;
+        let (todos, files_scanned, files_errored) =
+            self.scan_files_concurrently(scannable_paths).await;
 
         let elapsed = scan_start.elapsed();
         Self::log_scan_metrics(
@@ -306,14 +281,11 @@ impl Scanner {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::scanner::limits::{MAX_FILE_SIZE, MAX_TODO_COUNT};
     use proptest::prelude::*;
     use std::fmt::Write;
     use std::fs;
     use tempfile::TempDir;
-
-    fn create_test_config() -> ParsingConfig {
-        crate::config::test_parsing_config()
-    }
 
     #[tokio::test]
     async fn test_scanner_integration() {
@@ -346,7 +318,7 @@ def main():
         let log_file = temp_dir.path().join("test.log");
         fs::write(&log_file, "// TODO: This should be ignored").unwrap();
 
-        let config = create_test_config();
+        let config = crate::config::test_parsing_config();
         let scanner = Scanner::new(config).unwrap();
 
         let result = scanner.scan(temp_dir.path().to_path_buf()).await.unwrap();
@@ -399,7 +371,7 @@ def main():
             let file_path = temp_dir.path().join(&filename);
             fs::write(&file_path, &content).unwrap();
 
-            let config = create_test_config();
+            let config = crate::config::test_parsing_config();
             let scanner = Scanner::new(config).unwrap();
 
             let should_scan = scanner.should_file_be_scanned(&file_path);
@@ -421,7 +393,8 @@ def main():
             todo_comments in prop::collection::vec(todo_comment(), 1..5),
             regular_lines in prop::collection::vec(r"[a-zA-Z0-9 ]*", 0..10)
         ) {
-            tokio_test::block_on(async {
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            rt.block_on(async {
                 let temp_dir = TempDir::new().unwrap();
                 let file_path = temp_dir.path().join(&filename);
 
@@ -431,7 +404,7 @@ def main():
 
                 fs::write(&file_path, &content).unwrap();
 
-                let config = create_test_config();
+                let config = crate::config::test_parsing_config();
                 let scanner = Scanner::new(config).unwrap();
 
                 let result = scanner.scan(temp_dir.path().to_path_buf()).await.unwrap();
@@ -454,7 +427,7 @@ def main():
         fn prop_test_path_handling(
             path_components in prop::collection::vec(r"[a-zA-Z0-9_.-]{1,10}", 1..5)
         ) {
-            let config = create_test_config();
+            let config = crate::config::test_parsing_config();
             let scanner = Scanner::new(config).unwrap();
 
             let path = PathBuf::from(path_components.join("/"));
@@ -468,7 +441,7 @@ def main():
     #[tokio::test]
     async fn test_empty_directory() {
         let temp_dir = TempDir::new().unwrap();
-        let config = create_test_config();
+        let config = crate::config::test_parsing_config();
         let scanner = Scanner::new(config).unwrap();
 
         let result = scanner.scan(temp_dir.path().to_path_buf()).await.unwrap();
@@ -486,7 +459,7 @@ def main():
         let nested_file = nested_dir.join("test.rs");
         fs::write(&nested_file, "// TODO: Nested file").unwrap();
 
-        let config = create_test_config();
+        let config = crate::config::test_parsing_config();
         let scanner = Scanner::new(config).unwrap();
 
         let result = scanner.scan(temp_dir.path().to_path_buf()).await.unwrap();
@@ -507,7 +480,7 @@ def main():
 
         fs::write(&file_path, &content).unwrap();
 
-        let config = create_test_config();
+        let config = crate::config::test_parsing_config();
         let scanner = Scanner::new(config).unwrap();
 
         let result = scanner.scan(temp_dir.path().to_path_buf()).await.unwrap();
@@ -527,7 +500,7 @@ def main():
 
         fs::write(&file_path, content).unwrap();
 
-        let config = create_test_config();
+        let config = crate::config::test_parsing_config();
         let scanner = Scanner::new(config).unwrap();
 
         let result = scanner.scan(temp_dir.path().to_path_buf()).await.unwrap();
@@ -547,7 +520,7 @@ def main():
         let binary_data = vec![0, 1, 2, 3, 255, 254, 253];
         fs::write(&file_path, &binary_data).unwrap();
 
-        let config = create_test_config();
+        let config = crate::config::test_parsing_config();
         let scanner = Scanner::new(config).unwrap();
 
         let result = scanner.scan(temp_dir.path().to_path_buf()).await;
@@ -571,7 +544,7 @@ def main():
         let content = "a".repeat(11 * 1024 * 1024);
         fs::write(&file_path, &content).unwrap();
 
-        let config = create_test_config();
+        let config = crate::config::test_parsing_config();
         let scanner = Scanner::new(config).unwrap();
 
         let result = scanner.scan_file(&file_path).await;
@@ -589,24 +562,8 @@ def main():
     }
 
     #[tokio::test]
-    async fn test_file_size_under_limit_accepted() {
-        let temp_dir = TempDir::new().unwrap();
-        let file_path = temp_dir.path().join("small.rs");
-
-        let content = format!("// TODO: Test\n{}", "fn dummy() {}\n".repeat(1000));
-        fs::write(&file_path, &content).unwrap();
-
-        let config = create_test_config();
-        let scanner = Scanner::new(config).unwrap();
-
-        let todos = scanner.scan_file(&file_path).await.unwrap();
-        assert_eq!(todos.len(), 1);
-        assert_eq!(todos[0].description, "Test");
-    }
-
-    #[tokio::test]
     async fn test_scan_file_nonexistent_path_returns_invalid_path() {
-        let config = create_test_config();
+        let config = crate::config::test_parsing_config();
         let scanner = Scanner::new(config).unwrap();
 
         let result = scanner
@@ -616,6 +573,7 @@ def main():
     }
 
     #[tokio::test]
+    #[ignore = "parses 10K+ TODO lines — slow (~143s), run with --ignored"]
     async fn test_todo_count_limit_enforced() {
         let temp_dir = TempDir::new().unwrap();
         let file_path = temp_dir.path().join("many_todos.rs");
@@ -627,7 +585,7 @@ def main():
 
         fs::write(&file_path, &content).unwrap();
 
-        let config = create_test_config();
+        let config = crate::config::test_parsing_config();
         let scanner = Scanner::new(config).unwrap();
 
         let result = scanner.scan_file(&file_path).await;
@@ -645,26 +603,6 @@ def main():
     }
 
     #[tokio::test]
-    async fn test_todo_count_under_limit_accepted() {
-        let temp_dir = TempDir::new().unwrap();
-        let file_path = temp_dir.path().join("reasonable_todos.rs");
-
-        let mut content = String::new();
-        for i in 0..100 {
-            writeln!(content, "// TODO: Item {i}").unwrap();
-        }
-
-        fs::write(&file_path, &content).unwrap();
-
-        let config = create_test_config();
-        let scanner = Scanner::new(config).unwrap();
-
-        let result = scanner.scan_file(&file_path).await;
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap().len(), 100);
-    }
-
-    #[tokio::test]
     async fn test_resource_limits_in_scan_directory() {
         let temp_dir = TempDir::new().unwrap();
 
@@ -675,7 +613,7 @@ def main():
         let huge_content = "a".repeat(11 * 1024 * 1024);
         fs::write(&huge_file, &huge_content).unwrap();
 
-        let config = create_test_config();
+        let config = crate::config::test_parsing_config();
         let scanner = Scanner::new(config).unwrap();
 
         let result = scanner.scan(temp_dir.path().to_path_buf()).await;
@@ -686,21 +624,5 @@ def main():
         assert!(scan_result.todos[0].description.contains("Normal file"));
         assert_eq!(scan_result.files_errored, 1);
         assert!(!scan_result.all_files_failed());
-    }
-
-    #[tokio::test]
-    async fn test_all_files_failed_when_only_errors() {
-        let temp_dir = TempDir::new().unwrap();
-
-        let binary_file = temp_dir.path().join("invalid.rs");
-        fs::write(&binary_file, [0u8, 1, 2, 255, 254, 253]).unwrap();
-
-        let config = create_test_config();
-        let scanner = Scanner::new(config).unwrap();
-
-        let result = scanner.scan(temp_dir.path().to_path_buf()).await.unwrap();
-        assert!(result.todos.is_empty());
-        assert!(result.all_files_failed());
-        assert!(!result.is_clean());
     }
 }

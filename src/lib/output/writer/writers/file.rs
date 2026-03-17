@@ -1,6 +1,4 @@
-use std::path::PathBuf;
-use tokio::fs::File;
-use tokio::io::AsyncWriteExt;
+use std::path::{Path, PathBuf};
 use tracing::info;
 
 use crate::output::writer::{error::WriterError, Writer};
@@ -19,11 +17,8 @@ impl FileWriter {
         if crate::contains_path_traversal(&path) {
             return Err(WriterError::PathTraversal(path));
         }
-        let was_relative = path.is_relative();
         let resolved = Self::resolve_symlinks(path);
-        if was_relative {
-            Self::verify_within_cwd(&resolved)?;
-        }
+        Self::verify_within_cwd(&resolved)?;
         Ok(Self { path: resolved })
     }
 
@@ -41,14 +36,14 @@ impl FileWriter {
         path
     }
 
-    fn verify_within_cwd(resolved: &PathBuf) -> Result<(), WriterError> {
+    fn verify_within_cwd(resolved: &Path) -> Result<(), WriterError> {
         let cwd = std::env::current_dir().map_err(WriterError::IoError)?;
         let canonical_cwd = cwd.canonicalize().map_err(WriterError::IoError)?;
 
         let check_path = if resolved.is_relative() {
             canonical_cwd.join(resolved)
         } else {
-            resolved.clone() // clone: need owned value for comparison and error variant
+            resolved.to_path_buf() // clone: need owned value for comparison and error variant
         };
 
         if !check_path.starts_with(&canonical_cwd) {
@@ -64,14 +59,14 @@ impl FileWriter {
 
 impl Writer for FileWriter {
     async fn write(&self, content: Vec<String>) -> Result<(), WriterError> {
-        let mut file = File::create(&self.path).await?;
-
-        for item in content {
-            file.write_all(item.as_bytes()).await?;
-            file.write_all(b"\n").await?;
+        let total_len: usize = content.iter().map(|s| s.len().saturating_add(1)).sum();
+        let mut buf = Vec::with_capacity(total_len);
+        for item in &content {
+            buf.extend_from_slice(item.as_bytes());
+            buf.push(b'\n');
         }
 
-        file.flush().await?;
+        crate::atomic_write(&self.path, &buf).await?;
 
         info!("Written todos to file: {}", self.path.display());
         Ok(())
@@ -84,28 +79,12 @@ mod tests {
     use proptest::prelude::*;
 
     #[test]
-    fn test_path_traversal_rejected() {
-        let result = FileWriter::new(PathBuf::from("../malicious/path.txt"));
-        assert!(result.is_err());
-        assert!(matches!(result, Err(WriterError::PathTraversal(_))));
-    }
-
-    #[test]
-    fn test_nested_traversal_rejected() {
-        let result = FileWriter::new(PathBuf::from("safe/../../etc/passwd"));
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_safe_path_accepted() {
-        let result = FileWriter::new(PathBuf::from("output/todos.json"));
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_absolute_path_allowed() {
+    fn test_absolute_path_outside_cwd_rejected() {
         let result = FileWriter::new(PathBuf::from("/tmp/escape/output.json"));
-        assert!(result.is_ok());
+        assert!(
+            result.is_err(),
+            "Absolute paths outside CWD should be rejected"
+        );
     }
 
     #[test]

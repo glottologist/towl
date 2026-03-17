@@ -54,15 +54,16 @@ fn test_output_to_readonly_location() {
     let mut cmd = Command::cargo_bin("towl").unwrap();
     cmd.arg("scan")
         .arg(temp_dir.path())
+        .arg("--non-interactive")
         .arg("--format")
         .arg("json")
         .arg("--output")
         .arg(output_path);
 
-    // scan_todos swallows save errors and returns Ok with a warning
     cmd.assert()
-        .success()
-        .stderr(predicate::str::contains("Failed to save output"));
+        .failure()
+        .code(1)
+        .stderr(predicate::str::contains("Unable to write todos"));
 }
 
 #[rstest]
@@ -74,6 +75,7 @@ fn test_invalid_output_format() {
     let mut cmd = Command::cargo_bin("towl").unwrap();
     cmd.arg("scan")
         .arg(temp_dir.path())
+        .arg("--non-interactive")
         .arg("--format")
         .arg("invalid_format");
 
@@ -107,6 +109,7 @@ fn test_scan_with_permission_denied_file() {
     let mut cmd = Command::cargo_bin("towl").unwrap();
     cmd.arg("scan")
         .arg(temp_dir.path())
+        .arg("--non-interactive")
         .arg("--format")
         .arg("terminal");
 
@@ -132,6 +135,7 @@ fn test_scan_deeply_nested_directories() {
     let mut cmd = Command::cargo_bin("towl").unwrap();
     cmd.arg("scan")
         .arg(temp_dir.path())
+        .arg("--non-interactive")
         .arg("--format")
         .arg("terminal");
 
@@ -151,8 +155,10 @@ fn test_output_to_directory_instead_of_file() {
     fs::create_dir(&output_dir).expect("Failed to create output directory");
 
     let mut cmd = Command::cargo_bin("towl").unwrap();
-    cmd.arg("scan")
+    cmd.current_dir(temp_dir.path())
+        .arg("scan")
         .arg(temp_dir.path())
+        .arg("--non-interactive")
         .arg("--format")
         .arg("json")
         .arg("--output")
@@ -177,8 +183,10 @@ fn test_concurrent_scans() {
 
         let handle = std::thread::spawn(move || {
             let mut cmd = Command::cargo_bin("towl").unwrap();
-            cmd.arg("scan")
+            cmd.current_dir(&temp_path)
+                .arg("scan")
                 .arg(&temp_path)
+                .arg("--non-interactive")
                 .arg("--format")
                 .arg("json")
                 .arg("--output")
@@ -197,21 +205,13 @@ fn test_concurrent_scans() {
 }
 
 #[rstest]
-fn test_malformed_command_line_args() {
-    // Test various malformed command line arguments
-    let test_cases = vec![
-        vec!["scan", "--format"],       // Missing format value
-        vec!["unknown_command"],        // Invalid command
-        vec!["scan", "--invalid-flag"], // Invalid flag
-    ];
-
-    for args in test_cases {
-        let mut cmd = Command::cargo_bin("towl").unwrap();
-        for arg in args {
-            cmd.arg(arg);
-        }
-
-        // Should fail gracefully with proper error message
-        cmd.assert().failure();
+#[case(&["scan", "--format"])]
+#[case(&["unknown_command"])]
+#[case(&["scan", "--invalid-flag"])]
+fn test_malformed_command_line_args(#[case] args: &[&str]) {
+    let mut cmd = Command::cargo_bin("towl").unwrap();
+    for arg in args {
+        cmd.arg(arg);
     }
+    cmd.assert().failure();
 }

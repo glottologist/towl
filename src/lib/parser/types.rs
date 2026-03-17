@@ -1,51 +1,28 @@
 use std::path::Path;
 
-use regex::{Regex, RegexBuilder};
+use regex::Regex;
 
 use crate::{
     comment::todo::{TodoComment, TodoType},
     config::ParsingConfig,
+    MAX_CONTEXT_LINES, MIN_CONTEXT_LINES,
 };
 
 use super::error::TowlParserError;
-
-const MIN_CONTEXT_LINES: usize = 1;
-const MAX_CONTEXT_LINES: usize = 50;
-const FORWARD_SEARCH_LINES: usize = 3;
-const MAX_PATTERN_LENGTH: usize = 256;
-const REGEX_SIZE_LIMIT: usize = 262_144;
-const MAX_TOTAL_PATTERNS: usize = 50;
+use super::pattern::{Pattern, MAX_TOTAL_PATTERNS};
 
 /// Parses file content to extract TODO comments with context.
 ///
 /// Uses configurable regex patterns to identify comments and TODO markers,
 /// extracting surrounding context and function information for each match.
 pub struct Parser {
-    comment_patterns: Vec<Regex>,
-    patterns: Vec<Pattern>,
-    function_patterns: Vec<Regex>,
-    context_lines: usize,
-}
-
-struct Pattern {
-    regex: Regex,
-    todo_type: TodoType,
+    pub(super) comment_patterns: Vec<Regex>,
+    pub(super) patterns: Vec<Pattern>,
+    pub(super) function_patterns: Vec<Regex>,
+    pub(super) context_lines: usize,
 }
 
 impl Parser {
-    fn build_regex(pattern: &str) -> Result<Regex, TowlParserError> {
-        if pattern.len() > MAX_PATTERN_LENGTH {
-            return Err(TowlParserError::PatternTooLong(
-                pattern.len(),
-                MAX_PATTERN_LENGTH,
-            ));
-        }
-        RegexBuilder::new(pattern)
-            .size_limit(REGEX_SIZE_LIMIT)
-            .build()
-            .map_err(|e| TowlParserError::InvalidRegexPattern(pattern.to_string(), e))
-    }
-
     /// Creates a new parser from configuration.
     ///
     /// Compiles all regex patterns from the config at construction time for efficiency.
@@ -103,6 +80,7 @@ impl Parser {
             context_lines,
         })
     }
+
     /// Parses file content to extract all TODO comments.
     ///
     /// Identifies comment lines using configured patterns, then searches for TODO markers
@@ -160,11 +138,11 @@ impl Parser {
         todo_type: TodoType,
     ) -> Result<TodoComment, TowlParserError> {
         let description = if captures.len() > 1 {
-            captures.get(1).map(|m| m.as_str().trim().to_string())
+            captures.get(1).map(|m| m.as_str().trim().to_string()) // clone: owned String for TodoComment field
         } else {
-            captures.get(0).map(|m| m.as_str().trim().to_string())
+            captures.get(0).map(|m| m.as_str().trim().to_string()) // clone: owned String for TodoComment field
         }
-        .unwrap_or_else(|| "No description".to_string());
+        .unwrap_or_else(|| "No description".to_string()); // clone: owned String for TodoComment field
 
         let full_match = captures.get(0).ok_or(TowlParserError::RegexGroupMissing)?;
         let match_start = full_match.start();
@@ -174,81 +152,20 @@ impl Parser {
 
         let function_context = self.find_function_context(all_lines, line_number - 1);
 
-        let id = format!(
-            "{}_L{}_C{}",
-            path.file_name().unwrap_or_default().to_string_lossy(),
-            line_number,
-            match_start
-        );
+        let id = format!("{}_L{}_C{}", path.display(), line_number, match_start);
 
         Ok(TodoComment {
             id,
-            file_path: path.to_path_buf(),
+            file_path: path.to_path_buf(), // clone: owned path for TodoComment struct
             line_number,
             column_start: match_start,
             column_end: match_end,
             todo_type,
-            original_text: line.to_string(),
+            original_text: line.to_string(), // clone: owned String for TodoComment struct
             description,
             context_lines,
             function_context,
         })
-    }
-
-    fn extract_context(&self, lines: &[&str], current_line: usize) -> Vec<String> {
-        let mut context = Vec::new();
-
-        let start = current_line.saturating_sub(self.context_lines);
-
-        let end = std::cmp::min(current_line + self.context_lines + 1, lines.len());
-
-        for (i, line) in lines.iter().enumerate().take(end).skip(start) {
-            if i != current_line {
-                context.push(format!("{}: {}", i + 1, line));
-            }
-        }
-
-        context
-    }
-
-    fn match_function_name<'a>(&self, line: &'a str) -> Option<&'a str> {
-        for pattern in &self.function_patterns {
-            if let Some(captures) = pattern.captures(line) {
-                for j in 1..captures.len() {
-                    if let Some(name) = captures.get(j) {
-                        let name_str = name.as_str();
-                        if !name_str.is_empty()
-                            && name_str.chars().all(|c| c.is_alphanumeric() || c == '_')
-                        {
-                            return Some(name_str);
-                        }
-                    }
-                }
-            }
-        }
-        None
-    }
-
-    fn find_function_context(&self, lines: &[&str], current_line: usize) -> Option<String> {
-        for i in (0..=current_line).rev() {
-            if let Some(name) = self.match_function_name(lines[i]) {
-                return Some(format!("{name}:{}", i + 1));
-            }
-        }
-
-        let search_end = std::cmp::min(current_line + FORWARD_SEARCH_LINES + 1, lines.len());
-        for (i, line) in lines
-            .iter()
-            .enumerate()
-            .take(search_end)
-            .skip(current_line + 1)
-        {
-            if let Some(name) = self.match_function_name(line) {
-                return Some(format!("{name}:{} (below)", i + 1));
-            }
-        }
-
-        None
     }
 }
 
@@ -259,10 +176,6 @@ mod tests {
     use rstest::rstest;
     use std::path::PathBuf;
 
-    fn create_test_config() -> ParsingConfig {
-        crate::config::test_parsing_config()
-    }
-
     #[rstest]
     #[case("fn test_function() {", Some("test_function:1"))]
     #[case("pub fn public_function() {", Some("public_function:1"))]
@@ -270,7 +183,7 @@ mod tests {
     #[case("    fn indented_function() {", Some("indented_function:1"))]
     #[case("let variable = 5;", None)]
     fn test_function_context_detection(#[case] line: &str, #[case] expected_context: Option<&str>) {
-        let config = create_test_config();
+        let config = crate::config::test_parsing_config();
         let parser = Parser::new(&config).unwrap();
 
         let lines = vec![line];
@@ -291,7 +204,7 @@ mod tests {
     #[case(2, vec!["1: line1", "2: line2", "4: line4", "5: line5", "6: line6"])]
     #[case(4, vec!["2: line2", "3: line3", "4: line4", "6: line6"])]
     fn test_context_extraction(#[case] current_line: usize, #[case] expected_context: Vec<&str>) {
-        let config = create_test_config();
+        let config = crate::config::test_parsing_config();
         let parser = Parser::new(&config).unwrap();
 
         let lines = vec!["line1", "line2", "line3", "line4", "line5", "line6"];
@@ -326,7 +239,7 @@ mod tests {
             keyword in valid_todo_keyword(),
             description in valid_description()
         ) {
-            let config = create_test_config();
+            let config = crate::config::test_parsing_config();
             let parser = Parser::new(&config).unwrap();
             let path = PathBuf::from("test.rs");
 
@@ -349,7 +262,7 @@ mod tests {
             keyword in valid_todo_keyword(),
             description in valid_description()
         ) {
-            let config = create_test_config();
+            let config = crate::config::test_parsing_config();
             let parser = Parser::new(&config).unwrap();
             let path = PathBuf::from("test.rs");
 
@@ -366,7 +279,7 @@ mod tests {
             keyword in valid_todo_keyword(),
             description in valid_description()
         ) {
-            let config = create_test_config();
+            let config = crate::config::test_parsing_config();
             let parser = Parser::new(&config).unwrap();
             let path = PathBuf::from("test.rs");
 
@@ -386,7 +299,7 @@ mod tests {
             description in valid_description(),
             lines_after in prop::collection::vec(".*", 0..10)
         ) {
-            let config = create_test_config();
+            let config = crate::config::test_parsing_config();
             let parser = Parser::new(&config).unwrap();
             let path = PathBuf::from("test.rs");
 
@@ -409,7 +322,7 @@ mod tests {
 
     #[test]
     fn test_total_pattern_budget_exceeded() {
-        let mut config = create_test_config();
+        let mut config = crate::config::test_parsing_config();
         config.comment_prefixes = (0..20).map(|i| format!("prefix_{i}")).collect();
         config.todo_patterns = (0..20).map(|i| format!("todo_{i}")).collect();
         config.function_patterns = (0..20).map(|i| format!("func_{i}")).collect();
@@ -427,7 +340,7 @@ mod tests {
 
     #[test]
     fn test_malformed_regex_patterns() {
-        let mut config = create_test_config();
+        let mut config = crate::config::test_parsing_config();
         config.todo_patterns = vec!["[invalid regex".to_string()];
 
         let result = Parser::new(&config);
@@ -439,7 +352,7 @@ mod tests {
 
     #[test]
     fn test_column_position_accuracy() {
-        let config = create_test_config();
+        let config = crate::config::test_parsing_config();
         let parser = Parser::new(&config).unwrap();
         let path = PathBuf::from("test.rs");
 
@@ -456,7 +369,7 @@ mod tests {
         fn prop_parser_never_panics_on_any_input(
             content in ".*"
         ) {
-            let config = create_test_config();
+            let config = crate::config::test_parsing_config();
             let parser = Parser::new(&config).unwrap();
             let path = PathBuf::from("test.rs");
 
@@ -467,7 +380,7 @@ mod tests {
         fn prop_parsed_todos_have_valid_line_numbers(
             lines in prop::collection::vec("[^\n]*", 1..100)
         ) {
-            let config = create_test_config();
+            let config = crate::config::test_parsing_config();
             let parser = Parser::new(&config).unwrap();
             let path = PathBuf::from("test.rs");
 
@@ -491,7 +404,7 @@ mod tests {
             todo_type in prop::sample::select(vec!["TODO", "FIXME", "HACK", "NOTE", "BUG"]),
             description in "[^\n]*"
         ) {
-            let config = create_test_config();
+            let config = crate::config::test_parsing_config();
             let parser = Parser::new(&config).unwrap();
             let path = PathBuf::from("test.rs");
 
@@ -527,7 +440,7 @@ mod tests {
             todo_marker in prop::sample::select(vec!["TODO:", "FIXME:", "HACK:", "NOTE:", "BUG:"]),
             description in "[^\n]{0,100}"
         ) {
-            let config = create_test_config();
+            let config = crate::config::test_parsing_config();
             let parser = Parser::new(&config).unwrap();
             let path = PathBuf::from("test.rs");
 
@@ -551,7 +464,7 @@ mod tests {
             num_todos in 1usize..10usize,
             base_content in "[^\n]*"
         ) {
-            let config = create_test_config();
+            let config = crate::config::test_parsing_config();
             let parser = Parser::new(&config).unwrap();
             let path = PathBuf::from("test.rs");
 
@@ -586,7 +499,7 @@ mod tests {
             num_empty in 0usize..10usize,
             num_spaces in 0usize..10usize
         ) {
-            let config = create_test_config();
+            let config = crate::config::test_parsing_config();
             let parser = Parser::new(&config).unwrap();
             let path = PathBuf::from("test.rs");
 
@@ -619,7 +532,7 @@ mod tests {
             prop_assume!(!non_comment_prefix.contains("//") && !non_comment_prefix.contains('#') && !non_comment_prefix.contains('*'));
             prop_assume!(!todo_text.contains("//") && !todo_text.contains("/*") && !todo_text.contains('*'));
 
-            let config = create_test_config();
+            let config = crate::config::test_parsing_config();
             let parser = Parser::new(&config).unwrap();
             let path = PathBuf::from("test.rs");
 
@@ -668,14 +581,12 @@ mod tests {
             func_name in "[a-zA-Z_][a-zA-Z0-9_]{0,20}",
             suffix in "[^\\n]{0,20}"
         ) {
-            let config = create_test_config();
+            let config = crate::config::test_parsing_config();
             let parser = Parser::new(&config).unwrap();
 
             let line = format!("{prefix}fn {func_name}{suffix}");
             let result = parser.match_function_name(&line);
 
-            // If the line starts with optional whitespace + optional "pub " + "fn " + name,
-            // the function name should be matched
             if let Some(matched) = result {
                 prop_assert!(
                     matched.chars().all(|c| c.is_alphanumeric() || c == '_'),

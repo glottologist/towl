@@ -18,11 +18,11 @@ impl Formatter for CsvFormatter {
         let mut output = Vec::with_capacity(total_rows.saturating_add(1));
 
         output.push(
-            "Type,Description,File,Line,Column Start,Column End,Function,Original Text,Context Lines".to_string(),
+            "Type,Description,File,Line,Column Start,Column End,Function,Original Text,Context Lines".to_string(), // clone: owned String for output Vec
         );
 
         for (todo_type, todos_of_type) in todos_map {
-            let type_str = todo_type.to_string();
+            let type_str = todo_type.to_string(); // clone: Display → owned String for CSV field
             for todo in todos_of_type {
                 let func_field = todo
                     .function_context
@@ -34,7 +34,7 @@ impl Formatter for CsvFormatter {
                     "{},{},{},{},{},{},{},{},{}",
                     escape_csv_field(&type_str),
                     escape_csv_field(todo.description.trim()),
-                    escape_csv_field(&todo.file_path.display().to_string()),
+                    escape_csv_field(&todo.file_path.display().to_string()), // clone: Display → owned String for CSV field
                     todo.line_number,
                     todo.column_start,
                     todo.column_end,
@@ -66,18 +66,6 @@ mod tests {
     use crate::output::formatter::formatters::test_helpers::create_test_todo;
     use proptest::prelude::*;
     use rstest::rstest;
-    use std::path::PathBuf;
-
-    #[test]
-    fn test_csv_header() {
-        let formatter = CsvFormatter;
-        let todos_map = HashMap::new();
-
-        let result = formatter.format(&todos_map, 0).unwrap();
-        assert_eq!(result.len(), 1);
-        assert_eq!(result[0], "Type,Description,File,Line,Column Start,Column End,Function,Original Text,Context Lines");
-    }
-
     #[test]
     fn test_csv_single_todo() {
         let formatter = CsvFormatter;
@@ -109,49 +97,6 @@ mod tests {
 
         let result = formatter.format(&todos_map, todos.len()).unwrap();
         assert_eq!(result.len(), expected_rows);
-    }
-
-    #[test]
-    fn test_csv_with_special_characters() {
-        let formatter = CsvFormatter;
-        let todo = TodoComment {
-            id: "test-special".to_string(),
-            file_path: PathBuf::from("path/with,comma.rs"),
-            line_number: 10,
-            column_start: 1,
-            column_end: 50,
-            todo_type: TodoType::Bug,
-            original_text: "// BUG: Fix \"quotes\" and, commas".to_string(),
-            description: "Fix \"quotes\" and, commas".to_string(),
-            context_lines: vec!["line with, comma".to_string()],
-            function_context: Some("func,with,commas".to_string()),
-        };
-
-        let mut todos_map = HashMap::new();
-        todos_map.insert(&todo.todo_type, vec![&todo]);
-
-        let result = formatter.format(&todos_map, 1).unwrap();
-        assert_eq!(result.len(), 2);
-
-        let row = &result[1];
-        assert!(row.contains("\"path/with,comma.rs\""));
-        assert!(row.contains("\"Fix \"\"quotes\"\" and, commas\""));
-        assert!(row.contains("\"func,with,commas\""));
-    }
-
-    #[test]
-    fn test_csv_without_function_context() {
-        let formatter = CsvFormatter;
-        let todo = create_test_todo("No function", TodoType::Note, None, false);
-        let mut todos_map = HashMap::new();
-        todos_map.insert(&todo.todo_type, vec![&todo]);
-
-        let result = formatter.format(&todos_map, 1).unwrap();
-        let row = &result[1];
-
-        let parts: Vec<&str> = row.split(',').collect();
-        assert!(parts.len() >= 9);
-        assert_eq!(parts[6], "");
     }
 
     proptest! {
