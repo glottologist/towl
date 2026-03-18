@@ -64,6 +64,10 @@ pub enum TowlCommands {
         /// Preview GitHub issues without creating them
         #[arg(long, short = 'n')]
         dry_run: bool,
+
+        /// Analyse TODOs with AI to validate relevance
+        #[arg(long)]
+        ai: bool,
     },
 
     /// Display the current configuration

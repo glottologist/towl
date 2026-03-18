@@ -1,8 +1,9 @@
 //! Top-level error type that unifies errors from all towl subsystems.
 
 use crate::{
-    config::error::TowlConfigError, github::error::TowlGitHubError, output::error::TowlOutputError,
-    processor::error::TowlProcessorError, scanner::error::TowlScannerError, tui::TowlTuiError,
+    config::error::TowlConfigError, github::error::TowlGitHubError, llm::error::TowlLlmError,
+    output::error::TowlOutputError, processor::error::TowlProcessorError,
+    scanner::error::TowlScannerError, tui::TowlTuiError,
 };
 use thiserror::Error;
 
@@ -21,4 +22,6 @@ pub enum TowlError {
     Processor(#[from] TowlProcessorError),
     #[error("TUI error: {0}")]
     Tui(#[from] TowlTuiError),
+    #[error("LLM error: {0}")]
+    Llm(#[from] TowlLlmError),
 }

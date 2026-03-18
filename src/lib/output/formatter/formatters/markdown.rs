@@ -7,19 +7,7 @@ use crate::{
 
 const INDENTED_CODE_FENCE: &str = "  ```";
 
-fn escape_markdown(s: &str) -> String {
-    let mut out = String::with_capacity(s.len().saturating_add(s.len() / 4));
-    for ch in s.chars() {
-        if matches!(
-            ch,
-            '\\' | '`' | '*' | '_' | '[' | ']' | '#' | '!' | '<' | '>' | '~' | '|'
-        ) {
-            out.push('\\');
-        }
-        out.push(ch);
-    }
-    out
-}
+use crate::escape_markdown;
 
 pub struct MarkdownFormatter;
 
@@ -91,31 +79,22 @@ mod tests {
         assert!(result[1].contains(expected));
     }
 
-    #[test]
-    fn test_markdown_with_function_context() {
+    #[rstest]
+    #[case(Some("main"), true)]
+    #[case(None, false)]
+    fn test_markdown_function_context(
+        #[case] function: Option<&str>,
+        #[case] should_contain: bool,
+    ) {
         let formatter = MarkdownFormatter;
-        let todo = create_test_todo("Test", TodoType::Todo, Some("main"), false);
+        let todo = create_test_todo("Test", TodoType::Todo, function, false);
         let mut todos_map = HashMap::new();
         todos_map.insert(&todo.todo_type, vec![&todo]);
 
         let result = formatter.format(&todos_map, 1).unwrap();
         let output = result.join("\n");
 
-        assert!(output.contains("(in `main`)"));
-        assert!(output.contains("test.rs:42"));
-    }
-
-    #[test]
-    fn test_markdown_without_function_context() {
-        let formatter = MarkdownFormatter;
-        let todo = create_test_todo("Test", TodoType::Fixme, None, false);
-        let mut todos_map = HashMap::new();
-        todos_map.insert(&todo.todo_type, vec![&todo]);
-
-        let result = formatter.format(&todos_map, 1).unwrap();
-        let output = result.join("\n");
-
-        assert!(!output.contains("(in `"));
+        assert_eq!(output.contains("(in `"), should_contain);
         assert!(output.contains("test.rs:42"));
     }
 

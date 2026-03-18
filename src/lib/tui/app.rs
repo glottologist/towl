@@ -12,6 +12,7 @@ pub struct PeekState {
     pub file: String,
     pub todo_line: usize,
     pub scroll: usize,
+    pub analysis: Option<crate::llm::types::AnalysisResult>,
 }
 
 /// State tracked during background GitHub issue creation.
@@ -39,6 +40,7 @@ pub enum AppMode {
     Confirm,
     Creating(CreatingState),
     Done(DoneState),
+    DeleteConfirm(Vec<TodoComment>),
 }
 
 /// Field used to sort the TODO list. Cycle with the `s` key.
@@ -68,6 +70,7 @@ pub struct App {
     sort_field: SortField,
     sort_ascending: bool,
     mode: AppMode,
+    pending_delete: Option<Vec<TodoComment>>,
 }
 
 impl App {
@@ -83,6 +86,7 @@ impl App {
             sort_field: SortField::File,
             sort_ascending: true,
             mode: AppMode::Browse,
+            pending_delete: None,
         }
     }
 
@@ -237,6 +241,49 @@ impl App {
         self.mode = AppMode::Browse;
     }
 
+    pub fn enter_delete_confirm(&mut self) {
+        use crate::llm::types::Validity;
+
+        let invalid_selected: Vec<TodoComment> = self
+            .selected
+            .iter()
+            .filter_map(|&idx| self.todos.get(idx))
+            .filter(|t| {
+                matches!(
+                    t.analysis.as_ref().map(|a| a.validity),
+                    Some(Validity::Invalid)
+                )
+            })
+            .cloned() // clone: owned copies for confirmation display
+            .collect();
+        if !invalid_selected.is_empty() {
+            self.mode = AppMode::DeleteConfirm(invalid_selected);
+        }
+    }
+
+    pub fn cancel_delete(&mut self) {
+        self.mode = AppMode::Browse;
+    }
+
+    pub fn start_deleting(&mut self) {
+        let old = std::mem::replace(&mut self.mode, AppMode::Browse);
+        if let AppMode::DeleteConfirm(todos) = old {
+            let count = todos.len();
+            self.pending_delete = Some(todos);
+            self.mode = AppMode::Creating(CreatingState {
+                phase: format!("Deleting {count} invalid TODOs..."),
+                progress: 0,
+                total: count,
+                errors: Vec::new(),
+                created_issues: Vec::new(),
+            });
+        }
+    }
+
+    pub fn take_pending_delete(&mut self) -> Option<Vec<TodoComment>> {
+        self.pending_delete.take()
+    }
+
     pub fn start_creating(&mut self) {
         self.mode = AppMode::Creating(CreatingState {
             phase: "Starting...".to_string(), // clone: &str → owned String for struct field
@@ -287,11 +334,14 @@ impl App {
             .unwrap_or(0)
             .saturating_sub(PEEK_CONTEXT / 2);
 
+        let analysis = todo.analysis.clone(); // clone: owned copy for PeekState
+
         self.mode = AppMode::Peek(PeekState {
             lines,
             file,
             todo_line,
             scroll,
+            analysis,
         });
     }
 

@@ -7,9 +7,9 @@ expression: output
 └──────────────────────────────────────────────────────────────────────────────┘
  Filter: All | Sort: File (asc)
 ┌ TODOs ───────────────────────────────────────────────────────────────────────▲
-│ [ ] [TODO] main.rs:10 - implement error handling                             █
-│ [ ] [FIXME┌ Done ────────────────────────────────────────────────┐           █
-│ [ ] [BUG] │ Created: 2 issues                                    │           █
+│ [ ] - [TODO] main.rs:10 - implement error handling                           █
+│ [ ] - [FIX┌ Done ────────────────────────────────────────────────┐           █
+│ [ ] - [BUG│ Created: 2 issues                                    │           █
 │           │ Errors: 0                                            │           █
 │           │                                                      │           █
 │           │ Press q or enter to exit                             │           █

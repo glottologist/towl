@@ -114,10 +114,11 @@ mod tests {
 
         #[test]
         fn prop_classify_403_without_rate_limit(
+            message in "[a-zA-Z0-9 ]{0,50}".prop_filter("must not contain rate limit", |m| !m.to_lowercase().contains("rate limit")),
             owner in "[a-zA-Z0-9_-]{1,30}",
             repo in "[a-zA-Z0-9_-]{1,30}"
         ) {
-            let result = TowlGitHubError::classify_github_status(403, "forbidden", &owner, &repo);
+            let result = TowlGitHubError::classify_github_status(403, &message, &owner, &repo);
             prop_assert!(result.is_none());
         }
 

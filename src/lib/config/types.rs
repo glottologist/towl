@@ -1,7 +1,8 @@
 use super::defaults::{
     default_comment_prefixes, default_exclude_patterns, default_file_extensions,
-    default_function_patterns, default_include_context_lines, default_rate_limit_delay_ms,
-    default_todo_patterns,
+    default_function_patterns, default_include_context_lines, default_llm_max_tokens,
+    default_llm_model, default_llm_provider, default_max_analyse_count,
+    default_max_concurrent_analyses, default_rate_limit_delay_ms, default_todo_patterns,
 };
 use super::error::TowlConfigError;
 use super::git::GitRepoInfo;
@@ -25,6 +26,8 @@ pub struct TowlConfig {
     pub parsing: ParsingConfig,
     #[serde(default)]
     pub github: GitHubConfig,
+    #[serde(default)]
+    pub llm: LlmConfig,
 }
 
 impl TowlConfig {
@@ -36,16 +39,8 @@ impl TowlConfig {
     pub async fn init(path: &Path, force: bool) -> Result<(), TowlConfigError> {
         Self::validate_path(path)?;
 
-        let git_repo_info = GitRepoInfo::from_path(".").await?;
-        let config = Self {
-            github: GitHubConfig {
-                token: SecretString::default(),
-                owner: git_repo_info.owner,
-                repo: git_repo_info.repo,
-                ..Default::default()
-            },
-            ..Default::default()
-        };
+        GitRepoInfo::from_path(".").await?;
+        let config = Self::default();
 
         let toml_string =
             toml::to_string_pretty(&config).map_err(TowlConfigError::UnableToParseToml)?;
@@ -110,11 +105,31 @@ impl TowlConfig {
             Self::check_string_length("TOWL_GITHUB_TOKEN", &token)?;
             config.github.token = SecretString::from(token);
         }
+
         if let Ok(owner) = std::env::var("TOWL_GITHUB_OWNER") {
             config.github.owner = Owner::try_new(owner)?;
+        } else if let Ok(info) = GitRepoInfo::from_path_sync(".") {
+            config.github.owner = info.owner;
+            if std::env::var("TOWL_GITHUB_REPO").is_err() {
+                config.github.repo = info.repo;
+            }
         }
         if let Ok(repo) = std::env::var("TOWL_GITHUB_REPO") {
             config.github.repo = Repo::try_new(repo)?;
+        }
+
+        if let Ok(key) = std::env::var("TOWL_LLM_API_KEY") {
+            Self::check_string_length("TOWL_LLM_API_KEY", &key)?;
+            config.llm.api_key = SecretString::from(key);
+        }
+        if let Ok(provider) = std::env::var("TOWL_LLM_PROVIDER") {
+            config.llm.provider = provider;
+        }
+        if let Ok(model) = std::env::var("TOWL_LLM_MODEL") {
+            config.llm.model = model;
+        }
+        if let Ok(url) = std::env::var("TOWL_LLM_BASE_URL") {
+            config.llm.base_url = Some(url);
         }
 
         Self::validate_pattern_counts(&config.parsing)?;
@@ -164,7 +179,9 @@ impl Default for ParsingConfig {
 pub struct GitHubConfig {
     #[serde(skip)]
     pub token: SecretString,
+    #[serde(skip)]
     pub owner: Owner,
+    #[serde(skip)]
     pub repo: Repo,
     #[serde(default = "default_rate_limit_delay_ms")]
     pub rate_limit_delay_ms: u64,
@@ -201,6 +218,79 @@ impl PartialEq for GitHubConfig {
 }
 
 impl Eq for GitHubConfig {}
+
+/// LLM configuration for AI-powered TODO validation.
+///
+/// API key is loaded from `TOWL_LLM_API_KEY` (never serialised to disk).
+/// Provider and model can be overridden via environment variables.
+#[derive(Clone, Serialize, Deserialize)]
+pub struct LlmConfig {
+    #[serde(default = "default_llm_provider")]
+    pub provider: String,
+    #[serde(default = "default_llm_model")]
+    pub model: String,
+    #[serde(default)]
+    pub base_url: Option<String>,
+    #[serde(skip)]
+    pub api_key: SecretString,
+    #[serde(default = "default_max_concurrent_analyses")]
+    pub max_concurrent_analyses: usize,
+    #[serde(default = "default_max_analyse_count")]
+    pub max_analyse_count: usize,
+    #[serde(default = "default_llm_max_tokens")]
+    pub max_tokens: u32,
+    #[serde(default)]
+    pub command: Option<String>,
+    #[serde(default)]
+    pub args: Option<Vec<String>>,
+}
+
+impl Default for LlmConfig {
+    fn default() -> Self {
+        Self {
+            provider: default_llm_provider(),
+            model: default_llm_model(),
+            base_url: None,
+            api_key: SecretString::default(),
+            max_concurrent_analyses: default_max_concurrent_analyses(),
+            max_analyse_count: default_max_analyse_count(),
+            max_tokens: default_llm_max_tokens(),
+            command: None,
+            args: None,
+        }
+    }
+}
+
+impl fmt::Debug for LlmConfig {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("LlmConfig")
+            .field("provider", &self.provider)
+            .field("model", &self.model)
+            .field("base_url", &self.base_url)
+            .field("api_key", &"[REDACTED]")
+            .field("max_concurrent_analyses", &self.max_concurrent_analyses)
+            .field("max_analyse_count", &self.max_analyse_count)
+            .field("max_tokens", &self.max_tokens)
+            .field("command", &self.command)
+            .field("args", &self.args)
+            .finish()
+    }
+}
+
+impl PartialEq for LlmConfig {
+    fn eq(&self, other: &Self) -> bool {
+        self.provider == other.provider
+            && self.model == other.model
+            && self.base_url == other.base_url
+            && self.max_concurrent_analyses == other.max_concurrent_analyses
+            && self.max_analyse_count == other.max_analyse_count
+            && self.max_tokens == other.max_tokens
+            && self.command == other.command
+            && self.args == other.args
+    }
+}
+
+impl Eq for LlmConfig {}
 
 #[cfg(test)]
 impl TowlConfig {
@@ -268,8 +358,16 @@ mod tests {
             loaded.parsing.include_context_lines,
             defaults.parsing.include_context_lines
         );
-        assert_eq!(loaded.github.owner, defaults.github.owner);
-        assert_eq!(loaded.github.repo, defaults.github.repo);
+        assert_ne!(
+            loaded.github.owner.to_string(),
+            "no owner",
+            "Owner should be auto-detected from git"
+        );
+        assert_ne!(
+            loaded.github.repo.to_string(),
+            "no repo",
+            "Repo should be auto-detected from git"
+        );
     }
 
     #[test]
@@ -314,8 +412,6 @@ mod tests {
 
         #[test]
         fn prop_config_save_load_roundtrip(
-            owner_name in "[a-zA-Z0-9_-]{1,20}",
-            repo_name in "[a-zA-Z0-9_-]{1,20}",
             context_lines in 1usize..50,
         ) {
             let config = TowlConfig {
@@ -323,12 +419,7 @@ mod tests {
                     include_context_lines: context_lines,
                     ..Default::default()
                 },
-                github: GitHubConfig {
-                    token: SecretString::default(),
-                    owner: Owner::new_unchecked(&owner_name),
-                    repo: Repo::new_unchecked(&repo_name),
-                    ..Default::default()
-                },
+                ..Default::default()
             };
 
             let temp_dir = tempfile::TempDir::new().unwrap();
@@ -342,8 +433,6 @@ mod tests {
             let loaded = TowlConfig::load(Some(&config_path)).unwrap();
 
             prop_assert_eq!(loaded.parsing.include_context_lines, context_lines);
-            prop_assert_eq!(loaded.github.owner, Owner::new_unchecked(&owner_name));
-            prop_assert_eq!(loaded.github.repo, Repo::new_unchecked(&repo_name));
             prop_assert_eq!(loaded.parsing.file_extensions, config.parsing.file_extensions);
             prop_assert_eq!(loaded.parsing.exclude_patterns, config.parsing.exclude_patterns);
         }

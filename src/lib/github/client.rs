@@ -233,6 +233,21 @@ impl GitHubClient {
             write!(body, "\n## Context\n\n{}\n", code_block(&context))?;
         }
 
+        if let Some(ref analysis) = todo.analysis {
+            write!(
+                body,
+                "\n## AI Analysis\n\n\
+                 **Validity:** {}\n\
+                 **Confidence:** {:.0}%\n\n\
+                 ### Reasoning\n\n{}\n\n\
+                 ### Enhanced Description\n\n{}\n",
+                analysis.validity,
+                analysis.confidence * 100.0,
+                escape_markdown(&analysis.reasoning),
+                escape_markdown(&analysis.enrichment),
+            )?;
+        }
+
         write!(
             body,
             "\n---\n\
@@ -319,19 +334,7 @@ fn max_backtick_run(s: &str) -> usize {
         .0
 }
 
-fn escape_markdown(s: &str) -> String {
-    let mut out = String::with_capacity(s.len().saturating_add(s.len() / 4));
-    for ch in s.chars() {
-        if matches!(
-            ch,
-            '\\' | '`' | '*' | '_' | '[' | ']' | '#' | '!' | '<' | '>' | '~' | '|'
-        ) {
-            out.push('\\');
-        }
-        out.push(ch);
-    }
-    out
-}
+use crate::escape_markdown;
 
 fn sanitize_for_inline_code(s: &str) -> String {
     let max_run = max_backtick_run(s);
@@ -357,7 +360,7 @@ fn truncate_at_word_boundary(s: &str, max_len: usize) -> String {
         return "...".to_string(); // clone: &str → owned String for return
     }
 
-    let target = max_len - 3;
+    let target = max_len.saturating_sub(3);
     let boundary = s
         .char_indices()
         .map(|(i, _)| i)
@@ -408,22 +411,42 @@ mod tests {
         assert!(body.contains("*TODO ID: src/main.rs_L10*"));
     }
 
-    #[test]
-    fn test_generate_body_without_function_context() {
+    #[rstest]
+    #[case("function_context", "## Function Context")]
+    #[case("context_lines", "## Context")]
+    #[case("analysis", "AI Analysis")]
+    fn test_generate_body_section_absent(#[case] field: &str, #[case] marker: &str) {
         let mut todo = make_todo("Fix bug", TodoType::Bug);
-        todo.function_context = None;
+        match field {
+            "function_context" => todo.function_context = None,
+            "context_lines" => todo.context_lines = vec![],
+            "analysis" => {} // analysis is already None by default
+            _ => return,
+        }
         let body = GitHubClient::generate_issue_body(&todo).unwrap();
-        assert!(!body.contains("## Function Context"));
+        assert!(!body.contains(marker));
     }
 
     #[test]
-    fn test_generate_body_without_context_lines() {
-        let mut todo = make_todo("Fix bug", TodoType::Bug);
-        todo.context_lines = vec![];
+    fn test_generate_body_includes_ai_analysis() {
+        use crate::llm::types::{AnalysisResult, Validity};
+
+        let mut todo = make_todo("Fix the cache", TodoType::Todo);
+        todo.analysis = Some(AnalysisResult {
+            validity: Validity::Valid,
+            reasoning: "Cache implementation is missing".to_string(),
+            is_resolved: false,
+            is_relevant: true,
+            is_actionable: true,
+            confidence: 0.9,
+            enrichment: "The caching layer needs to be added".to_string(),
+        });
         let body = GitHubClient::generate_issue_body(&todo).unwrap();
-        assert!(!body.contains("## Context"));
-        assert!(body.contains("## TODO Details"));
-        assert!(body.contains("*TODO ID:"));
+        assert!(body.contains("## AI Analysis"));
+        assert!(body.contains("Cache implementation is missing"));
+        assert!(body.contains("Valid"));
+        assert!(body.contains("90%"));
+        assert!(body.contains("caching layer"));
     }
 
     #[rstest]

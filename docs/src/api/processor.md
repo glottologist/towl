@@ -19,7 +19,7 @@ pub async fn replace_todos(
 ) -> ProcessorResult
 ```
 
-Replaces TODO comments in source files with `See: <issue_url>` links.
+Replaces TODO comments in source files with `GH_ISSUE: <issue_url>` links.
 
 **Behaviour:**
 
@@ -39,8 +39,8 @@ Replaces TODO comments in source files with `See: <issue_url>` links.
 The comment prefix (e.g., `// `, `# `, `/* `) is preserved. The TODO text after the prefix is replaced:
 
 ```text
-// TODO: Implement caching    -->    // See: https://github.com/owner/repo/issues/42
-# FIXME: Handle timeout        -->    # See: https://github.com/owner/repo/issues/43
+// TODO: Implement caching    -->    // GH_ISSUE: https://github.com/owner/repo/issues/42
+# FIXME: Handle timeout        -->    # GH_ISSUE: https://github.com/owner/repo/issues/43
 ```
 
 **Atomic writes:**

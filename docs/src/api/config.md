@@ -33,11 +33,11 @@ If no config file exists, defaults are used without error.
 pub async fn init(path: &Path, force: bool) -> Result<(), TowlConfigError>
 ```
 
-Creates a `.towl.toml` file at the given path. Auto-detects GitHub owner and repo from `git remote get-url origin`.
+Creates a `.towl.toml` file at the given path. Validates that a GitHub git remote exists but does not write owner/repo to the file (they are always detected at runtime).
 
 - Fails if the file already exists (unless `force` is `true`)
 - Validates the path for traversal attacks
-- Serializes `ParsingConfig` defaults to TOML
+- Serializes `ParsingConfig` and `LlmConfig` defaults to TOML
 
 ## `ParsingConfig`
 
@@ -77,16 +77,16 @@ pub struct GitHubConfig {
 ```
 
 - `token` is stored as `secrecy::SecretString` and masked in debug/display output
-- `owner` and `repo` are validated newtype wrappers over `String`
+- `owner` and `repo` are auto-detected from `git remote get-url origin` at runtime (not serialised to config)
 - `rate_limit_delay_ms` adds a delay between GitHub API calls (default: 100ms)
 
 ### Environment Variable Overrides
 
 | Variable | Overrides |
 |----------|-----------|
-| `TOWL_GITHUB_TOKEN` | `github.token` |
-| `TOWL_GITHUB_OWNER` | `github.owner` |
-| `TOWL_GITHUB_REPO` | `github.repo` |
+| `TOWL_GITHUB_TOKEN` | -- (env-only) |
+| `TOWL_GITHUB_OWNER` | git remote detection |
+| `TOWL_GITHUB_REPO` | git remote detection |
 
 ## `Owner` / `Repo`
 

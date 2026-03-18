@@ -1,0 +1,490 @@
+<!DOCTYPE HTML>
+<html lang="en" class="navy sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Architecture - towl Documentation</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="Documentation for towl - a fast CLI tool to scan codebases for TODO comments">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "navy";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "../searchindex.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('navy')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">towl Documentation</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/glottologist/towl" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+                        <a href="https://github.com/glottologist/towl/edit/main/docs/src/src/reference/architecture.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                            <i id="git-edit-button" class="fa fa-edit"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <i class="fa fa-spinner fa-spin"></i>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="architecture"><a class="header" href="#architecture">Architecture</a></h1>
+<p>towl follows a pipeline architecture: Config -&gt; Scanner -&gt; Parser -&gt; TUI / Output. Each stage is a separate module with clear boundaries and typed errors.</p>
+<h2 id="pipeline"><a class="header" href="#pipeline">Pipeline</a></h2>
+<pre><code class="language-text">                ┌──────────┐
+                │  Config   │  .towl.toml + env vars + git remote
+                └────┬─────┘
+                     │
+                ┌────▼─────┐
+                │  Scanner  │  Walks directory tree, scans files concurrently
+                └────┬─────┘
+                     │
+                ┌────▼─────┐
+                │  Parser   │  Matches comment prefixes + TODO patterns
+                └────┬─────┘
+                     │
+              ┌──────┴──────┐
+              │             │
+        ┌─────▼────┐  ┌────▼─────┐
+        │   TUI     │  │  Output   │  Non-interactive: formats + writes
+        │ (default) │  │  (-N)     │
+        └─────┬────┘  └──────────┘
+              │
+        ┌─────▼─────┐
+        │ Processor  │  Replaces TODOs with GitHub issue links
+        └───────────┘
+</code></pre>
+<h2 id="module-boundaries"><a class="header" href="#module-boundaries">Module Boundaries</a></h2>
+<h3 id="config-srclibconfig"><a class="header" href="#config-srclibconfig">Config (<code>src/lib/config/</code>)</a></h3>
+<ul>
+<li>Loads <code>.towl.toml</code> using the <code>config</code> crate</li>
+<li>Merges environment variable overrides (<code>TOWL_GITHUB_*</code>)</li>
+<li>Discovers GitHub owner/repo from <code>git remote get-url origin</code></li>
+<li>Validates pattern array sizes</li>
+<li>Produces <code>TowlConfig</code> containing <code>ParsingConfig</code> + <code>GitHubConfig</code></li>
+</ul>
+<p>Submodules:</p>
+<ul>
+<li><code>types.rs</code> -- <code>TowlConfig</code>, <code>ParsingConfig</code>, <code>GitHubConfig</code></li>
+<li><code>defaults.rs</code> -- Default values for config fields</li>
+<li><code>display.rs</code> -- <code>Display</code> implementation for config tree view</li>
+<li><code>newtypes.rs</code> -- <code>Owner</code> and <code>Repo</code> newtype wrappers</li>
+<li><code>validation.rs</code> -- Config validation logic</li>
+<li><code>git.rs</code> -- <code>GitRepoInfo</code> for parsing git remotes</li>
+<li><code>error.rs</code> -- <code>TowlConfigError</code></li>
+</ul>
+<h3 id="scanner-srclibscanner"><a class="header" href="#scanner-srclibscanner">Scanner (<code>src/lib/scanner/</code>)</a></h3>
+<ul>
+<li>Accepts a <code>ParsingConfig</code> and a root path</li>
+<li>Walks the directory tree using the <code>ignore</code> crate (respects <code>.gitignore</code>)</li>
+<li>Filters files by extension and exclude patterns</li>
+<li>Scans files concurrently with bounded parallelism (up to 64 files)</li>
+<li>Reads files asynchronously via <code>tokio::fs</code></li>
+<li>Enforces resource limits (file size, TODO counts, file counts)</li>
+<li>Delegates content parsing to the <code>Parser</code></li>
+<li>Returns <code>ScanResult</code> with TODOs and scan metrics</li>
+</ul>
+<p>Submodules:</p>
+<ul>
+<li><code>types.rs</code> -- <code>Scanner</code> implementation</li>
+<li><code>limits.rs</code> -- <code>ScanResult</code> and resource limit constants</li>
+<li><code>walker.rs</code> -- Directory walker construction</li>
+<li><code>error.rs</code> -- <code>TowlScannerError</code></li>
+</ul>
+<h3 id="parser-srclibparser"><a class="header" href="#parser-srclibparser">Parser (<code>src/lib/parser/</code>)</a></h3>
+<ul>
+<li>Compiles regex patterns once during construction</li>
+<li>Identifies comment lines via <code>comment_prefixes</code></li>
+<li>Extracts TODO items via <code>todo_patterns</code></li>
+<li>Captures context lines (configurable window, 1-50)</li>
+<li>Detects enclosing function names via <code>function_patterns</code></li>
+<li>Produces <code>Vec&lt;TodoComment&gt;</code></li>
+</ul>
+<p>Submodules:</p>
+<ul>
+<li><code>types.rs</code> -- <code>Parser</code> implementation</li>
+<li><code>context.rs</code> -- Context line extraction logic</li>
+<li><code>pattern.rs</code> -- Pattern compilation and matching</li>
+<li><code>error.rs</code> -- <code>TowlParserError</code></li>
+</ul>
+<h3 id="tui-srclibtui"><a class="header" href="#tui-srclibtui">TUI (<code>src/lib/tui/</code>)</a></h3>
+<ul>
+<li>Full-screen terminal interface using ratatui and crossterm</li>
+<li>Browse, filter, sort, and peek at TODOs</li>
+<li>Select TODOs and create GitHub issues with progress tracking</li>
+<li>Replaces TODO comments in source files with issue links via the Processor</li>
+</ul>
+<p>Submodules:</p>
+<ul>
+<li><code>app.rs</code> -- <code>App</code> state machine and <code>AppMode</code> enum (Browse, Peek, Confirm, Creating, Done)</li>
+<li><code>input.rs</code> -- Keyboard event handling and action dispatch</li>
+<li><code>render.rs</code> -- UI rendering (list, peek popup, confirm dialog, progress view)</li>
+<li><code>error.rs</code> -- <code>TowlTuiError</code></li>
+</ul>
+<h3 id="processor-srclibprocessor"><a class="header" href="#processor-srclibprocessor">Processor (<code>src/lib/processor/</code>)</a></h3>
+<ul>
+<li>Replaces TODO comments in source files with GitHub issue links</li>
+<li>Groups replacements by file for efficient batch processing</li>
+<li>Validates file paths stay within the repository root</li>
+<li>Returns <code>ProcessorResult</code> with counts and error details</li>
+</ul>
+<p>Submodules:</p>
+<ul>
+<li><code>types.rs</code> -- <code>Processor</code> and <code>ProcessorResult</code></li>
+<li><code>error.rs</code> -- <code>TowlProcessorError</code></li>
+</ul>
+<h3 id="github-srclibgithub"><a class="header" href="#github-srclibgithub">GitHub (<code>src/lib/github/</code>)</a></h3>
+<ul>
+<li>Creates GitHub issues from <code>TodoComment</code> items via the Octocrab API</li>
+<li>Loads existing issues to detect and skip duplicates</li>
+<li>Constructs issue titles and bodies with file/line metadata</li>
+</ul>
+<h3 id="output-srcliboutput"><a class="header" href="#output-srcliboutput">Output (<code>src/lib/output/</code>)</a></h3>
+<ul>
+<li>Combines a <code>FormatterImpl</code> and a <code>WriterImpl</code></li>
+<li>Groups TODOs by type before formatting</li>
+<li>Uses enum dispatch (not trait objects) for zero-cost abstraction</li>
+</ul>
+<pre><code class="language-text">Output
+├── FormatterImpl (enum dispatch)
+│   ├── CsvFormatter
+│   ├── JsonFormatter
+│   ├── MarkdownFormatter
+│   ├── TableFormatter
+│   └── TomlFormatter
+└── WriterImpl (enum dispatch)
+    ├── StdoutWriter
+    └── FileWriter
+</code></pre>
+<h2 id="key-design-decisions"><a class="header" href="#key-design-decisions">Key Design Decisions</a></h2>
+<h3 id="enum-dispatch-over-trait-objects"><a class="header" href="#enum-dispatch-over-trait-objects">Enum Dispatch Over Trait Objects</a></h3>
+<p>Both <code>FormatterImpl</code> and <code>WriterImpl</code> use enum variants rather than <code>Box&lt;dyn Trait&gt;</code>. This provides:</p>
+<ul>
+<li>Static dispatch (no vtable overhead)</li>
+<li>Exhaustive matching at compile time</li>
+<li>Simpler lifetime management</li>
+</ul>
+<h3 id="regex-compilation-strategy"><a class="header" href="#regex-compilation-strategy">Regex Compilation Strategy</a></h3>
+<p>All regex patterns are compiled once during <code>Scanner::new()</code> / <code>Parser::new()</code> and reused for every file. This avoids per-file compilation overhead.</p>
+<h3 id="concurrent-file-scanning"><a class="header" href="#concurrent-file-scanning">Concurrent File Scanning</a></h3>
+<p>The scanner discovers all scannable files first, then scans them concurrently using <code>futures::stream::buffer_unordered</code> with a concurrency limit of 64. This provides significant speedup on large codebases while bounding resource usage.</p>
+<h3 id="async-io"><a class="header" href="#async-io">Async I/O</a></h3>
+<p>File reading uses <code>tokio::fs</code> for non-blocking I/O. The scanner is async, allowing integration into async applications. The CLI uses <code>#[tokio::main]</code>.</p>
+<h3 id="tui-event-loop"><a class="header" href="#tui-event-loop">TUI Event Loop</a></h3>
+<p>The TUI uses a synchronous event loop with crossterm polling. GitHub issue creation runs in a background tokio task, communicating progress back to the UI via an <code>mpsc</code> channel. This keeps the UI responsive during network operations.</p>
+<h3 id="error-type-hierarchy"><a class="header" href="#error-type-hierarchy">Error Type Hierarchy</a></h3>
+<p>Each module owns its error type. Errors propagate upward via <code>#[from]</code> conversions:</p>
+<pre><code class="language-text">TowlCommentError → TowlParserError → TowlScannerError → TowlError
+FormatterError → TowlOutputError → TowlError
+WriterError → TowlOutputError → TowlError
+TowlProcessorError → TowlError
+TowlTuiError → TowlError
+</code></pre>
+<h3 id="newtype-pattern"><a class="header" href="#newtype-pattern">Newtype Pattern</a></h3>
+<p><code>Owner</code> and <code>Repo</code> are newtype wrappers over <code>String</code>, preventing accidental misuse (e.g., passing an owner where a repo is expected).</p>
+<h3 id="secret-handling"><a class="header" href="#secret-handling">Secret Handling</a></h3>
+<p>The GitHub token is stored as <code>secrecy::SecretString</code>, which:</p>
+<ul>
+<li>Masks the value in <code>Debug</code> and <code>Display</code> output</li>
+<li>Zeroes memory on drop</li>
+<li>Prevents accidental logging</li>
+</ul>
+<h2 id="directory-layout"><a class="header" href="#directory-layout">Directory Layout</a></h2>
+<pre><code class="language-text">src/
+├── bin/
+│   └── towl.rs              CLI binary
+└── lib/
+    ├── mod.rs                Library root
+    ├── cli/
+    │   └── mod.rs            Clap argument definitions
+    ├── comment/
+    │   ├── mod.rs
+    │   ├── todo.rs           TodoType, TodoComment
+    │   └── error.rs          TowlCommentError
+    ├── config/
+    │   ├── mod.rs
+    │   ├── types.rs          TowlConfig, ParsingConfig, GitHubConfig
+    │   ├── defaults.rs       Default config values
+    │   ├── display.rs        Config Display implementation
+    │   ├── newtypes.rs       Owner, Repo newtypes
+    │   ├── validation.rs     Config validation
+    │   ├── git.rs            GitRepoInfo
+    │   └── error.rs          TowlConfigError
+    ├── scanner/
+    │   ├── mod.rs
+    │   ├── types.rs          Scanner
+    │   ├── limits.rs         ScanResult, resource limits
+    │   ├── walker.rs         Directory walker construction
+    │   └── error.rs          TowlScannerError
+    ├── parser/
+    │   ├── mod.rs
+    │   ├── types.rs          Parser
+    │   ├── context.rs        Context line extraction
+    │   ├── pattern.rs        Pattern compilation
+    │   └── error.rs          TowlParserError
+    ├── github/
+    │   ├── mod.rs
+    │   ├── client.rs         GitHubClient
+    │   ├── types.rs          CreatedIssue
+    │   └── error.rs          TowlGitHubError
+    ├── processor/
+    │   ├── mod.rs
+    │   ├── types.rs          Processor, ProcessorResult
+    │   └── error.rs          TowlProcessorError
+    ├── tui/
+    │   ├── mod.rs             TUI entry point and event loop
+    │   ├── app.rs             App state machine, AppMode
+    │   ├── input.rs           Keyboard input handling
+    │   ├── render.rs          UI rendering
+    │   └── error.rs           TowlTuiError
+    ├── output/
+    │   ├── mod.rs             Output
+    │   ├── error.rs           TowlOutputError
+    │   ├── formatter/
+    │   │   ├── mod.rs         FormatterImpl
+    │   │   ├── error.rs       FormatterError
+    │   │   └── formatters/
+    │   │       ├── mod.rs     Formatter dispatch
+    │   │       ├── csv.rs
+    │   │       ├── json.rs
+    │   │       ├── markdown.rs
+    │   │       ├── table.rs
+    │   │       └── toml.rs
+    │   └── writer/
+    │       ├── mod.rs         WriterImpl
+    │       ├── error.rs       WriterError
+    │       └── writers/
+    │           ├── file.rs    FileWriter
+    │           └── stdout.rs  StdoutWriter
+    └── error/
+        └── mod.rs             TowlError
+
+tests/
+├── integration/               Integration tests
+├── property/                  Property-based tests
+└── fixtures/                  Test fixtures
+</code></pre>
+<h2 id="dependencies"><a class="header" href="#dependencies">Dependencies</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Crate</th><th>Purpose</th></tr></thead><tbody>
+<tr><td><code>clap</code></td><td>CLI argument parsing</td></tr>
+<tr><td><code>tokio</code></td><td>Async runtime and file I/O</td></tr>
+<tr><td><code>serde</code> / <code>serde_json</code> / <code>toml</code></td><td>Serialisation</td></tr>
+<tr><td><code>regex</code></td><td>TODO pattern matching</td></tr>
+<tr><td><code>ignore</code></td><td>Directory walking (respects <code>.gitignore</code>)</td></tr>
+<tr><td><code>thiserror</code></td><td>Error type derivation</td></tr>
+<tr><td><code>secrecy</code></td><td>Secret string handling</td></tr>
+<tr><td><code>config</code></td><td>Configuration file loading</td></tr>
+<tr><td><code>octocrab</code></td><td>GitHub API client</td></tr>
+<tr><td><code>ratatui</code></td><td>Terminal UI framework</td></tr>
+<tr><td><code>crossterm</code></td><td>Terminal input/output</td></tr>
+<tr><td><code>futures</code></td><td>Async stream utilities</td></tr>
+<tr><td><code>proptest</code></td><td>Property-based testing</td></tr>
+<tr><td><code>rstest</code></td><td>Parameterised testing</td></tr>
+<tr><td><code>insta</code></td><td>Snapshot testing</td></tr>
+</tbody></table>
+</div>
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../api/errors.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../reference/security.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../api/errors.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../reference/security.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+
+    </div>
+    </body>
+</html>

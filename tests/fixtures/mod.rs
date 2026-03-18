@@ -1,4 +1,4 @@
-use towl::config::{GitHubConfig, ParsingConfig, TowlConfig};
+use towl::config::{GitHubConfig, LlmConfig, ParsingConfig, TowlConfig};
 
 #[must_use]
 pub fn mock_towl_config() -> TowlConfig {
@@ -28,5 +28,6 @@ pub fn mock_towl_config() -> TowlConfig {
             include_context_lines: 3,
         },
         github: GitHubConfig::default(),
+        llm: LlmConfig::default(),
     }
 }

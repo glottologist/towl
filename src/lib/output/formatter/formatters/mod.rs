@@ -15,8 +15,6 @@ pub(crate) const fn pluralize(count: usize) -> &'static str {
 
 #[cfg(test)]
 pub mod test_helpers {
-    use std::collections::HashMap;
-
     use crate::comment::todo::test_support::TestTodoBuilder;
     use crate::comment::todo::{TodoComment, TodoType};
 
@@ -46,10 +44,5 @@ pub mod test_helpers {
         }
 
         builder.build()
-    }
-
-    #[must_use]
-    pub fn single_type_map(todo: &TodoComment) -> HashMap<&TodoType, Vec<&TodoComment>> {
-        HashMap::from([(&todo.todo_type, vec![todo])])
     }
 }

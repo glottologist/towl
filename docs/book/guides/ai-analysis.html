@@ -1,0 +1,370 @@
+<!DOCTYPE HTML>
+<html lang="en" class="navy sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>AI Analysis - towl Documentation</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="Documentation for towl - a fast CLI tool to scan codebases for TODO comments">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "navy";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "../searchindex.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('navy')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">towl Documentation</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/glottologist/towl" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+                        <a href="https://github.com/glottologist/towl/edit/main/docs/src/src/guides/ai-analysis.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                            <i id="git-edit-button" class="fa fa-edit"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <i class="fa fa-spinner fa-spin"></i>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="ai-analysis"><a class="header" href="#ai-analysis">AI Analysis</a></h1>
+<p>towl can use an LLM (Claude or any OpenAI-compatible model) to validate whether each TODO is still relevant. The <code>--ai</code> flag triggers analysis that determines if a TODO is <strong>Valid</strong>, <strong>Invalid</strong>, or <strong>Uncertain</strong>.</p>
+<h2 id="setup"><a class="header" href="#setup">Setup</a></h2>
+<p>Set your API key as an environment variable:</p>
+<pre><code class="language-bash"># Claude (default)
+export TOWL_LLM_API_KEY=sk-ant-your-key-here
+
+# Or for OpenAI
+export TOWL_LLM_API_KEY=sk-your-openai-key
+export TOWL_LLM_PROVIDER=openai
+</code></pre>
+<p>The API key is stored as a <code>SecretString</code> and never written to config files or logs.</p>
+<h2 id="basic-usage"><a class="header" href="#basic-usage">Basic Usage</a></h2>
+<pre><code class="language-bash"># Non-interactive: analyse and filter out invalid TODOs
+towl scan -N --ai
+
+# Interactive: analyse and show results in TUI
+towl scan --ai
+
+# Combine with other flags
+towl scan -N --ai -t fixme -f json -o fixmes.json
+towl scan -N --ai -g  # create GitHub issues for valid TODOs only
+</code></pre>
+<h2 id="how-it-works"><a class="header" href="#how-it-works">How It Works</a></h2>
+<p>For each TODO, the LLM receives:</p>
+<ol>
+<li><strong>TODO description</strong> -- the comment text</li>
+<li><strong>Expanded context</strong> -- ~30 lines of surrounding source code</li>
+<li><strong>Function body</strong> -- the complete enclosing function (if detected)</li>
+</ol>
+<p>The LLM determines:</p>
+<ul>
+<li><strong>Is it resolved?</strong> -- Does the code already do what the TODO asks?</li>
+<li><strong>Is it relevant?</strong> -- Does the code/feature still exist?</li>
+<li><strong>Is it actionable?</strong> -- Is the TODO clear and specific?</li>
+</ul>
+<p>Based on these checks, each TODO is classified as Valid, Invalid, or Uncertain with a confidence score (0-100%).</p>
+<h2 id="non-interactive-mode"><a class="header" href="#non-interactive-mode">Non-Interactive Mode</a></h2>
+<p>With <code>-N --ai</code>, invalid TODOs are automatically filtered out of the results:</p>
+<pre><code class="language-bash">towl scan -N --ai
+# Only valid and uncertain TODOs appear in output
+
+towl scan -N --ai -g
+# GitHub issues created only for valid TODOs, enriched with AI reasoning
+</code></pre>
+<h2 id="interactive-mode-tui"><a class="header" href="#interactive-mode-tui">Interactive Mode (TUI)</a></h2>
+<p>With <code>--ai</code> (no <code>-N</code>), the TUI shows analysis results:</p>
+<ul>
+<li><strong>Validity column</strong> -- Each TODO shows <code>V</code> (Valid), <code>I</code> (Invalid), or <code>?</code> (Uncertain)</li>
+<li><strong>Colour coding</strong> -- Green for valid, red for invalid, yellow for uncertain</li>
+<li><strong>Peek view</strong> -- Press <code>p</code> to see the LLM's reasoning below the source code</li>
+<li><strong>Delete invalid TODOs</strong> -- Select invalid TODOs and press <code>d</code> to remove them from source files (with confirmation)</li>
+</ul>
+<h3 id="delete-workflow"><a class="header" href="#delete-workflow">Delete Workflow</a></h3>
+<ol>
+<li>Select invalid TODOs with <code>Space</code> (or <code>a</code> to select all visible)</li>
+<li>Press <code>d</code> to open the delete confirmation dialog</li>
+<li>Review the list of TODOs that will be removed</li>
+<li>Press <code>y</code> to confirm deletion, or <code>n</code> to cancel</li>
+<li>towl removes the comment lines from source files using atomic writes</li>
+</ol>
+<blockquote>
+<p><strong>Note:</strong> Only TODOs marked as Invalid by the AI can be deleted via <code>d</code>. Valid and Uncertain TODOs are excluded from deletion.</p>
+</blockquote>
+<h2 id="github-issue-enrichment"><a class="header" href="#github-issue-enrichment">GitHub Issue Enrichment</a></h2>
+<p>When creating GitHub issues (either with <code>-g</code> or via the TUI), valid TODOs include an <strong>AI Analysis</strong> section in the issue body:</p>
+<pre><code class="language-markdown">## AI Analysis
+
+**Validity:** Valid
+**Confidence:** 92%
+
+### Reasoning
+
+The caching layer referenced in this TODO has not been implemented.
+The function currently makes direct database calls on every request.
+
+### Enhanced Description
+
+This TODO identifies a performance bottleneck where database queries
+are executed on every request without caching. Adding a caching layer
+would reduce database load and improve response times.
+</code></pre>
+<h2 id="configuration"><a class="header" href="#configuration">Configuration</a></h2>
+<p>Add a <code>[llm]</code> section to <code>.towl.toml</code>:</p>
+<pre><code class="language-toml">[llm]
+provider = "claude"                      # "claude" or "openai"
+model = "claude-opus-4-6"             # model identifier
+# base_url = "http://localhost:11434/v1"  # for Ollama/vLLM
+max_concurrent_analyses = 5              # concurrent LLM requests
+max_analyse_count = 50                   # max TODOs to analyse per scan
+max_tokens = 4096                        # LLM response token limit
+</code></pre>
+<h3 id="environment-variables"><a class="header" href="#environment-variables">Environment Variables</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>Variable</th><th>Default</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>TOWL_LLM_API_KEY</code></td><td>--</td><td>API key (required for <code>--ai</code>)</td></tr>
+<tr><td><code>TOWL_LLM_PROVIDER</code></td><td><code>claude</code></td><td><code>"claude"</code>, <code>"openai"</code>, <code>"claude-code"</code>, or <code>"codex"</code></td></tr>
+<tr><td><code>TOWL_LLM_MODEL</code></td><td><code>claude-opus-4-6</code></td><td>Model identifier</td></tr>
+<tr><td><code>TOWL_LLM_BASE_URL</code></td><td>Provider default</td><td>Custom endpoint URL</td></tr>
+</tbody></table>
+</div>
+<h3 id="using-claude-code-or-codex-cli"><a class="header" href="#using-claude-code-or-codex-cli">Using Claude Code or Codex CLI</a></h3>
+<p>If you have <code>claude</code> (Claude Code) or <code>codex</code> (OpenAI Codex CLI) installed, you can use them directly without an API key:</p>
+<pre><code class="language-bash"># Use Claude Code CLI
+export TOWL_LLM_PROVIDER=claude-code
+towl scan --ai
+
+# Use Codex CLI
+export TOWL_LLM_PROVIDER=codex
+towl scan --ai
+</code></pre>
+<p>Or set in <code>.towl.toml</code>:</p>
+<pre><code class="language-toml">[llm]
+provider = "claude-code"   # or "codex"
+# command = "/custom/path/to/claude"   # optional override
+# args = ["-p", "--output-format", "json"]  # optional override
+</code></pre>
+<p>No <code>TOWL_LLM_API_KEY</code> is needed -- the CLI agents manage their own authentication.</p>
+<p><strong>Auto-fallback:</strong> If the CLI binary is not found on PATH, towl automatically falls back to the corresponding API provider (<code>claude-code</code> -&gt; Claude API, <code>codex</code> -&gt; OpenAI API). The API fallback requires <code>TOWL_LLM_API_KEY</code> to be set.</p>
+<h3 id="using-with-ollama-or-local-models"><a class="header" href="#using-with-ollama-or-local-models">Using with Ollama or Local Models</a></h3>
+<pre><code class="language-bash">export TOWL_LLM_PROVIDER=openai
+export TOWL_LLM_MODEL=llama3
+export TOWL_LLM_BASE_URL=http://localhost:11434/v1
+export TOWL_LLM_API_KEY=ollama  # Ollama doesn't need a real key
+
+towl scan -N --ai
+</code></pre>
+<h2 id="rate-limiting"><a class="header" href="#rate-limiting">Rate Limiting</a></h2>
+<p>Two configurable limits prevent excessive API usage:</p>
+<div class="table-wrapper"><table><thead><tr><th>Limit</th><th>Default</th><th>Config field</th></tr></thead><tbody>
+<tr><td>Concurrent requests</td><td>5</td><td><code>max_concurrent_analyses</code></td></tr>
+<tr><td>Total TODOs analysed</td><td>50</td><td><code>max_analyse_count</code></td></tr>
+</tbody></table>
+</div>
+<p>When the TODO count exceeds <code>max_analyse_count</code>, only the first N TODOs are analysed. A warning is logged for the remainder.</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../guides/tui.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../guides/output-formats.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../guides/tui.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../guides/output-formats.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+
+    </div>
+    </body>
+</html>

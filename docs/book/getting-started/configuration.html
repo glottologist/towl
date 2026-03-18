@@ -1,0 +1,350 @@
+<!DOCTYPE HTML>
+<html lang="en" class="navy sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Configuration - towl Documentation</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="Documentation for towl - a fast CLI tool to scan codebases for TODO comments">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "navy";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "../searchindex.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('navy')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">towl Documentation</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/glottologist/towl" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+                        <a href="https://github.com/glottologist/towl/edit/main/docs/src/src/getting-started/configuration.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                            <i id="git-edit-button" class="fa fa-edit"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <i class="fa fa-spinner fa-spin"></i>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="configuration"><a class="header" href="#configuration">Configuration</a></h1>
+<p>towl uses a <code>.towl.toml</code> file in the project root for configuration. All fields have sensible defaults -- you only need to override what you want to change.</p>
+<h2 id="config-file"><a class="header" href="#config-file">Config File</a></h2>
+<p>Create <code>.towl.toml</code> manually or run <code>towl init</code>:</p>
+<pre><code class="language-toml">[parsing]
+file_extensions = ["rs", "toml", "json", "yaml", "yml", "sh", "bash"]
+exclude_patterns = ["target/*", ".git/*"]
+include_context_lines = 3
+
+[github]
+owner = "your-username"
+repo = "your-repo"
+</code></pre>
+<h2 id="parsing-section"><a class="header" href="#parsing-section">Parsing Section</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Field</th><th>Type</th><th>Default</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>file_extensions</code></td><td><code>string[]</code></td><td><code>["rs", "toml", "json", "yaml", "yml", "sh", "bash"]</code></td><td>File extensions to scan</td></tr>
+<tr><td><code>exclude_patterns</code></td><td><code>string[]</code></td><td><code>["target/*", ".git/*"]</code></td><td>Glob patterns to exclude</td></tr>
+<tr><td><code>include_context_lines</code></td><td><code>integer</code></td><td><code>3</code></td><td>Number of surrounding lines to capture (1-50)</td></tr>
+<tr><td><code>comment_prefixes</code></td><td><code>string[]</code></td><td><code>["//", "^\\s*#", "/\\*", "^\\s*\\*"]</code></td><td>Regex patterns for comment line detection</td></tr>
+<tr><td><code>todo_patterns</code></td><td><code>string[]</code></td><td>See below</td><td>Regex patterns for TODO extraction</td></tr>
+<tr><td><code>function_patterns</code></td><td><code>string[]</code></td><td>See below</td><td>Regex patterns for function context detection</td></tr>
+</tbody></table>
+</div>
+<h3 id="default-todo-patterns"><a class="header" href="#default-todo-patterns">Default TODO Patterns</a></h3>
+<pre><code class="language-toml">todo_patterns = [
+    "(?i)\\bTODO:\\s*(.*)",
+    "(?i)\\bFIXME:\\s*(.*)",
+    "(?i)\\bHACK:\\s*(.*)",
+    "(?i)\\bNOTE:\\s*(.*)",
+    "(?i)\\bBUG:\\s*(.*)",
+]
+</code></pre>
+<p>All patterns are case-insensitive by default. Each pattern must contain a capture group <code>(.*)</code> for extracting the description text.</p>
+<h3 id="default-function-patterns"><a class="header" href="#default-function-patterns">Default Function Patterns</a></h3>
+<pre><code class="language-toml">function_patterns = [
+    "^\\s*(pub\\s+)?fn\\s+(\\w+)",            # Rust
+    "^\\s*def\\s+(\\w+)",                      # Python
+    "^\\s*(async\\s+)?function\\s+(\\w+)",     # JavaScript
+    "^\\s*(public|private|protected)?\\s*(static\\s+)?\\w+\\s+(\\w+)\\s*\\(",  # Java/C#
+    "^\\s*func\\s+(\\w+)",                     # Go/Swift
+]
+</code></pre>
+<h3 id="pattern-limits"><a class="header" href="#pattern-limits">Pattern Limits</a></h3>
+<p>Each pattern field is limited to 100 entries. Individual regex patterns are limited to 256 characters. These limits prevent denial-of-service via malicious configuration files.</p>
+<h2 id="github-section"><a class="header" href="#github-section">GitHub Section</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Field</th><th>Type</th><th>Default</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>owner</code></td><td><code>string</code></td><td>Auto-detected from git remote</td><td>GitHub repository owner</td></tr>
+<tr><td><code>repo</code></td><td><code>string</code></td><td>Auto-detected from git remote</td><td>GitHub repository name</td></tr>
+<tr><td><code>token</code></td><td>--</td><td>--</td><td>Set via environment variable only</td></tr>
+<tr><td><code>rate_limit_delay_ms</code></td><td><code>integer</code></td><td><code>100</code></td><td>Delay in ms between GitHub API calls</td></tr>
+</tbody></table>
+</div>
+<blockquote>
+<p><strong>Note:</strong> The GitHub token is never stored in the config file. Use the <code>TOWL_GITHUB_TOKEN</code> environment variable.</p>
+</blockquote>
+<h2 id="llm-section"><a class="header" href="#llm-section">LLM Section</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Field</th><th>Type</th><th>Default</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>provider</code></td><td><code>string</code></td><td><code>claude</code></td><td>LLM provider: <code>"claude"</code>, <code>"openai"</code>, <code>"claude-code"</code>, or <code>"codex"</code></td></tr>
+<tr><td><code>model</code></td><td><code>string</code></td><td><code>claude-opus-4-6</code></td><td>Model identifier</td></tr>
+<tr><td><code>base_url</code></td><td><code>string</code></td><td>Provider default</td><td>Custom endpoint URL (for Ollama, vLLM, etc.)</td></tr>
+<tr><td><code>max_concurrent_analyses</code></td><td><code>integer</code></td><td><code>5</code></td><td>Max concurrent LLM requests (1-20)</td></tr>
+<tr><td><code>max_analyse_count</code></td><td><code>integer</code></td><td><code>50</code></td><td>Max TODOs to analyse per scan (1-500)</td></tr>
+<tr><td><code>max_tokens</code></td><td><code>integer</code></td><td><code>4096</code></td><td>LLM response token limit</td></tr>
+<tr><td><code>command</code></td><td><code>string</code></td><td>Auto (provider-dependent)</td><td>Override CLI binary path</td></tr>
+<tr><td><code>args</code></td><td><code>string[]</code></td><td>Auto (provider-dependent)</td><td>Override CLI arguments</td></tr>
+</tbody></table>
+</div>
+<blockquote>
+<p><strong>Note:</strong> The LLM API key is never stored in the config file. Use the <code>TOWL_LLM_API_KEY</code> environment variable. See <a href="../guides/ai-analysis.html">AI Analysis</a> for usage details.</p>
+</blockquote>
+<h2 id="environment-variables"><a class="header" href="#environment-variables">Environment Variables</a></h2>
+<p>Seven environment variables override config file values:</p>
+<div class="table-wrapper"><table><thead><tr><th>Variable</th><th>Overrides</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>TOWL_GITHUB_TOKEN</code></td><td><code>github.token</code></td><td>GitHub personal access token (stored as <code>SecretString</code>, masked in logs)</td></tr>
+<tr><td><code>TOWL_GITHUB_OWNER</code></td><td><code>github.owner</code></td><td>GitHub repository owner</td></tr>
+<tr><td><code>TOWL_GITHUB_REPO</code></td><td><code>github.repo</code></td><td>GitHub repository name</td></tr>
+<tr><td><code>TOWL_LLM_API_KEY</code></td><td><code>llm.api_key</code></td><td>LLM API key (stored as <code>SecretString</code>, env-only)</td></tr>
+<tr><td><code>TOWL_LLM_PROVIDER</code></td><td><code>llm.provider</code></td><td>LLM provider (<code>"claude"</code> or <code>"openai"</code>)</td></tr>
+<tr><td><code>TOWL_LLM_MODEL</code></td><td><code>llm.model</code></td><td>LLM model identifier</td></tr>
+<tr><td><code>TOWL_LLM_BASE_URL</code></td><td><code>llm.base_url</code></td><td>Custom LLM endpoint URL</td></tr>
+</tbody></table>
+</div>
+<h2 id="config-loading-order"><a class="header" href="#config-loading-order">Config Loading Order</a></h2>
+<ol>
+<li>Built-in defaults</li>
+<li><code>.towl.toml</code> file (or path specified with <code>--path</code>)</li>
+<li>Environment variable overrides (<code>TOWL_GITHUB_*</code>, <code>TOWL_LLM_*</code>)</li>
+</ol>
+<p>If no <code>.towl.toml</code> exists, defaults are used without error.</p>
+<h2 id="viewing-active-configuration"><a class="header" href="#viewing-active-configuration">Viewing Active Configuration</a></h2>
+<pre><code class="language-bash">towl config
+</code></pre>
+<p>Example output:</p>
+<pre><code class="language-text">📋 Towl Configuration
+┌─ Parsing
+│  ├─ File Extensions: bash, json, rs, sh, toml, yaml, yml
+│  ├─ Exclude Patterns: target/*, .git/*
+│  ├─ Context Lines: 3
+│  ├─ Comment Prefixes:
+│  │  ├─ //
+│  │  ├─ ^\s*#
+│  │  ├─ /\*
+│  │  └─ ^\s*\*
+│  ├─ TODO Patterns:
+│  │  ├─ (?i)\bTODO:\s*(.*)
+│  │  ...
+│  └─ Function Patterns:
+│     ├─ ^\s*(pub\s+)?fn\s+(\w+)
+│     ...
+└─ GitHub
+   ├─ Owner: glottologist
+   ├─ Repo: towl
+   └─ Token: not set
+</code></pre>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../getting-started/quickstart.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../guides/scanning.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../getting-started/quickstart.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../guides/scanning.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+
+    </div>
+    </body>
+</html>

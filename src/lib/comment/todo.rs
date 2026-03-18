@@ -84,7 +84,7 @@ impl TryFrom<&str> for TodoType {
 /// Contains the comment text, its position within the file, surrounding context,
 /// and the enclosing function name (if detected). The `id` field
 /// (`{file_path}_L{line_number}`) is used for GitHub issue deduplication.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TodoComment {
     /// Unique identifier: `{file_path}_L{line_number}`.
     pub id: String,
@@ -101,6 +101,10 @@ pub struct TodoComment {
     pub context_lines: Vec<String>,
     /// Name of the enclosing function, if detected by pattern matching.
     pub function_context: Option<String>,
+    /// LLM validation analysis, populated when `--ai` flag is used.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
+    pub analysis: Option<crate::llm::types::AnalysisResult>,
 }
 
 #[cfg(test)]
@@ -194,6 +198,7 @@ pub(crate) mod test_support {
                 description: self.description,
                 context_lines: self.context_lines,
                 function_context: self.function_context,
+                analysis: None,
             }
         }
     }
@@ -203,6 +208,7 @@ pub(crate) mod test_support {
 mod tests {
     use super::*;
     use proptest::prelude::*;
+    use rstest::rstest;
 
     proptest! {
         #[test]
@@ -216,29 +222,18 @@ mod tests {
         }
 
         #[test]
-        fn test_todo_type_case_insensitivity(
+        fn prop_try_from_accepts_valid_keywords_in_any_context(
+            prefix in "[\\p{L}\\p{N}\\s]*",
             keyword in prop::sample::select(vec!["TODO", "FIXME", "HACK", "NOTE", "BUG"]),
-            suffix in "[a-zA-Z0-9 :]{0,20}"
+            suffix in "[\\p{L}\\p{N}\\s:]*",
         ) {
-            let input = format!("{keyword}{suffix}");
-            let result_upper = TodoType::try_from(input.as_str());
-            prop_assert!(result_upper.is_ok());
+            let input = format!("{prefix}{keyword}{suffix}");
+            let result = TodoType::try_from(input.as_str());
+            prop_assert!(result.is_ok(), "Should accept: {}", input);
 
             let lower_input = input.to_lowercase();
             let result_lower = TodoType::try_from(lower_input.as_str());
-            prop_assert!(result_lower.is_ok());
-        }
-
-        #[test]
-        fn test_todo_type_with_random_prefix_suffix(
-            prefix in "[a-zA-Z0-9 ]*",
-            todo_type in prop::sample::select(vec!["TODO", "FIXME", "HACK", "NOTE", "BUG"]),
-            suffix in "[a-zA-Z0-9 :]*"
-        ) {
-            let input = format!("{prefix}{todo_type}{suffix}");
-            let result = TodoType::try_from(input.as_str());
-
-            prop_assert!(result.is_ok());
+            prop_assert!(result_lower.is_ok(), "Should accept lowercase: {}", lower_input);
         }
 
         #[test]
@@ -253,16 +248,26 @@ mod tests {
             let result = TodoType::try_from(s.as_str());
             prop_assert!(result.is_err());
         }
+    }
 
-        #[test]
-        fn test_whitespace_handling(
-            spaces_before in " {0,5}",
-            todo_type in prop::sample::select(vec!["TODO", "FIXME", "HACK", "NOTE", "BUG"]),
-            spaces_after in " {0,5}"
-        ) {
-            let input = format!("{spaces_before}{todo_type}{spaces_after}");
-            let result = TodoType::try_from(input.as_str());
-            prop_assert!(result.is_ok());
-        }
+    #[rstest]
+    #[case("TODO: x", TodoType::Todo, "TODO", "todo", 4)]
+    #[case("FIXME: x", TodoType::Fixme, "FIXME", "fixme", 2)]
+    #[case("HACK: x", TodoType::Hack, "HACK", "hack", 3)]
+    #[case("NOTE: x", TodoType::Note, "NOTE", "note", 5)]
+    #[case("BUG: x", TodoType::Bug, "BUG", "bug", 1)]
+    fn test_todo_type_methods(
+        #[case] input: &str,
+        #[case] expected_variant: TodoType,
+        #[case] display: &str,
+        #[case] filter_str: &str,
+        #[case] priority: u8,
+    ) {
+        let variant = TodoType::try_from(input).unwrap();
+        assert_eq!(variant, expected_variant);
+        assert_eq!(format!("{variant}"), display);
+        assert_eq!(variant.as_filter_str(), filter_str);
+        assert_eq!(variant.github_label(), filter_str);
+        assert_eq!(variant.priority(), priority);
     }
 }

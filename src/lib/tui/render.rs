@@ -8,6 +8,7 @@ use ratatui::widgets::{
 use ratatui::Frame;
 
 use crate::comment::todo::TodoComment;
+use crate::llm::types::Validity;
 
 use super::app::{App, AppMode, CreatingState, DoneState, PeekState, SortField};
 
@@ -30,6 +31,7 @@ pub fn draw(frame: &mut Frame, app: &App) {
         AppMode::Confirm => draw_confirm_popup(frame),
         AppMode::Creating(state) => draw_creating_popup(frame, state),
         AppMode::Done(state) => draw_done_popup(frame, state),
+        AppMode::DeleteConfirm(todos) => draw_delete_confirm_popup(frame, todos),
         AppMode::Browse => {}
     }
 }
@@ -71,8 +73,18 @@ fn draw_filter_bar(frame: &mut Frame, area: Rect, app: &App) {
     frame.render_widget(Paragraph::new(line), area);
 }
 
+fn validity_indicator(todo: &TodoComment) -> (&str, Option<Color>) {
+    match todo.analysis.as_ref().map(|a| a.validity) {
+        Some(Validity::Valid) => ("V", Some(Color::Green)),
+        Some(Validity::Invalid) => ("I", Some(Color::Red)),
+        Some(Validity::Uncertain) => ("?", Some(Color::Yellow)),
+        None => ("-", None),
+    }
+}
+
 fn build_todo_list_item(todo: &TodoComment, is_selected: bool) -> ListItem {
     let marker = if is_selected { "[x]" } else { "[ ]" };
+    let (status, validity_colour) = validity_indicator(todo);
     let file_display = todo
         .file_path
         .file_name()
@@ -80,11 +92,13 @@ fn build_todo_list_item(todo: &TodoComment, is_selected: bool) -> ListItem {
         .to_string_lossy();
 
     let text = format!(
-        " {marker} [{:5}] {}:{} - {}",
+        " {marker} {status} [{:5}] {}:{} - {}",
         todo.todo_type, file_display, todo.line_number, todo.description,
     );
 
-    let style = if is_selected {
+    let style = if let Some(colour) = validity_colour {
+        Style::default().fg(colour)
+    } else if is_selected {
         Style::default().fg(Color::Green)
     } else {
         Style::default()
@@ -124,12 +138,13 @@ fn draw_todo_list(frame: &mut Frame, area: Rect, app: &App) {
 fn draw_footer(frame: &mut Frame, area: Rect, app: &App) {
     let hints = match app.mode() {
         AppMode::Browse => {
-            " j/k:nav  space:toggle  a:all  n:none  f:filter  s:sort  r:reverse  p:peek  enter:confirm  q:quit"
+            " j/k:nav  space:toggle  a:all  n:none  f:filter  s:sort  r:reverse  p:peek  d:delete  enter:confirm  q:quit"
         }
         AppMode::Peek(_) => " j/k:scroll  p/esc:close",
         AppMode::Confirm => " y/enter:yes  n/esc:no",
         AppMode::Creating(_) => " Creating issues...",
         AppMode::Done(_) => " q/enter:quit",
+        AppMode::DeleteConfirm(_) => " y/enter:delete  n/esc:cancel",
     };
 
     let line = Line::from(Span::styled(hints, Style::default().fg(Color::DarkGray)));
@@ -164,7 +179,7 @@ fn draw_peek_popup(frame: &mut Frame, state: &PeekState) {
         .style(Style::default().fg(Color::Cyan));
 
     let inner_height = usize::from(area.height.saturating_sub(2));
-    let visible: Vec<Line> = state
+    let mut visible: Vec<Line> = state
         .lines
         .iter()
         .skip(state.scroll)
@@ -186,6 +201,33 @@ fn draw_peek_popup(frame: &mut Frame, state: &PeekState) {
             Line::from(vec![num_span, code_span])
         })
         .collect();
+
+    if let Some(ref analysis) = state.analysis {
+        let separator = Line::from(Span::styled(
+            "─── AI Analysis ───",
+            Style::default()
+                .fg(Color::Cyan)
+                .add_modifier(Modifier::BOLD),
+        ));
+        visible.push(separator);
+
+        let (validity_text, colour) = match analysis.validity {
+            Validity::Valid => ("Valid", Color::Green),
+            Validity::Invalid => ("Invalid", Color::Red),
+            Validity::Uncertain => ("Uncertain", Color::Yellow),
+        };
+        visible.push(Line::from(vec![
+            Span::styled(" Validity: ", Style::default().fg(Color::DarkGray)),
+            Span::styled(
+                format!("{validity_text} ({:.0}%)", analysis.confidence * 100.0),
+                Style::default().fg(colour),
+            ),
+        ]));
+        visible.push(Line::from(vec![
+            Span::styled(" Reasoning: ", Style::default().fg(Color::DarkGray)),
+            Span::raw(&analysis.reasoning),
+        ]));
+    }
 
     let paragraph = Paragraph::new(visible).block(block);
     frame.render_widget(paragraph, area);
@@ -261,6 +303,46 @@ fn draw_done_popup(frame: &mut Frame, state: &DoneState) {
         body.push_str(line);
     }
     body.push_str("\n\n Press q or enter to exit");
+
+    let text = Paragraph::new(body).block(block);
+    frame.render_widget(text, area);
+}
+
+fn draw_delete_confirm_popup(frame: &mut Frame, todos: &[TodoComment]) {
+    let list_lines: Vec<String> = todos
+        .iter()
+        .take(10)
+        .map(|t| {
+            format!(
+                "  {}:{} - {}",
+                t.file_path.display(),
+                t.line_number,
+                t.description
+            )
+        })
+        .collect();
+    let extra = if todos.len() > 10 {
+        format!("\n  ... and {} more", todos.len() - 10)
+    } else {
+        String::new()
+    };
+
+    let popup_height = u16::try_from((list_lines.len() + 5).clamp(7, 20)).unwrap_or(20);
+    let area = popup_area(frame, 70, popup_height);
+    frame.render_widget(Clear, area);
+
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .title(format!(" Delete {} invalid TODOs? ", todos.len()))
+        .style(Style::default().fg(Color::Red));
+
+    let mut body = String::new();
+    for line in &list_lines {
+        body.push_str(line);
+        body.push('\n');
+    }
+    body.push_str(&extra);
+    body.push_str("\n\n y/enter = delete, n/esc = cancel");
 
     let text = Paragraph::new(body).block(block);
     frame.render_widget(text, area);

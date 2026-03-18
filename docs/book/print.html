@@ -1,0 +1,2729 @@
+<!DOCTYPE HTML>
+<html lang="en" class="navy sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>towl Documentation</title>
+        <meta name="robots" content="noindex">
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="Documentation for towl - a fast CLI tool to scan codebases for TODO comments">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon.svg">
+        <link rel="shortcut icon" href="favicon.png">
+        <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+        <link rel="stylesheet" href="css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "navy";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('navy')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">towl Documentation</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/glottologist/towl" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <i class="fa fa-spinner fa-spin"></i>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="introduction"><a class="header" href="#introduction">Introduction</a></h1>
+<p><strong>towl</strong> is a fast command-line tool built in Rust that scans codebases for TODO comments. It provides an interactive TUI for browsing and managing TODOs, can create GitHub issues from them, and supports multiple output formats for CI/scripting. It detects TODO, FIXME, HACK, NOTE, and BUG comments across many languages, with configurable patterns, context-aware output, and robust resource limits.</p>
+<h2 id="key-features"><a class="header" href="#key-features">Key Features</a></h2>
+<ul>
+<li><strong>Interactive TUI</strong> -- Browse, filter, sort, and peek at TODOs in a full-screen terminal interface powered by ratatui</li>
+<li><strong>GitHub integration</strong> -- Create GitHub issues from selected TODOs and automatically replace comments with issue links</li>
+<li><strong>Multi-language support</strong> -- Scans Rust, Python, JavaScript, Go, Shell, and more via configurable comment prefixes and function patterns</li>
+<li><strong>Multiple output formats</strong> -- JSON, CSV, Markdown, TOML, and terminal table (non-interactive mode)</li>
+<li><strong>Type filtering &amp; sorting</strong> -- Filter results by TODO type; sort by file, line, type, or priority</li>
+<li><strong>Context-aware</strong> -- Captures surrounding code lines and enclosing function names</li>
+<li><strong>Configurable</strong> -- Customise file extensions, exclude patterns, comment prefixes, and TODO patterns via <code>.towl.toml</code></li>
+<li><strong>Safe by design</strong> -- Path traversal protection, resource limits, symlink resolution, and secret handling for GitHub tokens</li>
+<li><strong>Fast</strong> -- Concurrent file scanning, async I/O with tokio, compiled regex patterns, and static enum dispatch</li>
+</ul>
+<h2 id="how-it-works"><a class="header" href="#how-it-works">How It Works</a></h2>
+<pre><code class="language-text">                ┌──────────┐
+                │  Config   │  .towl.toml + env vars + git remote
+                └────┬─────┘
+                     │
+                ┌────▼─────┐
+                │  Scanner  │  Walks directory tree, scans files concurrently
+                └────┬─────┘
+                     │
+                ┌────▼─────┐
+                │  Parser   │  Matches comment prefixes + TODO patterns
+                └────┬─────┘
+                     │
+              ┌──────┴──────┐
+              │             │
+        ┌─────▼────┐  ┌────▼─────┐
+        │   TUI     │  │  Output   │  Non-interactive: formats + writes
+        │ (default) │  │  (-N)     │
+        └─────┬────┘  └──────────┘
+              │
+        ┌─────▼────┐
+        │ Processor │  Replaces TODOs with GitHub issue links
+        └──────────┘
+</code></pre>
+<ol>
+<li><strong>Config</strong> loads settings from <code>.towl.toml</code> (with defaults), merges environment variables for GitHub integration</li>
+<li><strong>Scanner</strong> walks the directory tree using the <code>ignore</code> crate, scanning matching files concurrently with bounded parallelism</li>
+<li><strong>Parser</strong> reads each file, matches comment prefixes and TODO patterns via compiled regex, extracts context lines and function names</li>
+<li><strong>TUI</strong> (default) presents an interactive interface for browsing, filtering, and selecting TODOs to create as GitHub issues</li>
+<li><strong>Output</strong> (non-interactive) formats the collected <code>TodoComment</code> items into the requested format and writes to a file or stdout</li>
+<li><strong>Processor</strong> replaces TODO comments in source files with GitHub issue links after issues are created</li>
+</ol>
+<h2 id="quick-example"><a class="header" href="#quick-example">Quick Example</a></h2>
+<pre><code class="language-bash"># Scan current directory (opens interactive TUI)
+towl scan
+
+# Non-interactive: output as terminal table
+towl scan -N
+
+# Non-interactive: output to JSON file
+towl scan -N -f json -o todos.json
+
+# Filter to only FIXME comments
+towl scan -N -t fixme
+
+# Create GitHub issues
+towl scan -N -g
+
+# Show current configuration
+towl config
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="installation"><a class="header" href="#installation">Installation</a></h1>
+<h2 id="from-cratesio"><a class="header" href="#from-cratesio">From crates.io</a></h2>
+<pre><code class="language-bash">cargo install towl
+</code></pre>
+<p>Requires Rust 1.75 or later. Install Rust via <a href="https://rustup.rs/">rustup</a> if needed.</p>
+<h2 id="from-source"><a class="header" href="#from-source">From Source</a></h2>
+<pre><code class="language-bash">git clone https://github.com/glottologist/towl.git
+cd towl
+cargo build --release
+</code></pre>
+<p>The binary will be at <code>target/release/towl</code>.</p>
+<h2 id="verify-installation"><a class="header" href="#verify-installation">Verify Installation</a></h2>
+<pre><code class="language-bash">towl --version
+towl --help
+</code></pre>
+<h2 id="requirements"><a class="header" href="#requirements">Requirements</a></h2>
+<ul>
+<li><strong>Rust</strong>: 1.75+</li>
+<li><strong>git</strong>: Required on <code>PATH</code> for <code>towl init</code> (extracts GitHub owner/repo from the git remote)</li>
+<li><strong>OS</strong>: Linux, macOS, Windows</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="quick-start"><a class="header" href="#quick-start">Quick Start</a></h1>
+<h2 id="1-initialise-configuration"><a class="header" href="#1-initialise-configuration">1. Initialise Configuration</a></h2>
+<p>Inside a git repository with a GitHub remote:</p>
+<pre><code class="language-bash">towl init
+</code></pre>
+<p>This creates <code>.towl.toml</code> with sensible defaults and auto-detects the GitHub owner/repo from <code>git remote get-url origin</code>.</p>
+<p>If <code>.towl.toml</code> already exists, use <code>--force</code> to overwrite:</p>
+<pre><code class="language-bash">towl init --force
+</code></pre>
+<h2 id="2-scan-for-todos-interactive"><a class="header" href="#2-scan-for-todos-interactive">2. Scan for TODOs (Interactive)</a></h2>
+<pre><code class="language-bash"># Scan the current directory (opens TUI)
+towl scan
+
+# Scan a specific path
+towl scan src/
+</code></pre>
+<p>The interactive TUI lets you browse, filter, sort, peek at source code, and create GitHub issues from selected TODOs.</p>
+<h2 id="3-scan-for-todos-non-interactive"><a class="header" href="#3-scan-for-todos-non-interactive">3. Scan for TODOs (Non-Interactive)</a></h2>
+<p>Use <code>--non-interactive</code> / <code>-N</code> for CI pipelines and scripting:</p>
+<pre><code class="language-bash"># Terminal table output
+towl scan -N
+
+# Enable verbose output (file counts, timing)
+towl scan -N -v
+</code></pre>
+<h2 id="4-choose-an-output-format"><a class="header" href="#4-choose-an-output-format">4. Choose an Output Format</a></h2>
+<p>Non-interactive mode supports multiple output formats:</p>
+<pre><code class="language-bash"># Terminal table (default)
+towl scan -N
+
+# JSON file
+towl scan -N -f json -o todos.json
+
+# CSV file
+towl scan -N -f csv -o todos.csv
+
+# Markdown file
+towl scan -N -f markdown -o todos.md
+
+# TOML file
+towl scan -N -f toml -o todos.toml
+</code></pre>
+<blockquote>
+<p><strong>Note:</strong> File-based formats (<code>json</code>, <code>csv</code>, <code>toml</code>, <code>markdown</code>) require the <code>-o</code> flag with a matching file extension. Terminal/table formats always output to stdout.</p>
+</blockquote>
+<h2 id="5-filter-by-type"><a class="header" href="#5-filter-by-type">5. Filter by Type</a></h2>
+<pre><code class="language-bash"># Only TODO comments
+towl scan -N -t todo
+
+# Only FIXME comments
+towl scan -N -t fixme
+
+# Only BUG comments
+towl scan -N -t bug
+</code></pre>
+<p>Available types: <code>todo</code>, <code>fixme</code>, <code>hack</code>, <code>note</code>, <code>bug</code></p>
+<h2 id="6-create-github-issues"><a class="header" href="#6-create-github-issues">6. Create GitHub Issues</a></h2>
+<p>Set your GitHub token:</p>
+<pre><code class="language-bash">export TOWL_GITHUB_TOKEN=ghp_your_token_here
+</code></pre>
+<p>Then create issues from TODOs:</p>
+<pre><code class="language-bash"># Create GitHub issues (non-interactive)
+towl scan -N -g
+
+# Preview issues without creating them
+towl scan -N -g -n
+</code></pre>
+<p>In interactive mode, select TODOs with <code>Space</code> and press <code>Enter</code> to create issues.</p>
+<h2 id="7-view-configuration"><a class="header" href="#7-view-configuration">7. View Configuration</a></h2>
+<pre><code class="language-bash">towl config
+</code></pre>
+<p>Displays a tree view of all active settings including file extensions, exclude patterns, comment prefixes, TODO patterns, and GitHub configuration.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="configuration"><a class="header" href="#configuration">Configuration</a></h1>
+<p>towl uses a <code>.towl.toml</code> file in the project root for configuration. All fields have sensible defaults -- you only need to override what you want to change.</p>
+<h2 id="config-file"><a class="header" href="#config-file">Config File</a></h2>
+<p>Create <code>.towl.toml</code> manually or run <code>towl init</code>:</p>
+<pre><code class="language-toml">[parsing]
+file_extensions = ["rs", "toml", "json", "yaml", "yml", "sh", "bash"]
+exclude_patterns = ["target/*", ".git/*"]
+include_context_lines = 3
+
+[github]
+owner = "your-username"
+repo = "your-repo"
+</code></pre>
+<h2 id="parsing-section"><a class="header" href="#parsing-section">Parsing Section</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Field</th><th>Type</th><th>Default</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>file_extensions</code></td><td><code>string[]</code></td><td><code>["rs", "toml", "json", "yaml", "yml", "sh", "bash"]</code></td><td>File extensions to scan</td></tr>
+<tr><td><code>exclude_patterns</code></td><td><code>string[]</code></td><td><code>["target/*", ".git/*"]</code></td><td>Glob patterns to exclude</td></tr>
+<tr><td><code>include_context_lines</code></td><td><code>integer</code></td><td><code>3</code></td><td>Number of surrounding lines to capture (1-50)</td></tr>
+<tr><td><code>comment_prefixes</code></td><td><code>string[]</code></td><td><code>["//", "^\\s*#", "/\\*", "^\\s*\\*"]</code></td><td>Regex patterns for comment line detection</td></tr>
+<tr><td><code>todo_patterns</code></td><td><code>string[]</code></td><td>See below</td><td>Regex patterns for TODO extraction</td></tr>
+<tr><td><code>function_patterns</code></td><td><code>string[]</code></td><td>See below</td><td>Regex patterns for function context detection</td></tr>
+</tbody></table>
+</div>
+<h3 id="default-todo-patterns"><a class="header" href="#default-todo-patterns">Default TODO Patterns</a></h3>
+<pre><code class="language-toml">todo_patterns = [
+    "(?i)\\bTODO:\\s*(.*)",
+    "(?i)\\bFIXME:\\s*(.*)",
+    "(?i)\\bHACK:\\s*(.*)",
+    "(?i)\\bNOTE:\\s*(.*)",
+    "(?i)\\bBUG:\\s*(.*)",
+]
+</code></pre>
+<p>All patterns are case-insensitive by default. Each pattern must contain a capture group <code>(.*)</code> for extracting the description text.</p>
+<h3 id="default-function-patterns"><a class="header" href="#default-function-patterns">Default Function Patterns</a></h3>
+<pre><code class="language-toml">function_patterns = [
+    "^\\s*(pub\\s+)?fn\\s+(\\w+)",            # Rust
+    "^\\s*def\\s+(\\w+)",                      # Python
+    "^\\s*(async\\s+)?function\\s+(\\w+)",     # JavaScript
+    "^\\s*(public|private|protected)?\\s*(static\\s+)?\\w+\\s+(\\w+)\\s*\\(",  # Java/C#
+    "^\\s*func\\s+(\\w+)",                     # Go/Swift
+]
+</code></pre>
+<h3 id="pattern-limits"><a class="header" href="#pattern-limits">Pattern Limits</a></h3>
+<p>Each pattern field is limited to 100 entries. Individual regex patterns are limited to 256 characters. These limits prevent denial-of-service via malicious configuration files.</p>
+<h2 id="github-section"><a class="header" href="#github-section">GitHub Section</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Field</th><th>Type</th><th>Default</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>owner</code></td><td><code>string</code></td><td>Auto-detected from git remote</td><td>GitHub repository owner</td></tr>
+<tr><td><code>repo</code></td><td><code>string</code></td><td>Auto-detected from git remote</td><td>GitHub repository name</td></tr>
+<tr><td><code>token</code></td><td>--</td><td>--</td><td>Set via environment variable only</td></tr>
+<tr><td><code>rate_limit_delay_ms</code></td><td><code>integer</code></td><td><code>100</code></td><td>Delay in ms between GitHub API calls</td></tr>
+</tbody></table>
+</div>
+<blockquote>
+<p><strong>Note:</strong> The GitHub token is never stored in the config file. Use the <code>TOWL_GITHUB_TOKEN</code> environment variable.</p>
+</blockquote>
+<h2 id="llm-section"><a class="header" href="#llm-section">LLM Section</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Field</th><th>Type</th><th>Default</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>provider</code></td><td><code>string</code></td><td><code>claude</code></td><td>LLM provider: <code>"claude"</code>, <code>"openai"</code>, <code>"claude-code"</code>, or <code>"codex"</code></td></tr>
+<tr><td><code>model</code></td><td><code>string</code></td><td><code>claude-opus-4-6</code></td><td>Model identifier</td></tr>
+<tr><td><code>base_url</code></td><td><code>string</code></td><td>Provider default</td><td>Custom endpoint URL (for Ollama, vLLM, etc.)</td></tr>
+<tr><td><code>max_concurrent_analyses</code></td><td><code>integer</code></td><td><code>5</code></td><td>Max concurrent LLM requests (1-20)</td></tr>
+<tr><td><code>max_analyse_count</code></td><td><code>integer</code></td><td><code>50</code></td><td>Max TODOs to analyse per scan (1-500)</td></tr>
+<tr><td><code>max_tokens</code></td><td><code>integer</code></td><td><code>4096</code></td><td>LLM response token limit</td></tr>
+<tr><td><code>command</code></td><td><code>string</code></td><td>Auto (provider-dependent)</td><td>Override CLI binary path</td></tr>
+<tr><td><code>args</code></td><td><code>string[]</code></td><td>Auto (provider-dependent)</td><td>Override CLI arguments</td></tr>
+</tbody></table>
+</div>
+<blockquote>
+<p><strong>Note:</strong> The LLM API key is never stored in the config file. Use the <code>TOWL_LLM_API_KEY</code> environment variable. See <a href="getting-started/../guides/ai-analysis.html">AI Analysis</a> for usage details.</p>
+</blockquote>
+<h2 id="environment-variables"><a class="header" href="#environment-variables">Environment Variables</a></h2>
+<p>Seven environment variables override config file values:</p>
+<div class="table-wrapper"><table><thead><tr><th>Variable</th><th>Overrides</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>TOWL_GITHUB_TOKEN</code></td><td><code>github.token</code></td><td>GitHub personal access token (stored as <code>SecretString</code>, masked in logs)</td></tr>
+<tr><td><code>TOWL_GITHUB_OWNER</code></td><td><code>github.owner</code></td><td>GitHub repository owner</td></tr>
+<tr><td><code>TOWL_GITHUB_REPO</code></td><td><code>github.repo</code></td><td>GitHub repository name</td></tr>
+<tr><td><code>TOWL_LLM_API_KEY</code></td><td><code>llm.api_key</code></td><td>LLM API key (stored as <code>SecretString</code>, env-only)</td></tr>
+<tr><td><code>TOWL_LLM_PROVIDER</code></td><td><code>llm.provider</code></td><td>LLM provider (<code>"claude"</code> or <code>"openai"</code>)</td></tr>
+<tr><td><code>TOWL_LLM_MODEL</code></td><td><code>llm.model</code></td><td>LLM model identifier</td></tr>
+<tr><td><code>TOWL_LLM_BASE_URL</code></td><td><code>llm.base_url</code></td><td>Custom LLM endpoint URL</td></tr>
+</tbody></table>
+</div>
+<h2 id="config-loading-order"><a class="header" href="#config-loading-order">Config Loading Order</a></h2>
+<ol>
+<li>Built-in defaults</li>
+<li><code>.towl.toml</code> file (or path specified with <code>--path</code>)</li>
+<li>Environment variable overrides (<code>TOWL_GITHUB_*</code>, <code>TOWL_LLM_*</code>)</li>
+</ol>
+<p>If no <code>.towl.toml</code> exists, defaults are used without error.</p>
+<h2 id="viewing-active-configuration"><a class="header" href="#viewing-active-configuration">Viewing Active Configuration</a></h2>
+<pre><code class="language-bash">towl config
+</code></pre>
+<p>Example output:</p>
+<pre><code class="language-text">📋 Towl Configuration
+┌─ Parsing
+│  ├─ File Extensions: bash, json, rs, sh, toml, yaml, yml
+│  ├─ Exclude Patterns: target/*, .git/*
+│  ├─ Context Lines: 3
+│  ├─ Comment Prefixes:
+│  │  ├─ //
+│  │  ├─ ^\s*#
+│  │  ├─ /\*
+│  │  └─ ^\s*\*
+│  ├─ TODO Patterns:
+│  │  ├─ (?i)\bTODO:\s*(.*)
+│  │  ...
+│  └─ Function Patterns:
+│     ├─ ^\s*(pub\s+)?fn\s+(\w+)
+│     ...
+└─ GitHub
+   ├─ Owner: glottologist
+   ├─ Repo: towl
+   └─ Token: not set
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="scanning-for-todos"><a class="header" href="#scanning-for-todos">Scanning for TODOs</a></h1>
+<p>The <code>towl scan</code> command walks a directory tree, reads each matching file, and extracts TODO-style comments using compiled regex patterns.</p>
+<h2 id="interactive-mode-default"><a class="header" href="#interactive-mode-default">Interactive Mode (Default)</a></h2>
+<p>By default, <code>towl scan</code> opens an interactive TUI:</p>
+<pre><code class="language-bash">towl scan
+towl scan src/
+</code></pre>
+<p>See <a href="guides/./tui.html">Interactive TUI</a> for details on the TUI interface.</p>
+<h2 id="non-interactive-mode"><a class="header" href="#non-interactive-mode">Non-Interactive Mode</a></h2>
+<p>Use <code>--non-interactive</code> / <code>-N</code> to disable the TUI (for CI/scripting):</p>
+<pre><code class="language-bash">towl scan -N
+towl scan -N src/
+towl scan -N -v
+</code></pre>
+<h2 id="how-scanning-works"><a class="header" href="#how-scanning-works">How Scanning Works</a></h2>
+<ol>
+<li><strong>Directory walk</strong> -- Uses the <code>ignore</code> crate to traverse the file tree, respecting <code>.gitignore</code> rules automatically</li>
+<li><strong>Extension filter</strong> -- Only files matching <code>file_extensions</code> in config are read (default: <code>rs</code>, <code>toml</code>, <code>json</code>, <code>yaml</code>, <code>yml</code>, <code>sh</code>, <code>bash</code>)</li>
+<li><strong>Exclude patterns</strong> -- Files matching <code>exclude_patterns</code> are skipped (default: <code>target/*</code>, <code>.git/*</code>)</li>
+<li><strong>Concurrent scanning</strong> -- Matching files are scanned concurrently with bounded parallelism (up to 64 files at once)</li>
+<li><strong>Content parsing</strong> -- Each file is read and scanned for lines matching <code>comment_prefixes</code>, then checked against <code>todo_patterns</code></li>
+<li><strong>Context extraction</strong> -- Surrounding lines and enclosing function names are captured</li>
+</ol>
+<h2 id="verbose-mode"><a class="header" href="#verbose-mode">Verbose Mode</a></h2>
+<p>The <code>-v</code> / <code>--verbose</code> flag prints scan metrics to stderr (non-interactive mode only):</p>
+<pre><code class="language-bash">towl scan -N -v
+</code></pre>
+<pre><code class="language-text">Files scanned: 42
+Files skipped: 3
+Files errored: 0
+Scan duration: 12ms
+</code></pre>
+<h2 id="filtering-by-type"><a class="header" href="#filtering-by-type">Filtering by Type</a></h2>
+<p>Restrict results to a single TODO type:</p>
+<pre><code class="language-bash">towl scan -N -t todo      # Only TODO comments
+towl scan -N -t fixme     # Only FIXME comments
+towl scan -N -t hack      # Only HACK comments
+towl scan -N -t note      # Only NOTE comments
+towl scan -N -t bug       # Only BUG comments
+</code></pre>
+<p>The filter value is case-insensitive on the command line but stored lowercase internally.</p>
+<h2 id="github-issue-creation"><a class="header" href="#github-issue-creation">GitHub Issue Creation</a></h2>
+<p>Create GitHub issues from found TODOs:</p>
+<pre><code class="language-bash"># Create issues
+towl scan -N -g
+
+# Preview without creating
+towl scan -N -g -n
+</code></pre>
+<p>When issues are created, towl automatically replaces the TODO comment in source files with a link to the created issue. Duplicate detection prevents creating issues for TODOs that already have a matching open issue.</p>
+<p>In interactive mode, select TODOs with <code>Space</code> and press <code>Enter</code> to create issues.</p>
+<h2 id="ai-analysis"><a class="header" href="#ai-analysis">AI Analysis</a></h2>
+<p>Use the <code>--ai</code> flag to validate TODOs with an LLM:</p>
+<pre><code class="language-bash"># Analyse and filter out invalid TODOs
+towl scan -N --ai
+
+# Interactive mode with AI analysis
+towl scan --ai
+
+# Create GitHub issues for valid TODOs only (enriched with AI reasoning)
+towl scan -N --ai -g
+</code></pre>
+<p>In non-interactive mode, TODOs classified as Invalid are automatically excluded from the output. See <a href="guides/./ai-analysis.html">AI Analysis</a> for full details.</p>
+<h2 id="combining-options"><a class="header" href="#combining-options">Combining Options</a></h2>
+<p>Options compose freely:</p>
+<pre><code class="language-bash"># Scan src/, output FIXME comments as JSON to a file, verbose
+towl scan -N src/ -t fixme -f json -o fixmes.json -v
+
+# Scan and create GitHub issues for TODO comments only
+towl scan -N -t todo -g
+
+# AI-validated FIXMEs as JSON
+towl scan -N --ai -t fixme -f json -o fixmes.json
+</code></pre>
+<h2 id="resource-limits"><a class="header" href="#resource-limits">Resource Limits</a></h2>
+<p>towl enforces hard limits to prevent runaway scans:</p>
+<div class="table-wrapper"><table><thead><tr><th>Limit</th><th>Value</th><th>Purpose</th></tr></thead><tbody>
+<tr><td>Max file size</td><td>10 MB</td><td>Skips binary/generated files</td></tr>
+<tr><td>Max TODOs per file</td><td>10,000</td><td>Prevents single-file explosion</td></tr>
+<tr><td>Max total TODOs</td><td>100,000</td><td>Caps overall result set</td></tr>
+<tr><td>Max files scanned</td><td>100,000</td><td>Bounds directory walk</td></tr>
+</tbody></table>
+</div>
+<p>When a limit is hit, scanning stops gracefully and returns the results collected so far.</p>
+<h2 id="scan-result"><a class="header" href="#scan-result">Scan Result</a></h2>
+<p>The scan produces a <code>ScanResult</code> containing:</p>
+<ul>
+<li><strong>todos</strong> -- The list of extracted <code>TodoComment</code> items</li>
+<li><strong>files_scanned</strong> -- Number of files successfully read</li>
+<li><strong>files_skipped</strong> -- Number of files skipped (wrong extension, excluded, too large)</li>
+<li><strong>files_errored</strong> -- Number of files that failed to read (permissions, encoding)</li>
+<li><strong>duration</strong> -- Wall-clock time for the scan</li>
+</ul>
+<p>Two convenience checks:</p>
+<ul>
+<li><code>all_files_failed()</code> -- Returns <code>true</code> when no files were scanned but errors occurred (likely a permissions or path issue)</li>
+<li><code>is_clean()</code> -- Returns <code>true</code> when zero TODOs were found and zero files errored</li>
+</ul>
+<h2 id="path-safety"><a class="header" href="#path-safety">Path Safety</a></h2>
+<ul>
+<li><strong>Path traversal</strong> -- Paths containing <code>..</code> components are rejected</li>
+<li><strong>Symlink resolution</strong> -- Symlinks are resolved before processing to prevent escape from the scan root</li>
+<li><strong>.gitignore</strong> -- Respected automatically via the <code>ignore</code> crate</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="interactive-tui"><a class="header" href="#interactive-tui">Interactive TUI</a></h1>
+<p>By default, <code>towl scan</code> opens an interactive terminal interface powered by <a href="https://ratatui.rs">ratatui</a>. The TUI lets you browse, filter, sort, and peek at TODOs, then create GitHub issues from selected items.</p>
+<h2 id="launching"><a class="header" href="#launching">Launching</a></h2>
+<pre><code class="language-bash"># Opens TUI with TODOs from current directory
+towl scan
+
+# Opens TUI with TODOs from a specific path
+towl scan src/
+</code></pre>
+<p>To bypass the TUI (for CI/scripting), use <code>--non-interactive</code> / <code>-N</code>.</p>
+<h2 id="modes"><a class="header" href="#modes">Modes</a></h2>
+<p>The TUI has six modes:</p>
+<h3 id="browse"><a class="header" href="#browse">Browse</a></h3>
+<p>The main view. Displays all TODOs in a scrollable list with type, description, file path, and line number.</p>
+<p>When launched with <code>--ai</code>, each row shows a validity indicator (<code>V</code>/<code>I</code>/<code>?</code>) and is colour-coded: green for valid, red for invalid, yellow for uncertain.</p>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Action</th></tr></thead><tbody>
+<tr><td><code>j</code> / <code>Down</code></td><td>Move cursor down</td></tr>
+<tr><td><code>k</code> / <code>Up</code></td><td>Move cursor up</td></tr>
+<tr><td><code>Space</code></td><td>Toggle selection on current item</td></tr>
+<tr><td><code>a</code></td><td>Select all visible TODOs</td></tr>
+<tr><td><code>n</code></td><td>Deselect all</td></tr>
+<tr><td><code>f</code></td><td>Cycle type filter (All, TODO, FIXME, HACK, NOTE, BUG)</td></tr>
+<tr><td><code>s</code></td><td>Cycle sort field (File, Line, Type, Priority)</td></tr>
+<tr><td><code>r</code></td><td>Reverse sort order</td></tr>
+<tr><td><code>p</code></td><td>Open peek view for current TODO</td></tr>
+<tr><td><code>d</code></td><td>Delete selected invalid TODOs (requires <code>--ai</code>)</td></tr>
+<tr><td><code>Enter</code></td><td>Confirm selection and proceed to create GitHub issues</td></tr>
+<tr><td><code>q</code> / <code>Esc</code></td><td>Quit</td></tr>
+<tr><td><code>Ctrl+C</code></td><td>Force quit (works in any mode)</td></tr>
+</tbody></table>
+</div>
+<h3 id="peek"><a class="header" href="#peek">Peek</a></h3>
+<p>Shows the source code surrounding the selected TODO with syntax context. The TODO line is highlighted. When <code>--ai</code> is active, the LLM's reasoning is displayed below the source code.</p>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Action</th></tr></thead><tbody>
+<tr><td><code>j</code> / <code>Down</code></td><td>Scroll down</td></tr>
+<tr><td><code>k</code> / <code>Up</code></td><td>Scroll up</td></tr>
+<tr><td><code>p</code> / <code>q</code> / <code>Esc</code></td><td>Close peek and return to browse</td></tr>
+</tbody></table>
+</div>
+<h3 id="confirm"><a class="header" href="#confirm">Confirm</a></h3>
+<p>Appears after pressing <code>Enter</code> in browse mode with selected TODOs. Shows a summary of the TODOs that will be created as GitHub issues.</p>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Action</th></tr></thead><tbody>
+<tr><td><code>y</code> / <code>Enter</code></td><td>Confirm and start creating issues</td></tr>
+<tr><td><code>n</code> / <code>q</code> / <code>Esc</code></td><td>Cancel and return to browse</td></tr>
+</tbody></table>
+</div>
+<h3 id="creating"><a class="header" href="#creating">Creating</a></h3>
+<p>Displays a progress view while GitHub issues are being created. Shows the current phase (initialising client, loading existing issues, creating issues, replacing TODOs in files) and a progress counter.</p>
+<p>No keyboard input is accepted during creation (except <code>Ctrl+C</code> to force quit).</p>
+<h3 id="done"><a class="header" href="#done">Done</a></h3>
+<p>Shows the results after issue creation completes -- number of issues created, any errors encountered. Press <code>q</code>, <code>Esc</code>, or <code>Enter</code> to exit.</p>
+<h3 id="delete-confirm-requires---ai"><a class="header" href="#delete-confirm-requires---ai">Delete Confirm (requires <code>--ai</code>)</a></h3>
+<p>Appears after pressing <code>d</code> in Browse mode with selected invalid TODOs. Lists the TODOs that will be removed from source files.</p>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Action</th></tr></thead><tbody>
+<tr><td><code>y</code> / <code>Enter</code></td><td>Confirm and delete the TODO comment lines</td></tr>
+<tr><td><code>n</code> / <code>q</code> / <code>Esc</code></td><td>Cancel and return to browse</td></tr>
+</tbody></table>
+</div>
+<p>Only TODOs marked as Invalid by the AI are eligible for deletion.</p>
+<h2 id="workflow"><a class="header" href="#workflow">Workflow</a></h2>
+<ol>
+<li>Run <code>towl scan</code> to open the TUI</li>
+<li>Browse the TODO list -- use <code>f</code> to filter by type, <code>s</code>/<code>r</code> to sort</li>
+<li>Press <code>p</code> to peek at source code around a TODO</li>
+<li>Select TODOs with <code>Space</code> (or <code>a</code> to select all visible)</li>
+<li>Press <code>Enter</code> to review selected TODOs</li>
+<li>Press <code>y</code> to create GitHub issues</li>
+<li>towl creates the issues, skips duplicates, and replaces TODO comments with issue links in source files</li>
+</ol>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="ai-analysis-1"><a class="header" href="#ai-analysis-1">AI Analysis</a></h1>
+<p>towl can use an LLM (Claude or any OpenAI-compatible model) to validate whether each TODO is still relevant. The <code>--ai</code> flag triggers analysis that determines if a TODO is <strong>Valid</strong>, <strong>Invalid</strong>, or <strong>Uncertain</strong>.</p>
+<h2 id="setup"><a class="header" href="#setup">Setup</a></h2>
+<p>Set your API key as an environment variable:</p>
+<pre><code class="language-bash"># Claude (default)
+export TOWL_LLM_API_KEY=sk-ant-your-key-here
+
+# Or for OpenAI
+export TOWL_LLM_API_KEY=sk-your-openai-key
+export TOWL_LLM_PROVIDER=openai
+</code></pre>
+<p>The API key is stored as a <code>SecretString</code> and never written to config files or logs.</p>
+<h2 id="basic-usage"><a class="header" href="#basic-usage">Basic Usage</a></h2>
+<pre><code class="language-bash"># Non-interactive: analyse and filter out invalid TODOs
+towl scan -N --ai
+
+# Interactive: analyse and show results in TUI
+towl scan --ai
+
+# Combine with other flags
+towl scan -N --ai -t fixme -f json -o fixmes.json
+towl scan -N --ai -g  # create GitHub issues for valid TODOs only
+</code></pre>
+<h2 id="how-it-works-1"><a class="header" href="#how-it-works-1">How It Works</a></h2>
+<p>For each TODO, the LLM receives:</p>
+<ol>
+<li><strong>TODO description</strong> -- the comment text</li>
+<li><strong>Expanded context</strong> -- ~30 lines of surrounding source code</li>
+<li><strong>Function body</strong> -- the complete enclosing function (if detected)</li>
+</ol>
+<p>The LLM determines:</p>
+<ul>
+<li><strong>Is it resolved?</strong> -- Does the code already do what the TODO asks?</li>
+<li><strong>Is it relevant?</strong> -- Does the code/feature still exist?</li>
+<li><strong>Is it actionable?</strong> -- Is the TODO clear and specific?</li>
+</ul>
+<p>Based on these checks, each TODO is classified as Valid, Invalid, or Uncertain with a confidence score (0-100%).</p>
+<h2 id="non-interactive-mode-1"><a class="header" href="#non-interactive-mode-1">Non-Interactive Mode</a></h2>
+<p>With <code>-N --ai</code>, invalid TODOs are automatically filtered out of the results:</p>
+<pre><code class="language-bash">towl scan -N --ai
+# Only valid and uncertain TODOs appear in output
+
+towl scan -N --ai -g
+# GitHub issues created only for valid TODOs, enriched with AI reasoning
+</code></pre>
+<h2 id="interactive-mode-tui"><a class="header" href="#interactive-mode-tui">Interactive Mode (TUI)</a></h2>
+<p>With <code>--ai</code> (no <code>-N</code>), the TUI shows analysis results:</p>
+<ul>
+<li><strong>Validity column</strong> -- Each TODO shows <code>V</code> (Valid), <code>I</code> (Invalid), or <code>?</code> (Uncertain)</li>
+<li><strong>Colour coding</strong> -- Green for valid, red for invalid, yellow for uncertain</li>
+<li><strong>Peek view</strong> -- Press <code>p</code> to see the LLM's reasoning below the source code</li>
+<li><strong>Delete invalid TODOs</strong> -- Select invalid TODOs and press <code>d</code> to remove them from source files (with confirmation)</li>
+</ul>
+<h3 id="delete-workflow"><a class="header" href="#delete-workflow">Delete Workflow</a></h3>
+<ol>
+<li>Select invalid TODOs with <code>Space</code> (or <code>a</code> to select all visible)</li>
+<li>Press <code>d</code> to open the delete confirmation dialog</li>
+<li>Review the list of TODOs that will be removed</li>
+<li>Press <code>y</code> to confirm deletion, or <code>n</code> to cancel</li>
+<li>towl removes the comment lines from source files using atomic writes</li>
+</ol>
+<blockquote>
+<p><strong>Note:</strong> Only TODOs marked as Invalid by the AI can be deleted via <code>d</code>. Valid and Uncertain TODOs are excluded from deletion.</p>
+</blockquote>
+<h2 id="github-issue-enrichment"><a class="header" href="#github-issue-enrichment">GitHub Issue Enrichment</a></h2>
+<p>When creating GitHub issues (either with <code>-g</code> or via the TUI), valid TODOs include an <strong>AI Analysis</strong> section in the issue body:</p>
+<pre><code class="language-markdown">## AI Analysis
+
+**Validity:** Valid
+**Confidence:** 92%
+
+### Reasoning
+
+The caching layer referenced in this TODO has not been implemented.
+The function currently makes direct database calls on every request.
+
+### Enhanced Description
+
+This TODO identifies a performance bottleneck where database queries
+are executed on every request without caching. Adding a caching layer
+would reduce database load and improve response times.
+</code></pre>
+<h2 id="configuration-1"><a class="header" href="#configuration-1">Configuration</a></h2>
+<p>Add a <code>[llm]</code> section to <code>.towl.toml</code>:</p>
+<pre><code class="language-toml">[llm]
+provider = "claude"                      # "claude" or "openai"
+model = "claude-opus-4-6"             # model identifier
+# base_url = "http://localhost:11434/v1"  # for Ollama/vLLM
+max_concurrent_analyses = 5              # concurrent LLM requests
+max_analyse_count = 50                   # max TODOs to analyse per scan
+max_tokens = 4096                        # LLM response token limit
+</code></pre>
+<h3 id="environment-variables-1"><a class="header" href="#environment-variables-1">Environment Variables</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>Variable</th><th>Default</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>TOWL_LLM_API_KEY</code></td><td>--</td><td>API key (required for <code>--ai</code>)</td></tr>
+<tr><td><code>TOWL_LLM_PROVIDER</code></td><td><code>claude</code></td><td><code>"claude"</code>, <code>"openai"</code>, <code>"claude-code"</code>, or <code>"codex"</code></td></tr>
+<tr><td><code>TOWL_LLM_MODEL</code></td><td><code>claude-opus-4-6</code></td><td>Model identifier</td></tr>
+<tr><td><code>TOWL_LLM_BASE_URL</code></td><td>Provider default</td><td>Custom endpoint URL</td></tr>
+</tbody></table>
+</div>
+<h3 id="using-claude-code-or-codex-cli"><a class="header" href="#using-claude-code-or-codex-cli">Using Claude Code or Codex CLI</a></h3>
+<p>If you have <code>claude</code> (Claude Code) or <code>codex</code> (OpenAI Codex CLI) installed, you can use them directly without an API key:</p>
+<pre><code class="language-bash"># Use Claude Code CLI
+export TOWL_LLM_PROVIDER=claude-code
+towl scan --ai
+
+# Use Codex CLI
+export TOWL_LLM_PROVIDER=codex
+towl scan --ai
+</code></pre>
+<p>Or set in <code>.towl.toml</code>:</p>
+<pre><code class="language-toml">[llm]
+provider = "claude-code"   # or "codex"
+# command = "/custom/path/to/claude"   # optional override
+# args = ["-p", "--output-format", "json"]  # optional override
+</code></pre>
+<p>No <code>TOWL_LLM_API_KEY</code> is needed -- the CLI agents manage their own authentication.</p>
+<p><strong>Auto-fallback:</strong> If the CLI binary is not found on PATH, towl automatically falls back to the corresponding API provider (<code>claude-code</code> -&gt; Claude API, <code>codex</code> -&gt; OpenAI API). The API fallback requires <code>TOWL_LLM_API_KEY</code> to be set.</p>
+<h3 id="using-with-ollama-or-local-models"><a class="header" href="#using-with-ollama-or-local-models">Using with Ollama or Local Models</a></h3>
+<pre><code class="language-bash">export TOWL_LLM_PROVIDER=openai
+export TOWL_LLM_MODEL=llama3
+export TOWL_LLM_BASE_URL=http://localhost:11434/v1
+export TOWL_LLM_API_KEY=ollama  # Ollama doesn't need a real key
+
+towl scan -N --ai
+</code></pre>
+<h2 id="rate-limiting"><a class="header" href="#rate-limiting">Rate Limiting</a></h2>
+<p>Two configurable limits prevent excessive API usage:</p>
+<div class="table-wrapper"><table><thead><tr><th>Limit</th><th>Default</th><th>Config field</th></tr></thead><tbody>
+<tr><td>Concurrent requests</td><td>5</td><td><code>max_concurrent_analyses</code></td></tr>
+<tr><td>Total TODOs analysed</td><td>50</td><td><code>max_analyse_count</code></td></tr>
+</tbody></table>
+</div>
+<p>When the TODO count exceeds <code>max_analyse_count</code>, only the first N TODOs are analysed. A warning is logged for the remainder.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="output-formats"><a class="header" href="#output-formats">Output Formats</a></h1>
+<p>In non-interactive mode (<code>-N</code>), towl supports five output formats. Terminal-based formats write to stdout; file-based formats require the <code>-o</code> flag with a matching file extension.</p>
+<blockquote>
+<p><strong>Note:</strong> Output format flags only apply in non-interactive mode. The interactive TUI has its own display. Use <code>towl scan -N -f &lt;format&gt;</code> to select a format.</p>
+</blockquote>
+<h2 id="terminal--table-default"><a class="header" href="#terminal--table-default">Terminal / Table (default)</a></h2>
+<pre><code class="language-bash">towl scan -N
+# or explicitly:
+towl scan -N -f table
+towl scan -N -f terminal
+</code></pre>
+<p>Renders an ASCII table to stdout:</p>
+<pre><code class="language-text">┌──────┬─────────────────────────┬──────────────────┬──────┬──────────┐
+│ Type │ Description             │ File             │ Line │ Function │
+├──────┼─────────────────────────┼──────────────────┼──────┼──────────┤
+│ TODO │ Implement caching       │ src/lib/cache.rs │   42 │ process  │
+│ FIXME│ Handle timeout          │ src/lib/net.rs   │  108 │ connect  │
+└──────┴─────────────────────────┴──────────────────┴──────┴──────────┘
+</code></pre>
+<blockquote>
+<p><strong>Note:</strong> <code>table</code> and <code>terminal</code> are aliases -- both produce the same output.</p>
+</blockquote>
+<h2 id="json"><a class="header" href="#json">JSON</a></h2>
+<pre><code class="language-bash">towl scan -N -f json -o todos.json
+</code></pre>
+<p>Produces structured JSON with a summary and TODOs grouped by type:</p>
+<pre><code class="language-json">{
+  "summary": {
+    "total": 2,
+    "by_type": {
+      "TODO": 1,
+      "FIXME": 1
+    }
+  },
+  "todos": {
+    "TODO": [
+      {
+        "id": "abc123",
+        "file_path": "src/lib/cache.rs",
+        "line_number": 42,
+        "column_start": 5,
+        "column_end": 30,
+        "todo_type": "Todo",
+        "description": "Implement caching",
+        "original_text": "// TODO: Implement caching",
+        "context_lines": ["fn process() {", "    // TODO: Implement caching", "    unimplemented!()"],
+        "function_context": "process"
+      }
+    ]
+  }
+}
+</code></pre>
+<h2 id="csv"><a class="header" href="#csv">CSV</a></h2>
+<pre><code class="language-bash">towl scan -N -f csv -o todos.csv
+</code></pre>
+<p>Produces a CSV file with a header row:</p>
+<pre><code class="language-csv">Type,Description,File,Line,Column Start,Column End,Function,Original Text,Context Lines
+TODO,Implement caching,src/lib/cache.rs,42,5,30,process,// TODO: Implement caching,"fn process() {|    // TODO: Implement caching|    unimplemented!()"
+</code></pre>
+<p>Context lines are joined with <code>|</code> separators within a single quoted field.</p>
+<h2 id="markdown"><a class="header" href="#markdown">Markdown</a></h2>
+<pre><code class="language-bash">towl scan -N -f markdown -o todos.md
+</code></pre>
+<p>Produces a Markdown document with sections grouped by TODO type:</p>
+<pre><code class="language-markdown"># TODOs
+
+## TODO (1)
+
+### Implement caching
+- **File:** src/lib/cache.rs
+- **Line:** 42
+- **Function:** process
+
+**Context:**
+&gt; fn process() {
+&gt;     // TODO: Implement caching
+&gt;     unimplemented!()
+</code></pre>
+<h2 id="toml"><a class="header" href="#toml">TOML</a></h2>
+<pre><code class="language-bash">towl scan -N -f toml -o todos.toml
+</code></pre>
+<p>Produces a TOML file with a summary table and grouped items:</p>
+<pre><code class="language-toml">[summary]
+total = 2
+
+[summary.by_type]
+TODO = 1
+FIXME = 1
+
+[[todos.TODO]]
+description = "Implement caching"
+file_path = "src/lib/cache.rs"
+line_number = 42
+function_context = "process"
+</code></pre>
+<h2 id="extension-validation"><a class="header" href="#extension-validation">Extension Validation</a></h2>
+<p>File-based formats require the output path to have a matching extension:</p>
+<div class="table-wrapper"><table><thead><tr><th>Format</th><th>Required extension</th></tr></thead><tbody>
+<tr><td><code>json</code></td><td><code>.json</code></td></tr>
+<tr><td><code>csv</code></td><td><code>.csv</code></td></tr>
+<tr><td><code>toml</code></td><td><code>.toml</code></td></tr>
+<tr><td><code>markdown</code></td><td><code>.md</code></td></tr>
+</tbody></table>
+</div>
+<p>Mismatched extensions produce an error:</p>
+<pre><code class="language-text">Error: Invalid output path: expected .json extension for JSON format
+</code></pre>
+<h2 id="choosing-a-format"><a class="header" href="#choosing-a-format">Choosing a Format</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Use case</th><th>Format</th></tr></thead><tbody>
+<tr><td>Interactive browsing</td><td>TUI (default, no <code>-N</code>)</td></tr>
+<tr><td>Quick terminal check</td><td><code>table</code> (<code>-N</code>, default format)</td></tr>
+<tr><td>CI/CD integration</td><td><code>json</code></td></tr>
+<tr><td>Spreadsheet import</td><td><code>csv</code></td></tr>
+<tr><td>Documentation / reports</td><td><code>markdown</code></td></tr>
+<tr><td>Config-style tooling</td><td><code>toml</code></td></tr>
+</tbody></table>
+</div><div style="break-before: page; page-break-before: always;"></div><h1 id="filtering"><a class="header" href="#filtering">Filtering</a></h1>
+<p>towl supports filtering scan results by TODO type using the <code>-t</code> / <code>--todo-type</code> flag.</p>
+<h2 id="filter-by-type"><a class="header" href="#filter-by-type">Filter by Type</a></h2>
+<pre><code class="language-bash">towl scan -t todo      # Only TODO comments
+towl scan -t fixme     # Only FIXME comments
+towl scan -t hack      # Only HACK comments
+towl scan -t note      # Only NOTE comments
+towl scan -t bug       # Only BUG comments
+</code></pre>
+<p>The filter value is case-insensitive -- <code>TODO</code>, <code>todo</code>, and <code>Todo</code> all work.</p>
+<h2 id="available-types"><a class="header" href="#available-types">Available Types</a></h2>
+<p>towl recognises five built-in TODO types:</p>
+<div class="table-wrapper"><table><thead><tr><th>Type</th><th>Matches</th><th>Typical use</th></tr></thead><tbody>
+<tr><td><code>todo</code></td><td><code>TODO:</code></td><td>Planned work</td></tr>
+<tr><td><code>fixme</code></td><td><code>FIXME:</code></td><td>Known broken code</td></tr>
+<tr><td><code>hack</code></td><td><code>HACK:</code></td><td>Temporary workarounds</td></tr>
+<tr><td><code>note</code></td><td><code>NOTE:</code></td><td>Important context</td></tr>
+<tr><td><code>bug</code></td><td><code>BUG:</code></td><td>Known defects</td></tr>
+</tbody></table>
+</div>
+<p>Each type is matched via the corresponding regex pattern in the <code>todo_patterns</code> configuration. The default patterns are case-insensitive (<code>(?i)</code>).</p>
+<h2 id="combining-with-output-formats"><a class="header" href="#combining-with-output-formats">Combining with Output Formats</a></h2>
+<p>Filtering works with any output format:</p>
+<pre><code class="language-bash"># FIXMEs as JSON
+towl scan -t fixme -f json -o fixmes.json
+
+# BUGs as Markdown
+towl scan -t bug -f markdown -o bugs.md
+
+# NOTEs in terminal table
+towl scan -t note
+</code></pre>
+<h2 id="without-filtering"><a class="header" href="#without-filtering">Without Filtering</a></h2>
+<p>When no <code>-t</code> flag is provided, all recognised types are included in the output. The results are grouped by type in all formats.</p>
+<h2 id="custom-patterns"><a class="header" href="#custom-patterns">Custom Patterns</a></h2>
+<p>You can add custom TODO patterns in <code>.towl.toml</code>. Each pattern must contain a capture group <code>(.*)</code> for extracting the description:</p>
+<pre><code class="language-toml">[parsing]
+todo_patterns = [
+    "(?i)\\bTODO:\\s*(.*)",
+    "(?i)\\bFIXME:\\s*(.*)",
+    "(?i)\\bHACK:\\s*(.*)",
+    "(?i)\\bNOTE:\\s*(.*)",
+    "(?i)\\bBUG:\\s*(.*)",
+    "(?i)\\bXXX:\\s*(.*)",
+]
+</code></pre>
+<blockquote>
+<p><strong>Note:</strong> Custom patterns extend the set of matched comments but do not add new filter types to <code>-t</code>. The built-in five types are always available for filtering.</p>
+</blockquote>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="api-overview"><a class="header" href="#api-overview">API Overview</a></h1>
+<p>towl is structured as a library (<code>towl</code> crate) with a thin binary wrapper. The library exposes modules for configuration, scanning, parsing, output, and error handling.</p>
+<h2 id="module-map"><a class="header" href="#module-map">Module Map</a></h2>
+<pre><code class="language-text">towl (lib)
+├── cli          Command-line argument parsing (clap)
+├── comment      TODO types and comment structures
+│   ├── todo     TodoType enum, TodoComment struct
+│   └── error    TowlCommentError
+├── config       Configuration loading and validation
+│   ├── types    TowlConfig, ParsingConfig, GitHubConfig, Owner, Repo
+│   ├── git      GitRepoInfo (git remote discovery)
+│   └── error    TowlConfigError
+├── scanner      Directory walking and file filtering
+│   ├── types    Scanner, ScanResult
+│   └── error    TowlScannerError
+├── parser       Regex-based TODO extraction
+│   ├── types    Parser, Pattern
+│   └── error    TowlParserError
+├── output       Formatting and writing results
+│   ├── formatter
+│   │   ├── formatters   CsvFormatter, JsonFormatter, MarkdownFormatter,
+│   │   │                TableFormatter, TomlFormatter
+│   │   └── error        FormatterError
+│   ├── writer
+│   │   ├── writers      StdoutWriter, FileWriter
+│   │   └── error        WriterError
+│   └── error            TowlOutputError
+├── github       GitHub issue creation
+│   ├── client   GitHubClient
+│   ├── types    CreatedIssue
+│   └── error    TowlGitHubError
+├── processor    TODO replacement with issue links
+│   ├── types    Processor, ProcessorResult
+│   └── error    TowlProcessorError
+├── tui          Interactive terminal UI
+│   ├── app      App, AppMode, SortField, PeekState
+│   ├── input    Action, handle_input
+│   ├── render   draw
+│   └── error    TowlTuiError
+└── error        Top-level TowlError (aggregates all error types)
+</code></pre>
+<h2 id="data-flow"><a class="header" href="#data-flow">Data Flow</a></h2>
+<pre><code class="language-text">TowlConfig ──► Scanner ──► Parser ──► Output
+   │              │            │          │
+   │              │            │          ├─ FormatterImpl (enum dispatch)
+   │              │            │          └─ WriterImpl (enum dispatch)
+   │              │            │
+   │              │            └─ Vec&lt;TodoComment&gt;
+   │              │
+   │              └─ ScanResult { todos, files_scanned, ... }
+   │
+   └─ ParsingConfig + GitHubConfig
+</code></pre>
+<h2 id="key-types"><a class="header" href="#key-types">Key Types</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Type</th><th>Module</th><th>Purpose</th></tr></thead><tbody>
+<tr><td><code>TowlConfig</code></td><td><code>config</code></td><td>Top-level configuration container</td></tr>
+<tr><td><code>ParsingConfig</code></td><td><code>config</code></td><td>File extensions, patterns, context lines</td></tr>
+<tr><td><code>GitHubConfig</code></td><td><code>config</code></td><td>Owner, repo, token</td></tr>
+<tr><td><code>Scanner</code></td><td><code>scanner</code></td><td>Directory walk + file filtering</td></tr>
+<tr><td><code>ScanResult</code></td><td><code>scanner</code></td><td>Structured scan output with metrics</td></tr>
+<tr><td><code>Parser</code></td><td><code>parser</code></td><td>Regex-based TODO extraction</td></tr>
+<tr><td><code>TodoComment</code></td><td><code>comment</code></td><td>A single extracted TODO item</td></tr>
+<tr><td><code>TodoType</code></td><td><code>comment</code></td><td>Enum: Todo, Fixme, Hack, Note, Bug</td></tr>
+<tr><td><code>Output</code></td><td><code>output</code></td><td>Formatter + writer combination</td></tr>
+<tr><td><code>GitHubClient</code></td><td><code>github</code></td><td>Authenticated GitHub API client</td></tr>
+<tr><td><code>CreatedIssue</code></td><td><code>github</code></td><td>Metadata for a created GitHub issue</td></tr>
+<tr><td><code>Processor</code></td><td><code>processor</code></td><td>Replaces TODOs with issue links in source files</td></tr>
+<tr><td><code>ProcessorResult</code></td><td><code>processor</code></td><td>Summary of a batch replacement operation</td></tr>
+<tr><td><code>App</code></td><td><code>tui</code></td><td>TUI application state and mode management</td></tr>
+<tr><td><code>AppMode</code></td><td><code>tui</code></td><td>Current UI mode (Browse, Peek, Confirm, etc.)</td></tr>
+<tr><td><code>TowlError</code></td><td><code>error</code></td><td>Top-level error aggregating all sub-errors</td></tr>
+</tbody></table>
+</div>
+<h2 id="error-hierarchy"><a class="header" href="#error-hierarchy">Error Hierarchy</a></h2>
+<pre><code class="language-text">TowlError
+├── TowlConfigError      Config loading, TOML parsing, git discovery
+├── TowlScannerError     File walk, I/O, resource limits
+│   └── TowlParserError  Regex compilation, pattern validation
+├── TowlOutputError      Formatting, file writing
+│   ├── FormatterError   Serialisation failures
+│   └── WriterError      I/O, path traversal
+├── TowlGitHubError      API errors, auth, rate limiting
+├── TowlProcessorError   File replacement errors
+└── TowlTuiError         Terminal I/O errors
+</code></pre>
+<p>All error types use <code>thiserror</code> for <code>Display</code> and <code>Error</code> trait implementations. Conversion between levels uses <code>#[from]</code> attributes for ergonomic <code>?</code> propagation.</p>
+<h2 id="constants"><a class="header" href="#constants">Constants</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Name</th><th>Value</th><th>Module</th><th>Purpose</th></tr></thead><tbody>
+<tr><td><code>MAX_FILE_SIZE</code></td><td>10 MB</td><td>scanner</td><td>Skip oversized files</td></tr>
+<tr><td><code>MAX_TODO_COUNT</code></td><td>10,000</td><td>scanner</td><td>Per-file TODO cap</td></tr>
+<tr><td><code>MAX_TOTAL_TODO_COUNT</code></td><td>100,000</td><td>scanner</td><td>Global TODO cap</td></tr>
+<tr><td><code>MAX_FILES_SCANNED</code></td><td>100,000</td><td>scanner</td><td>Directory walk cap</td></tr>
+<tr><td><code>MAX_PATTERN_LENGTH</code></td><td>256 chars</td><td>parser</td><td>Regex length limit</td></tr>
+<tr><td><code>REGEX_SIZE_LIMIT</code></td><td>256 KB</td><td>parser</td><td>Compiled regex size limit</td></tr>
+<tr><td><code>MAX_TOTAL_PATTERNS</code></td><td>50</td><td>parser</td><td>Total patterns across all categories</td></tr>
+<tr><td><code>MAX_CONFIG_PATTERNS</code></td><td>100</td><td>config</td><td>Per-field pattern array cap</td></tr>
+<tr><td><code>DEFAULT_CONFIG_PATH</code></td><td><code>.towl.toml</code></td><td>config</td><td>Default config file</td></tr>
+</tbody></table>
+</div><div style="break-before: page; page-break-before: always;"></div><h1 id="scanner"><a class="header" href="#scanner">Scanner</a></h1>
+<p>The scanner walks a directory tree, filters files by extension and exclude patterns, reads content, and delegates to the parser for TODO extraction.</p>
+<h2 id="scanner-1"><a class="header" href="#scanner-1"><code>Scanner</code></a></h2>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub struct Scanner {
+    parser: Parser,
+    config: ParsingConfig,
+}
+<span class="boring">}</span></code></pre></pre>
+<h3 id="constructor"><a class="header" href="#constructor">Constructor</a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub fn new(config: ParsingConfig) -&gt; Result&lt;Self, TowlScannerError&gt;
+<span class="boring">}</span></code></pre></pre>
+<p>Creates a new scanner. Compiles all regex patterns from the config during construction so pattern errors are caught early.</p>
+<h3 id="scan"><a class="header" href="#scan"><code>scan</code></a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub async fn scan(&amp;self, path: PathBuf) -&gt; Result&lt;ScanResult, TowlScannerError&gt;
+<span class="boring">}</span></code></pre></pre>
+<p>Recursively scans <code>path</code> for TODO comments. Returns a <code>ScanResult</code> on success.</p>
+<p><strong>Behaviour:</strong></p>
+<ol>
+<li>Validates the path (rejects path traversal)</li>
+<li>Walks the directory using the <code>ignore</code> crate (respects <code>.gitignore</code>)</li>
+<li>Filters files by extension (<code>file_extensions</code> config)</li>
+<li>Skips files matching <code>exclude_patterns</code></li>
+<li>Skips files larger than <code>MAX_FILE_SIZE</code> (10 MB)</li>
+<li>Reads and parses each file asynchronously via <code>tokio::fs</code></li>
+<li>Collects results until a resource limit is reached or the walk completes</li>
+</ol>
+<p><strong>Errors:</strong></p>
+<ul>
+<li><code>InvalidPath</code> -- Path contains traversal components (<code>..</code>)</li>
+<li><code>FileTooLarge</code> -- File exceeds 10 MB</li>
+<li><code>TooManyTodos</code> -- Single file exceeds 10,000 TODOs</li>
+<li><code>TooManyFiles</code> -- Walk exceeds 100,000 files</li>
+<li><code>UnableToReadFileAtPath</code> -- I/O error reading a specific file</li>
+<li><code>UnableToWalkFile</code> -- Directory walk error</li>
+<li><code>ParsingError</code> -- Regex or parsing failure (propagated from parser)</li>
+</ul>
+<h2 id="scanresult"><a class="header" href="#scanresult"><code>ScanResult</code></a></h2>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub struct ScanResult {
+    pub todos: Vec&lt;TodoComment&gt;,
+    pub files_scanned: usize,
+    pub files_skipped: usize,
+    pub files_errored: usize,
+    pub duration: std::time::Duration,
+}
+<span class="boring">}</span></code></pre></pre>
+<h3 id="methods"><a class="header" href="#methods">Methods</a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub const fn all_files_failed(&amp;self) -&gt; bool
+<span class="boring">}</span></code></pre></pre>
+<p>Returns <code>true</code> when <code>files_scanned == 0</code> and <code>files_errored &gt; 0</code>. Indicates a likely permissions or path issue where no files could be read.</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub const fn is_clean(&amp;self) -&gt; bool
+<span class="boring">}</span></code></pre></pre>
+<p>Returns <code>true</code> when <code>todos</code> is empty and <code>files_errored == 0</code>. A clean scan with no issues.</p>
+<h2 id="resource-limits-1"><a class="header" href="#resource-limits-1">Resource Limits</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Constant</th><th>Value</th><th>Trigger</th></tr></thead><tbody>
+<tr><td><code>MAX_FILE_SIZE</code></td><td>10,485,760 bytes (10 MB)</td><td>File skipped</td></tr>
+<tr><td><code>MAX_TODO_COUNT</code></td><td>10,000</td><td>Error for that file</td></tr>
+<tr><td><code>MAX_TOTAL_TODO_COUNT</code></td><td>100,000</td><td>Scan stops, returns partial</td></tr>
+<tr><td><code>MAX_FILES_SCANNED</code></td><td>100,000</td><td>Scan stops, returns partial</td></tr>
+</tbody></table>
+</div>
+<h2 id="example"><a class="header" href="#example">Example</a></h2>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use towl::config::ParsingConfig;
+use towl::scanner::Scanner;
+use std::path::PathBuf;
+
+let config = ParsingConfig::default();
+let scanner = Scanner::new(config)?;
+let result = scanner.scan(PathBuf::from(".")).await?;
+
+println!("Found {} TODOs in {} files", result.todos.len(), result.files_scanned);
+
+if result.all_files_failed() {
+    eprintln!("Warning: no files could be read");
+}
+<span class="boring">}</span></code></pre></pre>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="parser"><a class="header" href="#parser">Parser</a></h1>
+<p>The parser reads file content, identifies comment lines using regex patterns, extracts TODO items, and captures surrounding context.</p>
+<h2 id="parser-1"><a class="header" href="#parser-1"><code>Parser</code></a></h2>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub struct Parser {
+    comment_patterns: Vec&lt;Regex&gt;,
+    patterns: Vec&lt;Pattern&gt;,
+    function_patterns: Vec&lt;Regex&gt;,
+    context_lines: usize,
+}
+<span class="boring">}</span></code></pre></pre>
+<p>The parser is <code>pub(crate)</code> -- it is used internally by <code>Scanner</code> and not exposed in the public API. The public interface is through the module-level functions.</p>
+<h3 id="construction"><a class="header" href="#construction">Construction</a></h3>
+<p>Created internally by <code>Scanner::new()</code> using <code>Parser::new(config)</code>. All regex patterns are compiled once during construction.</p>
+<h2 id="public-functions"><a class="header" href="#public-functions">Public Functions</a></h2>
+<h3 id="validate_patterns"><a class="header" href="#validate_patterns"><code>validate_patterns</code></a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub fn validate_patterns(config: &amp;ParsingConfig) -&gt; Result&lt;(), TowlParserError&gt;
+<span class="boring">}</span></code></pre></pre>
+<p>Validates all regex patterns in the config without creating a parser. Useful for checking configuration before starting a scan.</p>
+<p><strong>Checks:</strong></p>
+<ul>
+<li>Each pattern is valid regex</li>
+<li>Each pattern is within <code>MAX_PATTERN_LENGTH</code> (256 characters)</li>
+<li>Compiled regex is within <code>REGEX_SIZE_LIMIT</code> (256 KB)</li>
+</ul>
+<h3 id="parse_content"><a class="header" href="#parse_content"><code>parse_content</code></a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub fn parse_content(
+    config: &amp;ParsingConfig,
+    path: &amp;Path,
+    content: &amp;str,
+) -&gt; Result&lt;Vec&lt;TodoComment&gt;, TowlParserError&gt;
+<span class="boring">}</span></code></pre></pre>
+<p>Parses file content for TODO comments. Creates a temporary parser, runs extraction, and returns the results.</p>
+<h2 id="parsing-pipeline"><a class="header" href="#parsing-pipeline">Parsing Pipeline</a></h2>
+<p>For each line in the file:</p>
+<ol>
+<li><strong>Comment detection</strong> -- Check if the line matches any <code>comment_prefixes</code> pattern</li>
+<li><strong>TODO matching</strong> -- Check if the comment matches any <code>todo_patterns</code> pattern</li>
+<li><strong>Type classification</strong> -- Determine the <code>TodoType</code> from the matched pattern</li>
+<li><strong>Description extraction</strong> -- Extract the description via the first capture group <code>(.*)</code></li>
+<li><strong>Context capture</strong> -- Grab <code>include_context_lines</code> lines above and below</li>
+<li><strong>Function detection</strong> -- Search upward (within 3 lines) for a <code>function_patterns</code> match</li>
+</ol>
+<h2 id="pattern-types"><a class="header" href="#pattern-types">Pattern Types</a></h2>
+<h3 id="comment-prefixes"><a class="header" href="#comment-prefixes">Comment Prefixes</a></h3>
+<p>Regex patterns that identify comment lines:</p>
+<div class="table-wrapper"><table><thead><tr><th>Default pattern</th><th>Matches</th></tr></thead><tbody>
+<tr><td><code>//</code></td><td>C-style line comments</td></tr>
+<tr><td><code>^\s*#</code></td><td>Shell/Python comments</td></tr>
+<tr><td><code>/\*</code></td><td>C-style block comment start</td></tr>
+<tr><td><code>^\s*\*</code></td><td>C-style block comment continuation</td></tr>
+</tbody></table>
+</div>
+<h3 id="todo-patterns"><a class="header" href="#todo-patterns">TODO Patterns</a></h3>
+<p>Regex patterns with a capture group for the description:</p>
+<div class="table-wrapper"><table><thead><tr><th>Default pattern</th><th>Matches</th></tr></thead><tbody>
+<tr><td><code>(?i)\bTODO:\s*(.*)</code></td><td>TODO comments</td></tr>
+<tr><td><code>(?i)\bFIXME:\s*(.*)</code></td><td>FIXME comments</td></tr>
+<tr><td><code>(?i)\bHACK:\s*(.*)</code></td><td>HACK comments</td></tr>
+<tr><td><code>(?i)\bNOTE:\s*(.*)</code></td><td>NOTE comments</td></tr>
+<tr><td><code>(?i)\bBUG:\s*(.*)</code></td><td>BUG comments</td></tr>
+</tbody></table>
+</div>
+<p>All default patterns are case-insensitive (<code>(?i)</code>).</p>
+<h3 id="function-patterns"><a class="header" href="#function-patterns">Function Patterns</a></h3>
+<p>Regex patterns to detect enclosing function names:</p>
+<div class="table-wrapper"><table><thead><tr><th>Default pattern</th><th>Language</th></tr></thead><tbody>
+<tr><td><code>^\s*(pub\s+)?fn\s+(\w+)</code></td><td>Rust</td></tr>
+<tr><td><code>^\s*def\s+(\w+)</code></td><td>Python</td></tr>
+<tr><td><code>^\s*(async\s+)?function\s+(\w+)</code></td><td>JavaScript</td></tr>
+<tr><td><code>^\s*(public|private|protected)?\s*(static\s+)?\w+\s+(\w+)\s*\(</code></td><td>Java/C#</td></tr>
+<tr><td><code>^\s*func\s+(\w+)</code></td><td>Go/Swift</td></tr>
+</tbody></table>
+</div>
+<h2 id="constants-1"><a class="header" href="#constants-1">Constants</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Constant</th><th>Value</th><th>Purpose</th></tr></thead><tbody>
+<tr><td><code>MIN_CONTEXT_LINES</code></td><td>1</td><td>Minimum context window</td></tr>
+<tr><td><code>MAX_CONTEXT_LINES</code></td><td>50</td><td>Maximum context window</td></tr>
+<tr><td><code>FORWARD_SEARCH_LINES</code></td><td>3</td><td>Lines searched upward for function context</td></tr>
+<tr><td><code>MAX_PATTERN_LENGTH</code></td><td>256</td><td>Maximum regex pattern string length</td></tr>
+<tr><td><code>REGEX_SIZE_LIMIT</code></td><td>262,144</td><td>Maximum compiled regex size (256 KB)</td></tr>
+<tr><td><code>MAX_TOTAL_PATTERNS</code></td><td>50</td><td>Maximum total patterns across all categories</td></tr>
+</tbody></table>
+</div>
+<h2 id="errors"><a class="header" href="#errors">Errors</a></h2>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub enum TowlParserError {
+    InvalidRegexPattern(String, regex::Error),
+    UnknownConfigPattern(TowlCommentError),
+    RegexGroupMissing,
+    PatternTooLong(usize, usize),
+    TooManyTotalPatterns { count: usize, max_allowed: usize },
+}
+<span class="boring">}</span></code></pre></pre>
+<div class="table-wrapper"><table><thead><tr><th>Variant</th><th>Cause</th></tr></thead><tbody>
+<tr><td><code>InvalidRegexPattern</code></td><td>Regex failed to compile</td></tr>
+<tr><td><code>UnknownConfigPattern</code></td><td>Pattern matched but type could not be determined</td></tr>
+<tr><td><code>RegexGroupMissing</code></td><td>Pattern lacks a capture group</td></tr>
+<tr><td><code>PatternTooLong</code></td><td>Pattern exceeds 256 characters</td></tr>
+<tr><td><code>TooManyTotalPatterns</code></td><td>Total patterns across all categories exceeds 50</td></tr>
+</tbody></table>
+</div><div style="break-before: page; page-break-before: always;"></div><h1 id="config"><a class="header" href="#config">Config</a></h1>
+<p>The config module loads settings from <code>.towl.toml</code>, merges environment variables, and provides the <code>init</code> command for generating default configuration.</p>
+<h2 id="towlconfig"><a class="header" href="#towlconfig"><code>TowlConfig</code></a></h2>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub struct TowlConfig {
+    pub parsing: ParsingConfig,
+    pub github: GitHubConfig,
+}
+<span class="boring">}</span></code></pre></pre>
+<h3 id="towlconfigload"><a class="header" href="#towlconfigload"><code>TowlConfig::load</code></a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>impl TowlConfig {
+    pub fn load(path: Option&lt;&amp;PathBuf&gt;) -&gt; Result&lt;Self, TowlConfigError&gt;;
+}
+<span class="boring">}</span></code></pre></pre>
+<p>Loads configuration with this precedence:</p>
+<ol>
+<li>Built-in defaults</li>
+<li><code>.towl.toml</code> file (or custom path via <code>--path</code>)</li>
+<li>Environment variable overrides</li>
+</ol>
+<p>If no config file exists, defaults are used without error.</p>
+<h3 id="init"><a class="header" href="#init"><code>init</code></a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub async fn init(path: &amp;Path, force: bool) -&gt; Result&lt;(), TowlConfigError&gt;
+<span class="boring">}</span></code></pre></pre>
+<p>Creates a <code>.towl.toml</code> file at the given path. Auto-detects GitHub owner and repo from <code>git remote get-url origin</code>.</p>
+<ul>
+<li>Fails if the file already exists (unless <code>force</code> is <code>true</code>)</li>
+<li>Validates the path for traversal attacks</li>
+<li>Serializes <code>ParsingConfig</code> defaults to TOML</li>
+</ul>
+<h2 id="parsingconfig"><a class="header" href="#parsingconfig"><code>ParsingConfig</code></a></h2>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub struct ParsingConfig {
+    pub file_extensions: HashSet&lt;String&gt;,
+    pub exclude_patterns: Vec&lt;String&gt;,
+    pub include_context_lines: usize,
+    pub comment_prefixes: Vec&lt;String&gt;,
+    pub todo_patterns: Vec&lt;String&gt;,
+    pub function_patterns: Vec&lt;String&gt;,
+}
+<span class="boring">}</span></code></pre></pre>
+<p>All fields have defaults via <code>#[serde(default)]</code>:</p>
+<div class="table-wrapper"><table><thead><tr><th>Field</th><th>Default</th></tr></thead><tbody>
+<tr><td><code>file_extensions</code></td><td><code>rs</code>, <code>toml</code>, <code>json</code>, <code>yaml</code>, <code>yml</code>, <code>sh</code>, <code>bash</code></td></tr>
+<tr><td><code>exclude_patterns</code></td><td><code>target/*</code>, <code>.git/*</code></td></tr>
+<tr><td><code>include_context_lines</code></td><td><code>3</code></td></tr>
+<tr><td><code>comment_prefixes</code></td><td><code>//</code>, <code>^\s*#</code>, <code>/\*</code>, <code>^\s*\*</code></td></tr>
+<tr><td><code>todo_patterns</code></td><td><code>TODO:</code>, <code>FIXME:</code>, <code>HACK:</code>, <code>NOTE:</code>, <code>BUG:</code> (case-insensitive)</td></tr>
+<tr><td><code>function_patterns</code></td><td>Rust, Python, JS, Java/C#, Go patterns</td></tr>
+</tbody></table>
+</div>
+<p>Each pattern array is limited to <code>MAX_CONFIG_PATTERNS</code> (100) entries.</p>
+<h2 id="githubconfig"><a class="header" href="#githubconfig"><code>GitHubConfig</code></a></h2>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub struct GitHubConfig {
+    pub token: SecretString,
+    pub owner: Owner,
+    pub repo: Repo,
+    pub rate_limit_delay_ms: u64,
+}
+<span class="boring">}</span></code></pre></pre>
+<ul>
+<li><code>token</code> is stored as <code>secrecy::SecretString</code> and masked in debug/display output</li>
+<li><code>owner</code> and <code>repo</code> are validated newtype wrappers over <code>String</code></li>
+<li><code>rate_limit_delay_ms</code> adds a delay between GitHub API calls (default: 100ms)</li>
+</ul>
+<h3 id="environment-variable-overrides"><a class="header" href="#environment-variable-overrides">Environment Variable Overrides</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>Variable</th><th>Overrides</th></tr></thead><tbody>
+<tr><td><code>TOWL_GITHUB_TOKEN</code></td><td><code>github.token</code></td></tr>
+<tr><td><code>TOWL_GITHUB_OWNER</code></td><td><code>github.owner</code></td></tr>
+<tr><td><code>TOWL_GITHUB_REPO</code></td><td><code>github.repo</code></td></tr>
+</tbody></table>
+</div>
+<h2 id="owner--repo"><a class="header" href="#owner--repo"><code>Owner</code> / <code>Repo</code></a></h2>
+<p>Validated newtype wrappers providing type safety:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub struct Owner(String);
+pub struct Repo(String);
+<span class="boring">}</span></code></pre></pre>
+<h3 id="try_new"><a class="header" href="#try_new"><code>try_new</code></a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub fn try_new(s: impl Into&lt;String&gt;) -&gt; Result&lt;Self, TowlConfigError&gt;
+<span class="boring">}</span></code></pre></pre>
+<p>Constructs a new <code>Owner</code> or <code>Repo</code>, rejecting values exceeding <code>MAX_CONFIG_STRING_LENGTH</code> (512 characters).</p>
+<p><strong>Errors:</strong></p>
+<ul>
+<li><code>ConfigValueTooLong</code> -- Value exceeds 512 characters</li>
+</ul>
+<p>Both also implement:</p>
+<ul>
+<li><code>Display</code>, <code>Default</code>, <code>Debug</code>, <code>Clone</code>, <code>PartialEq</code>, <code>Eq</code></li>
+<li><code>Serialize</code>, <code>Deserialize</code></li>
+</ul>
+<h2 id="gitrepoinfo-internal"><a class="header" href="#gitrepoinfo-internal"><code>GitRepoInfo</code> (internal)</a></h2>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub(crate) struct GitRepoInfo {
+    pub owner: Owner,
+    pub repo: Repo,
+}
+<span class="boring">}</span></code></pre></pre>
+<h3 id="from_path"><a class="header" href="#from_path"><code>from_path</code></a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub(crate) async fn from_path&lt;P: AsRef&lt;Path&gt;&gt;(path: P) -&gt; Result&lt;Self, TowlConfigError&gt;
+<span class="boring">}</span></code></pre></pre>
+<p>Internal function that discovers the git remote URL by running <code>git remote get-url origin</code> and parses the owner and repo name. Supports both HTTPS and SSH URL formats. Not part of the public API.</p>
+<p><strong>Errors:</strong></p>
+<ul>
+<li><code>GitRepoNotFound</code> -- Not inside a git repository</li>
+<li><code>GitRemoteNotFound</code> -- No <code>origin</code> remote configured</li>
+<li><code>GitInvalidUrl</code> -- Could not parse owner/repo from the URL</li>
+</ul>
+<h2 id="errors-1"><a class="header" href="#errors-1">Errors</a></h2>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub enum TowlConfigError {
+    PathTraversalAttempt(PathBuf),
+    ConfigAlreadyExists(PathBuf),
+    WriteToFileError(PathBuf, std::io::Error),
+    UnableToParseToml(toml::ser::Error),
+    CouldNotCreateConfig(ConfigError),
+    GitRepoNotFound { message: String },
+    GitRemoteNotFound { message: String },
+    GitInvalidUrl { url: String, message: String },
+    TooManyConfigPatterns { field: String, count: usize, max_allowed: usize },
+    ConfigValueTooLong { field: String, length: usize, max_length: usize },
+    ContextLinesOutOfRange { value: usize, min: usize, max: usize },
+}
+<span class="boring">}</span></code></pre></pre>
+<h2 id="constants-2"><a class="header" href="#constants-2">Constants</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Constant</th><th>Value</th><th>Purpose</th></tr></thead><tbody>
+<tr><td><code>DEFAULT_CONFIG_PATH</code></td><td><code>.towl.toml</code></td><td>Default config file name</td></tr>
+<tr><td><code>MAX_CONFIG_PATTERNS</code></td><td>100</td><td>Maximum entries per pattern array</td></tr>
+<tr><td><code>MAX_CONFIG_STRING_LENGTH</code></td><td>512</td><td>Maximum length for any single config string</td></tr>
+<tr><td><code>MIN_CONTEXT_LINES</code></td><td>1</td><td>Minimum <code>include_context_lines</code> value</td></tr>
+<tr><td><code>MAX_CONTEXT_LINES</code></td><td>50</td><td>Maximum <code>include_context_lines</code> value</td></tr>
+</tbody></table>
+</div><div style="break-before: page; page-break-before: always;"></div><h1 id="output"><a class="header" href="#output">Output</a></h1>
+<p>The output module combines a formatter and a writer to produce scan results in the requested format and destination.</p>
+<h2 id="output-1"><a class="header" href="#output-1"><code>Output</code></a></h2>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub struct Output {
+    writer: WriterImpl,
+    formatter: FormatterImpl,
+}
+<span class="boring">}</span></code></pre></pre>
+<h3 id="constructor-1"><a class="header" href="#constructor-1">Constructor</a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub fn new(
+    output_format: OutputFormat,
+    output_path: Option&lt;PathBuf&gt;,
+) -&gt; Result&lt;Self, TowlOutputError&gt;
+<span class="boring">}</span></code></pre></pre>
+<p>Creates an output handler by selecting the appropriate formatter and writer.</p>
+<p><strong>Format-to-writer mapping:</strong></p>
+<div class="table-wrapper"><table><thead><tr><th>Format</th><th>Writer</th><th>Output path</th></tr></thead><tbody>
+<tr><td><code>Table</code> / <code>Terminal</code></td><td><code>StdoutWriter</code></td><td>Must be <code>None</code></td></tr>
+<tr><td><code>Json</code></td><td><code>FileWriter</code></td><td>Required, must end in <code>.json</code></td></tr>
+<tr><td><code>Csv</code></td><td><code>FileWriter</code></td><td>Required, must end in <code>.csv</code></td></tr>
+<tr><td><code>Toml</code></td><td><code>FileWriter</code></td><td>Required, must end in <code>.toml</code></td></tr>
+<tr><td><code>Markdown</code></td><td><code>FileWriter</code></td><td>Required, must end in <code>.md</code></td></tr>
+</tbody></table>
+</div>
+<h3 id="save"><a class="header" href="#save"><code>save</code></a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub async fn save(&amp;self, todos: &amp;[TodoComment]) -&gt; Result&lt;(), TowlOutputError&gt;
+<span class="boring">}</span></code></pre></pre>
+<p>Formats the TODOs and writes them to the destination. TODOs are grouped by type before formatting.</p>
+<h2 id="outputformat"><a class="header" href="#outputformat"><code>OutputFormat</code></a></h2>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub enum OutputFormat {
+    Table,
+    Json,
+    Csv,
+    Toml,
+    Markdown,
+    Terminal,
+}
+<span class="boring">}</span></code></pre></pre>
+<p>Used as a CLI argument via <code>clap::ValueEnum</code>. <code>Table</code> and <code>Terminal</code> are treated identically.</p>
+<h2 id="formatter-dispatch"><a class="header" href="#formatter-dispatch">Formatter Dispatch</a></h2>
+<p>Internally, <code>FormatterImpl</code> is an enum that dispatches to the correct formatter without dynamic dispatch:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub(crate) enum FormatterImpl {
+    Csv(CsvFormatter),
+    Json(JsonFormatter),
+    Markdown(MarkdownFormatter),
+    Table(TableFormatter),
+    Toml(TomlFormatter),
+}
+<span class="boring">}</span></code></pre></pre>
+<p>Each formatter implements the internal <code>Formatter</code> trait:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub(crate) trait Formatter {
+    fn format(
+        &amp;self,
+        todos: &amp;HashMap&lt;&amp;TodoType, Vec&lt;&amp;TodoComment&gt;&gt;,
+        total_count: usize,
+    ) -&gt; Result&lt;Vec&lt;String&gt;, FormatterError&gt;;
+}
+<span class="boring">}</span></code></pre></pre>
+<h2 id="writer-dispatch"><a class="header" href="#writer-dispatch">Writer Dispatch</a></h2>
+<p><code>WriterImpl</code> dispatches between stdout and file output:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub(crate) enum WriterImpl {
+    Stdout(StdoutWriter),
+    File(FileWriter),
+}
+<span class="boring">}</span></code></pre></pre>
+<p>Each writer implements the internal <code>Writer</code> trait:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub(crate) trait Writer {
+    async fn write(&amp;self, content: Vec&lt;String&gt;) -&gt; Result&lt;(), WriterError&gt;;
+}
+<span class="boring">}</span></code></pre></pre>
+<h3 id="filewriter"><a class="header" href="#filewriter"><code>FileWriter</code></a></h3>
+<p>Validates the output path on construction:</p>
+<ul>
+<li>Rejects path traversal (<code>..</code> components)</li>
+<li>Resolves symlinks before writing</li>
+</ul>
+<h3 id="stdoutwriter"><a class="header" href="#stdoutwriter"><code>StdoutWriter</code></a></h3>
+<p>Writes each formatted line to stdout followed by a newline.</p>
+<h2 id="errors-2"><a class="header" href="#errors-2">Errors</a></h2>
+<h3 id="towloutputerror"><a class="header" href="#towloutputerror"><code>TowlOutputError</code></a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub enum TowlOutputError {
+    InvalidOutputPath(String),
+    UnableToFormatTodos(FormatterError),
+    UnableToWriteTodos(WriterError),
+}
+<span class="boring">}</span></code></pre></pre>
+<h3 id="formattererror"><a class="header" href="#formattererror"><code>FormatterError</code></a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub enum FormatterError {
+    SerializationError(String),
+    IntegerOverflow(usize),
+}
+<span class="boring">}</span></code></pre></pre>
+<h3 id="writererror"><a class="header" href="#writererror"><code>WriterError</code></a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub enum WriterError {
+    IoError(std::io::Error),
+    PathTraversal(PathBuf),
+}
+<span class="boring">}</span></code></pre></pre>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="github"><a class="header" href="#github">GitHub</a></h1>
+<p>The GitHub module creates issues from TODO comments, detects duplicates, and handles rate limiting.</p>
+<h2 id="githubclient"><a class="header" href="#githubclient"><code>GitHubClient</code></a></h2>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub struct GitHubClient {
+    // private fields
+}
+<span class="boring">}</span></code></pre></pre>
+<p>Authenticated GitHub API client for creating issues from TODO comments. Maintains a cache of existing issue titles and TODO IDs for deduplication. Includes rate-limit handling with configurable delays and automatic retries.</p>
+<h3 id="new"><a class="header" href="#new"><code>new</code></a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub fn new(config: &amp;GitHubConfig) -&gt; Result&lt;Self, TowlGitHubError&gt;
+<span class="boring">}</span></code></pre></pre>
+<p>Creates a new client from a <code>GitHubConfig</code>. Exposes the <code>SecretString</code> token once to build the Octocrab API client.</p>
+<p><strong>Errors:</strong></p>
+<ul>
+<li><code>MissingToken</code> -- Token is empty</li>
+<li><code>ApiError</code> -- Octocrab client failed to build</li>
+</ul>
+<h3 id="load_existing_issues"><a class="header" href="#load_existing_issues"><code>load_existing_issues</code></a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub async fn load_existing_issues(&amp;mut self) -&gt; Result&lt;(), TowlGitHubError&gt;
+<span class="boring">}</span></code></pre></pre>
+<p>Paginates through all existing issues (open and closed) in the repository, caching their titles and embedded TODO IDs. Call this before <code>create_issue</code> to enable duplicate detection.</p>
+<p><strong>Errors:</strong></p>
+<ul>
+<li><code>ApiError</code> -- GitHub API call failed</li>
+<li><code>AuthError</code> -- Invalid or expired token</li>
+<li><code>RepositoryNotFound</code> -- Owner/repo combination does not exist</li>
+</ul>
+<h3 id="issue_exists"><a class="header" href="#issue_exists"><code>issue_exists</code></a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub fn issue_exists(&amp;self, todo: &amp;TodoComment) -&gt; bool
+<span class="boring">}</span></code></pre></pre>
+<p>Returns <code>true</code> if a matching issue already exists, checked by TODO ID (embedded in issue body) or by generated title.</p>
+<h3 id="create_issue"><a class="header" href="#create_issue"><code>create_issue</code></a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub async fn create_issue(
+    &amp;mut self,
+    todo: &amp;TodoComment,
+) -&gt; Result&lt;CreatedIssue, TowlGitHubError&gt;
+<span class="boring">}</span></code></pre></pre>
+<p>Creates a GitHub issue for a TODO comment. Generates a title with type prefix, truncated description, and file location. The body includes file path, line number, column range, description, function context, original comment, and surrounding code.</p>
+<p>Automatically retries on rate limiting (up to 3 attempts).</p>
+<p><strong>Errors:</strong></p>
+<ul>
+<li><code>IssueAlreadyExists</code> -- Duplicate detected</li>
+<li><code>RateLimitExceeded</code> -- Rate limit hit after max retries</li>
+<li><code>ApiError</code> -- GitHub API failure</li>
+<li><code>AuthError</code> -- Authentication failure</li>
+</ul>
+<h3 id="issue-title-format"><a class="header" href="#issue-title-format">Issue Title Format</a></h3>
+<pre><code class="language-text">[TODO] Implement caching (cache.rs:42)
+</code></pre>
+<p>Titles are capped at 50 characters (excluding the type prefix and location suffix). Long descriptions are truncated at word boundaries with <code>...</code>.</p>
+<h3 id="issue-body-sections"><a class="header" href="#issue-body-sections">Issue Body Sections</a></h3>
+<ol>
+<li><strong>TODO Details</strong> -- Type, file, line, column range</li>
+<li><strong>Description</strong> -- Extracted description text (Markdown-escaped)</li>
+<li><strong>Function Context</strong> -- Enclosing function name (if detected)</li>
+<li><strong>Original Comment</strong> -- Full comment line in a code block</li>
+<li><strong>Context</strong> -- Surrounding source lines in a code block</li>
+<li><strong>TODO ID</strong> -- Embedded identifier for deduplication</li>
+</ol>
+<h3 id="duplicate-detection"><a class="header" href="#duplicate-detection">Duplicate Detection</a></h3>
+<p>Issues are deduplicated by two methods:</p>
+<ol>
+<li><strong>TODO ID</strong> -- Each issue body contains <code>*TODO ID: {file_path}_L{line_number}*</code>. If any existing issue body contains the same ID, the TODO is skipped.</li>
+<li><strong>Title match</strong> -- If the generated title matches an existing issue title exactly, the TODO is skipped.</li>
+</ol>
+<h2 id="createdissue"><a class="header" href="#createdissue"><code>CreatedIssue</code></a></h2>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub struct CreatedIssue {
+    pub number: u64,
+    pub title: String,
+    pub html_url: String,
+    pub todo_id: String,
+}
+<span class="boring">}</span></code></pre></pre>
+<p>Metadata for a successfully created GitHub issue. Implements <code>Serialize</code> and <code>Deserialize</code> for JSON roundtripping.</p>
+<h2 id="errors-3"><a class="header" href="#errors-3">Errors</a></h2>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub enum TowlGitHubError {
+    ApiError { message: String, source: Option&lt;octocrab::Error&gt; },
+    AuthError,
+    RateLimitExceeded { retry_after_secs: u64 },
+    IssueAlreadyExists { title: String },
+    RepositoryNotFound { owner: String, repo: String },
+    MissingToken,
+}
+<span class="boring">}</span></code></pre></pre>
+<div class="table-wrapper"><table><thead><tr><th>Variant</th><th>Cause</th></tr></thead><tbody>
+<tr><td><code>ApiError</code></td><td>General GitHub API failure</td></tr>
+<tr><td><code>AuthError</code></td><td>401 response -- invalid or expired token</td></tr>
+<tr><td><code>RateLimitExceeded</code></td><td>403 with "rate limit" in message</td></tr>
+<tr><td><code>IssueAlreadyExists</code></td><td>Duplicate detected before creation</td></tr>
+<tr><td><code>RepositoryNotFound</code></td><td>404 response -- owner/repo not found</td></tr>
+<tr><td><code>MissingToken</code></td><td><code>TOWL_GITHUB_TOKEN</code> not set or empty</td></tr>
+</tbody></table>
+</div>
+<h2 id="example-1"><a class="header" href="#example-1">Example</a></h2>
+<pre><pre class="playground"><code class="language-rust no_run"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use towl::config::TowlConfig;
+use towl::github::GitHubClient;
+
+let config = TowlConfig::load(None)?;
+let mut client = GitHubClient::new(&amp;config.github)?;
+
+// Load existing issues for duplicate detection
+client.load_existing_issues().await?;
+
+// Create an issue (skips if duplicate)
+if !client.issue_exists(&amp;todo) {
+    let issue = client.create_issue(&amp;todo).await?;
+    println!("Created #{}: {}", issue.number, issue.html_url);
+}
+<span class="boring">}</span></code></pre></pre>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="llm"><a class="header" href="#llm">LLM</a></h1>
+<p>The LLM module provides AI-powered TODO validation using Claude (Anthropic API) or any OpenAI-compatible endpoint.</p>
+<h2 id="llmprovider"><a class="header" href="#llmprovider"><code>LlmProvider</code></a></h2>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub enum LlmProvider {
+    Claude(ClaudeProvider),
+    OpenAi(OpenAiProvider),
+}
+<span class="boring">}</span></code></pre></pre>
+<p>Dispatches LLM calls to the configured provider. Follows towl's existing enum dispatch pattern (<code>FormatterImpl</code>, <code>WriterImpl</code>).</p>
+<h3 id="call_raw"><a class="header" href="#call_raw"><code>call_raw</code></a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub async fn call_raw(
+    &amp;self,
+    user_content: &amp;str,
+    system_prompt: &amp;str,
+    api_key: &amp;SecretString,
+) -&gt; Result&lt;(String, LlmUsage), TowlLlmError&gt;
+<span class="boring">}</span></code></pre></pre>
+<p>Sends a prompt to the LLM and returns the response text and token usage.</p>
+<h3 id="build_provider"><a class="header" href="#build_provider"><code>build_provider</code></a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub fn build_provider(config: &amp;LlmConfig) -&gt; Result&lt;LlmProvider, TowlLlmError&gt;
+<span class="boring">}</span></code></pre></pre>
+<p>Factory function that creates the appropriate provider from configuration.</p>
+<h2 id="analyse_todos"><a class="header" href="#analyse_todos"><code>analyse_todos</code></a></h2>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub async fn analyse_todos(
+    todos: &amp;mut [TodoComment],
+    config: &amp;LlmConfig,
+) -&gt; Result&lt;AnalysisSummary, TowlLlmError&gt;
+<span class="boring">}</span></code></pre></pre>
+<p>Main entry point for TODO analysis. For each TODO (up to <code>max_analyse_count</code>):</p>
+<ol>
+<li>Reads expanded context (~30 lines around the TODO + full function body)</li>
+<li>Constructs a prompt with the TODO description, file path, and code context</li>
+<li>Calls the LLM to determine validity</li>
+<li>Parses the structured JSON response into an <code>AnalysisResult</code></li>
+<li>Attaches the result to <code>TodoComment.analysis</code></li>
+</ol>
+<p>Concurrency is bounded by <code>max_concurrent_analyses</code> via a tokio <code>Semaphore</code>.</p>
+<p><strong>Errors:</strong></p>
+<ul>
+<li><code>NotConfigured</code> -- <code>TOWL_LLM_API_KEY</code> not set</li>
+<li><code>UnsupportedProvider</code> -- Provider is not "claude" or "openai"</li>
+<li><code>ApiError</code>, <code>AuthError</code>, <code>RateLimited</code> -- From the LLM API</li>
+</ul>
+<h2 id="validity"><a class="header" href="#validity"><code>Validity</code></a></h2>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub enum Validity {
+    Valid,
+    Invalid,
+    Uncertain,
+}
+<span class="boring">}</span></code></pre></pre>
+<p>Whether a TODO is still valid:</p>
+<div class="table-wrapper"><table><thead><tr><th>Value</th><th>Meaning</th></tr></thead><tbody>
+<tr><td><code>Valid</code></td><td>TODO describes work that still needs to be done</td></tr>
+<tr><td><code>Invalid</code></td><td>TODO has been resolved, is irrelevant, or is nonsensical</td></tr>
+<tr><td><code>Uncertain</code></td><td>Cannot determine validity from available context</td></tr>
+</tbody></table>
+</div>
+<h2 id="analysisresult"><a class="header" href="#analysisresult"><code>AnalysisResult</code></a></h2>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub struct AnalysisResult {
+    pub validity: Validity,
+    pub reasoning: String,
+    pub is_resolved: bool,
+    pub is_relevant: bool,
+    pub is_actionable: bool,
+    pub confidence: f64,
+    pub enrichment: String,
+}
+<span class="boring">}</span></code></pre></pre>
+<div class="table-wrapper"><table><thead><tr><th>Field</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>validity</code></td><td>Overall assessment</td></tr>
+<tr><td><code>reasoning</code></td><td>Explanation of why the TODO is valid/invalid/uncertain</td></tr>
+<tr><td><code>is_resolved</code></td><td>Whether the code already implements what the TODO asks</td></tr>
+<tr><td><code>is_relevant</code></td><td>Whether the code/feature the TODO references still exists</td></tr>
+<tr><td><code>is_actionable</code></td><td>Whether the TODO describes a clear, specific task</td></tr>
+<tr><td><code>confidence</code></td><td>0.0-1.0 confidence in the assessment</td></tr>
+<tr><td><code>enrichment</code></td><td>Enhanced description suitable for a GitHub issue body</td></tr>
+</tbody></table>
+</div>
+<h2 id="analysissummary"><a class="header" href="#analysissummary"><code>AnalysisSummary</code></a></h2>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub struct AnalysisSummary {
+    pub valid_count: usize,
+    pub invalid_count: usize,
+    pub uncertain_count: usize,
+    pub error_count: usize,
+}
+<span class="boring">}</span></code></pre></pre>
+<p>Summary counts returned by <code>analyse_todos()</code>.</p>
+<h2 id="providers"><a class="header" href="#providers">Providers</a></h2>
+<h3 id="claudeprovider"><a class="header" href="#claudeprovider"><code>ClaudeProvider</code></a></h3>
+<p>POST to <code>https://api.anthropic.com/v1/messages</code> with headers:</p>
+<ul>
+<li><code>x-api-key</code>: API key</li>
+<li><code>anthropic-version</code>: <code>2023-06-01</code></li>
+</ul>
+<p>System prompt is a top-level <code>system</code> field (not in the messages array).</p>
+<h3 id="openaiprovider"><a class="header" href="#openaiprovider"><code>OpenAiProvider</code></a></h3>
+<p>POST to <code>{base_url}/chat/completions</code> with <code>Authorization: Bearer {key}</code>.
+Default base URL: <code>https://api.openai.com/v1</code>. Configurable for Ollama, vLLM, etc.</p>
+<p>System prompt is the first message in the <code>messages</code> array with <code>role: "system"</code>.</p>
+<h3 id="claudecodeprovider"><a class="header" href="#claudecodeprovider"><code>ClaudeCodeProvider</code></a></h3>
+<p>Invokes the <code>claude</code> CLI as a subprocess with <code>-p --output-format json</code>. The combined system prompt and user content are passed as the final argument. No API key required.</p>
+<p>Default command: <code>claude</code>. Configurable via <code>llm.command</code> and <code>llm.args</code>.</p>
+<p>Auto-falls back to <code>ClaudeProvider</code> (API) if the CLI binary is not found on PATH.</p>
+<h3 id="codexprovider"><a class="header" href="#codexprovider"><code>CodexProvider</code></a></h3>
+<p>Invokes the <code>codex</code> CLI as a subprocess with <code>-q</code>. The combined prompt is passed as the final argument. No API key required.</p>
+<p>Default command: <code>codex</code>. Configurable via <code>llm.command</code> and <code>llm.args</code>.</p>
+<p>Auto-falls back to <code>OpenAiProvider</code> (API) with <code>gpt-4o</code> if the CLI binary is not found on PATH.</p>
+<h3 id="is_cli_provider"><a class="header" href="#is_cli_provider"><code>is_cli_provider</code></a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub const fn is_cli_provider(&amp;self) -&gt; bool
+<span class="boring">}</span></code></pre></pre>
+<p>Returns <code>true</code> for <code>ClaudeCode</code> and <code>Codex</code> variants. Used to skip the API key requirement for CLI-based providers.</p>
+<h2 id="configuration-2"><a class="header" href="#configuration-2">Configuration</a></h2>
+<p>See <a href="api/../getting-started/configuration.html#llm-section">Configuration</a> for the <code>[llm]</code> config section.</p>
+<h2 id="errors-4"><a class="header" href="#errors-4">Errors</a></h2>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub enum TowlLlmError {
+    ApiError { message, status },
+    AuthError,
+    RateLimited { retry_after_secs },
+    ParseError { message },
+    NotConfigured,
+    UnsupportedProvider { provider },
+    AnalysisLimitExceeded { count, max },
+    HttpError(String),
+}
+<span class="boring">}</span></code></pre></pre>
+<div class="table-wrapper"><table><thead><tr><th>Variant</th><th>Cause</th></tr></thead><tbody>
+<tr><td><code>ApiError</code></td><td>LLM API returned a non-200 status</td></tr>
+<tr><td><code>AuthError</code></td><td>401 -- invalid or missing API key</td></tr>
+<tr><td><code>RateLimited</code></td><td>429 -- too many requests</td></tr>
+<tr><td><code>ParseError</code></td><td>LLM response could not be parsed as valid JSON</td></tr>
+<tr><td><code>NotConfigured</code></td><td><code>TOWL_LLM_API_KEY</code> environment variable not set</td></tr>
+<tr><td><code>UnsupportedProvider</code></td><td>Provider is not "claude" or "openai"</td></tr>
+<tr><td><code>AnalysisLimitExceeded</code></td><td>TODO count exceeds <code>max_analyse_count</code></td></tr>
+<tr><td><code>HttpError</code></td><td>HTTP client or file I/O error</td></tr>
+</tbody></table>
+</div><div style="break-before: page; page-break-before: always;"></div><h1 id="processor"><a class="header" href="#processor">Processor</a></h1>
+<p>The processor replaces TODO comments in source files with GitHub issue links after issues are created.</p>
+<h2 id="processor-1"><a class="header" href="#processor-1"><code>Processor</code></a></h2>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub struct Processor;
+<span class="boring">}</span></code></pre></pre>
+<p>Stateless processor that operates on batches of <code>(TodoComment, CreatedIssue)</code> pairs. All methods are associated functions (no <code>self</code>).</p>
+<h3 id="replace_todos"><a class="header" href="#replace_todos"><code>replace_todos</code></a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub async fn replace_todos(
+    repo_root: &amp;Path,
+    replacements: &amp;[(TodoComment, CreatedIssue)],
+) -&gt; ProcessorResult
+<span class="boring">}</span></code></pre></pre>
+<p>Replaces TODO comments in source files with <code>See: &lt;issue_url&gt;</code> links.</p>
+<p><strong>Behaviour:</strong></p>
+<ol>
+<li>Groups replacements by file path for efficient batch processing</li>
+<li>For each file, validates the path stays within <code>repo_root</code></li>
+<li>Reads file content, replaces each TODO line, writes back atomically</li>
+<li>Returns a <code>ProcessorResult</code> with counts and per-file errors</li>
+</ol>
+<p><strong>Path safety:</strong></p>
+<ul>
+<li>Both the file path and repo root are canonicalised before comparison</li>
+<li>Files outside the repo root are rejected with <code>PathOutsideRoot</code></li>
+<li>Issue URLs must start with <code>https://github.com/</code> or are rejected</li>
+</ul>
+<p><strong>Replacement format:</strong></p>
+<p>The comment prefix (e.g., <code>// </code>, <code># </code>, <code>/* </code>) is preserved. The TODO text after the prefix is replaced:</p>
+<pre><code class="language-text">// TODO: Implement caching    --&gt;    // See: https://github.com/owner/repo/issues/42
+# FIXME: Handle timeout        --&gt;    # See: https://github.com/owner/repo/issues/43
+</code></pre>
+<p><strong>Atomic writes:</strong></p>
+<p>Files are written via a tempfile in the same directory, then atomically persisted. This prevents partial writes if the process is interrupted.</p>
+<p><strong>Empty input:</strong></p>
+<p>If <code>replacements</code> is empty, returns immediately with zero counts and no I/O.</p>
+<h2 id="processorresult"><a class="header" href="#processorresult"><code>ProcessorResult</code></a></h2>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub struct ProcessorResult {
+    pub files_modified: usize,
+    pub todos_replaced: usize,
+    pub errors: Vec&lt;(PathBuf, TowlProcessorError)&gt;,
+}
+<span class="boring">}</span></code></pre></pre>
+<p>Summary of a batch replacement operation. The <code>errors</code> field contains per-file errors that did not abort the overall operation -- other files continue processing.</p>
+<h2 id="errors-5"><a class="header" href="#errors-5">Errors</a></h2>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub enum TowlProcessorError {
+    FileReadError(PathBuf, std::io::Error),
+    FileWriteError(PathBuf, std::io::Error),
+    LineOutOfBounds { path: PathBuf, line: usize, total_lines: usize },
+    CommentPrefixNotFound { path: PathBuf, line: usize },
+    PathOutsideRoot { path: PathBuf, root: PathBuf },
+    InvalidIssueUrl { url: String },
+}
+<span class="boring">}</span></code></pre></pre>
+<div class="table-wrapper"><table><thead><tr><th>Variant</th><th>Cause</th></tr></thead><tbody>
+<tr><td><code>FileReadError</code></td><td>Failed to read source file</td></tr>
+<tr><td><code>FileWriteError</code></td><td>Failed to write modified file</td></tr>
+<tr><td><code>LineOutOfBounds</code></td><td>TODO line number exceeds file length</td></tr>
+<tr><td><code>CommentPrefixNotFound</code></td><td>Column offset points past end of line</td></tr>
+<tr><td><code>PathOutsideRoot</code></td><td>File is outside the repository root</td></tr>
+<tr><td><code>InvalidIssueUrl</code></td><td>URL does not start with <code>https://github.com/</code></td></tr>
+</tbody></table>
+</div>
+<h2 id="example-2"><a class="header" href="#example-2">Example</a></h2>
+<pre><pre class="playground"><code class="language-rust no_run"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use towl::processor::Processor;
+
+let replacements = vec![(todo, created_issue)];
+let result = Processor::replace_todos(repo_root, &amp;replacements).await;
+
+println!("Modified {} files, replaced {} TODOs", result.files_modified, result.todos_replaced);
+
+for (path, err) in &amp;result.errors {
+    eprintln!("Error in {}: {}", path.display(), err);
+}
+<span class="boring">}</span></code></pre></pre>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="tui"><a class="header" href="#tui">TUI</a></h1>
+<p>The TUI module provides an interactive terminal interface for browsing, filtering, and acting on TODO comments. Built on <a href="https://ratatui.rs">ratatui</a> and <a href="https://github.com/crossterm-rs/crossterm">crossterm</a>.</p>
+<h2 id="run"><a class="header" href="#run"><code>run</code></a></h2>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub fn run(
+    todos: Vec&lt;TodoComment&gt;,
+    github_config: &amp;GitHubConfig,
+    repo_root: &amp;Path,
+) -&gt; Result&lt;(), TowlTuiError&gt;
+<span class="boring">}</span></code></pre></pre>
+<p>Launches the interactive TUI. Takes ownership of the terminal (raw mode, alternate screen). Terminal state is always restored on exit, even on error.</p>
+<p><strong>Errors:</strong></p>
+<ul>
+<li><code>TowlTuiError::Io</code> -- Terminal I/O failure</li>
+</ul>
+<h2 id="app"><a class="header" href="#app"><code>App</code></a></h2>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub struct App {
+    // private fields
+}
+<span class="boring">}</span></code></pre></pre>
+<p>Core TUI application state. Manages the TODO list, selection set, cursor position, filtering, sorting, and mode transitions.</p>
+<h3 id="constructor-2"><a class="header" href="#constructor-2">Constructor</a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub fn new(todos: Vec&lt;TodoComment&gt;) -&gt; Self
+<span class="boring">}</span></code></pre></pre>
+<p>Creates a new app with all TODOs visible, no selection, sorted by file path.</p>
+<h3 id="state-accessors"><a class="header" href="#state-accessors">State Accessors</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>Method</th><th>Returns</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>todos()</code></td><td><code>&amp;[TodoComment]</code></td><td>Full TODO list</td></tr>
+<tr><td><code>filtered_indices()</code></td><td><code>&amp;[usize]</code></td><td>Indices into <code>todos()</code> after filtering/sorting</td></tr>
+<tr><td><code>cursor()</code></td><td><code>usize</code></td><td>Current cursor position in filtered list</td></tr>
+<tr><td><code>filter_type()</code></td><td><code>Option&lt;TodoType&gt;</code></td><td>Active type filter (<code>None</code> = show all)</td></tr>
+<tr><td><code>sort_field()</code></td><td><code>SortField</code></td><td>Current sort field</td></tr>
+<tr><td><code>sort_ascending()</code></td><td><code>bool</code></td><td>Sort direction</td></tr>
+<tr><td><code>is_selected(idx)</code></td><td><code>bool</code></td><td>Whether a TODO index is selected</td></tr>
+<tr><td><code>selected_count()</code></td><td><code>usize</code></td><td>Number of selected TODOs</td></tr>
+<tr><td><code>selected_todos()</code></td><td><code>Vec&lt;TodoComment&gt;</code></td><td>Cloned copies of selected TODOs</td></tr>
+<tr><td><code>mode()</code></td><td><code>&amp;AppMode</code></td><td>Current UI mode</td></tr>
+</tbody></table>
+</div>
+<h3 id="navigation"><a class="header" href="#navigation">Navigation</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>Method</th><th>Effect</th></tr></thead><tbody>
+<tr><td><code>move_up()</code></td><td>Move cursor up (clamped to 0)</td></tr>
+<tr><td><code>move_down()</code></td><td>Move cursor down (clamped to list end)</td></tr>
+</tbody></table>
+</div>
+<h3 id="selection"><a class="header" href="#selection">Selection</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>Method</th><th>Effect</th></tr></thead><tbody>
+<tr><td><code>toggle_select()</code></td><td>Toggle selection on cursor item</td></tr>
+<tr><td><code>select_all_visible()</code></td><td>Select all items in filtered view</td></tr>
+<tr><td><code>deselect_all()</code></td><td>Clear all selections</td></tr>
+</tbody></table>
+</div>
+<h3 id="filtering-and-sorting"><a class="header" href="#filtering-and-sorting">Filtering and Sorting</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>Method</th><th>Effect</th></tr></thead><tbody>
+<tr><td><code>cycle_filter()</code></td><td>Cycle: All -&gt; TODO -&gt; FIXME -&gt; HACK -&gt; NOTE -&gt; BUG -&gt; All</td></tr>
+<tr><td><code>cycle_sort()</code></td><td>Cycle: File -&gt; Line -&gt; Priority -&gt; Type -&gt; File</td></tr>
+<tr><td><code>reverse_sort()</code></td><td>Toggle ascending/descending</td></tr>
+</tbody></table>
+</div>
+<h3 id="mode-transitions"><a class="header" href="#mode-transitions">Mode Transitions</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>Method</th><th>Transition</th></tr></thead><tbody>
+<tr><td><code>enter_confirm()</code></td><td>Browse -&gt; Confirm (requires selection)</td></tr>
+<tr><td><code>cancel_confirm()</code></td><td>Confirm -&gt; Browse</td></tr>
+<tr><td><code>start_creating()</code></td><td>Confirm -&gt; Creating</td></tr>
+<tr><td><code>finish_creating()</code></td><td>Creating -&gt; Done</td></tr>
+<tr><td><code>enter_peek()</code></td><td>Browse -&gt; Peek (loads source context)</td></tr>
+<tr><td><code>exit_peek()</code></td><td>Peek -&gt; Browse</td></tr>
+</tbody></table>
+</div>
+<h2 id="appmode"><a class="header" href="#appmode"><code>AppMode</code></a></h2>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub enum AppMode {
+    Browse,
+    Peek(PeekState),
+    Confirm,
+    Creating(CreatingState),
+    Done(DoneState),
+}
+<span class="boring">}</span></code></pre></pre>
+<p>The current UI mode determines which view is rendered and which keys are active.</p>
+<div class="table-wrapper"><table><thead><tr><th>Mode</th><th>View</th><th>Input</th></tr></thead><tbody>
+<tr><td><code>Browse</code></td><td>Scrollable TODO list</td><td>Navigate, select, filter, sort, peek</td></tr>
+<tr><td><code>Peek</code></td><td>Source code overlay around a TODO</td><td>Scroll, dismiss</td></tr>
+<tr><td><code>Confirm</code></td><td>Summary of selected TODOs</td><td>Confirm or cancel</td></tr>
+<tr><td><code>Creating</code></td><td>Progress indicator during issue creation</td><td>None (Ctrl+C to abort)</td></tr>
+<tr><td><code>Done</code></td><td>Results summary (issues created, errors)</td><td>Dismiss to exit</td></tr>
+</tbody></table>
+</div>
+<h2 id="sortfield"><a class="header" href="#sortfield"><code>SortField</code></a></h2>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub enum SortField {
+    File,
+    Line,
+    Priority,
+    Type,
+}
+<span class="boring">}</span></code></pre></pre>
+<p>Field used to sort the TODO list. Cycle with the <code>s</code> key in Browse mode.</p>
+<ul>
+<li><strong>File</strong> -- Sort by file path, then by line number within each file</li>
+<li><strong>Line</strong> -- Sort by line number globally</li>
+<li><strong>Priority</strong> -- Sort by TODO type priority (Bug=1, Fixme=2, Hack=3, Todo=4, Note=5)</li>
+<li><strong>Type</strong> -- Sort alphabetically by type name</li>
+</ul>
+<h2 id="supporting-types"><a class="header" href="#supporting-types">Supporting Types</a></h2>
+<h3 id="peekstate"><a class="header" href="#peekstate"><code>PeekState</code></a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub struct PeekState {
+    pub lines: Vec&lt;(usize, String)&gt;,
+    pub file: String,
+    pub todo_line: usize,
+    pub scroll: usize,
+}
+<span class="boring">}</span></code></pre></pre>
+<p>State for the source-code peek overlay. Contains numbered source lines around the TODO, with scroll position.</p>
+<h3 id="creatingstate"><a class="header" href="#creatingstate"><code>CreatingState</code></a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub struct CreatingState {
+    pub phase: String,
+    pub progress: usize,
+    pub total: usize,
+    pub errors: Vec&lt;String&gt;,
+    pub created_issues: Vec&lt;CreatedIssue&gt;,
+}
+<span class="boring">}</span></code></pre></pre>
+<p>State tracked during background GitHub issue creation. Updated via channel messages from the spawned task.</p>
+<h3 id="donestate"><a class="header" href="#donestate"><code>DoneState</code></a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub struct DoneState {
+    pub created_issues: Vec&lt;CreatedIssue&gt;,
+    pub errors: Vec&lt;String&gt;,
+}
+<span class="boring">}</span></code></pre></pre>
+<p>Final state after issue creation completes, showing results and any errors.</p>
+<h2 id="action"><a class="header" href="#action"><code>Action</code></a></h2>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub enum Action {
+    Continue,
+    Quit,
+}
+<span class="boring">}</span></code></pre></pre>
+<p>Result of processing a keyboard event. <code>Continue</code> keeps the event loop running; <code>Quit</code> exits the TUI.</p>
+<h2 id="handle_input"><a class="header" href="#handle_input"><code>handle_input</code></a></h2>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub fn handle_input(
+    app: &amp;mut App,
+    timeout: std::time::Duration,
+) -&gt; std::io::Result&lt;Action&gt;
+<span class="boring">}</span></code></pre></pre>
+<p>Polls for keyboard input and dispatches to mode-specific handlers. Returns <code>Action::Quit</code> on <code>q</code>, <code>Esc</code> (in appropriate modes), or <code>Ctrl+C</code>.</p>
+<h2 id="errors-6"><a class="header" href="#errors-6">Errors</a></h2>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub enum TowlTuiError {
+    Io(std::io::Error),
+}
+<span class="boring">}</span></code></pre></pre>
+<p>Terminal I/O errors from crossterm or ratatui operations.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="types"><a class="header" href="#types">Types</a></h1>
+<p>Core data types used across the towl library.</p>
+<h2 id="todotype"><a class="header" href="#todotype"><code>TodoType</code></a></h2>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub enum TodoType {
+    Todo,
+    Fixme,
+    Hack,
+    Note,
+    Bug,
+}
+<span class="boring">}</span></code></pre></pre>
+<p>Represents the category of a TODO comment.</p>
+<h3 id="display"><a class="header" href="#display">Display</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>Variant</th><th>Display</th></tr></thead><tbody>
+<tr><td><code>Todo</code></td><td><code>TODO</code></td></tr>
+<tr><td><code>Fixme</code></td><td><code>FIXME</code></td></tr>
+<tr><td><code>Hack</code></td><td><code>HACK</code></td></tr>
+<tr><td><code>Note</code></td><td><code>NOTE</code></td></tr>
+<tr><td><code>Bug</code></td><td><code>BUG</code></td></tr>
+</tbody></table>
+</div>
+<h3 id="as_filter_str"><a class="header" href="#as_filter_str"><code>as_filter_str</code></a></h3>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub const fn as_filter_str(&amp;self) -&gt; &amp;'static str
+<span class="boring">}</span></code></pre></pre>
+<p>Returns the lowercase filter string used for CLI filtering:</p>
+<div class="table-wrapper"><table><thead><tr><th>Variant</th><th>Filter string</th></tr></thead><tbody>
+<tr><td><code>Todo</code></td><td><code>"todo"</code></td></tr>
+<tr><td><code>Fixme</code></td><td><code>"fixme"</code></td></tr>
+<tr><td><code>Hack</code></td><td><code>"hack"</code></td></tr>
+<tr><td><code>Note</code></td><td><code>"note"</code></td></tr>
+<tr><td><code>Bug</code></td><td><code>"bug"</code></td></tr>
+</tbody></table>
+</div>
+<h3 id="conversions"><a class="header" href="#conversions">Conversions</a></h3>
+<ul>
+<li><code>TryFrom&lt;&amp;str&gt;</code> -- Case-insensitive conversion from string</li>
+<li><code>clap::ValueEnum</code> -- CLI argument parsing</li>
+</ul>
+<h3 id="trait-implementations"><a class="header" href="#trait-implementations">Trait Implementations</a></h3>
+<p><code>Debug</code>, <code>Clone</code>, <code>Copy</code>, <code>PartialEq</code>, <code>Eq</code>, <code>Hash</code>, <code>Serialize</code>, <code>Deserialize</code>, <code>ValueEnum</code></p>
+<h2 id="todocomment"><a class="header" href="#todocomment"><code>TodoComment</code></a></h2>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub struct TodoComment {
+    pub id: String,
+    pub file_path: PathBuf,
+    pub line_number: usize,
+    pub column_start: usize,
+    pub column_end: usize,
+    pub todo_type: TodoType,
+    pub original_text: String,
+    pub description: String,
+    pub context_lines: Vec&lt;String&gt;,
+    pub function_context: Option&lt;String&gt;,
+}
+<span class="boring">}</span></code></pre></pre>
+<p>A single TODO comment extracted from a source file.</p>
+<div class="table-wrapper"><table><thead><tr><th>Field</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>id</code></td><td>Unique identifier (generated per extraction)</td></tr>
+<tr><td><code>file_path</code></td><td>Path to the source file</td></tr>
+<tr><td><code>line_number</code></td><td>1-based line number</td></tr>
+<tr><td><code>column_start</code></td><td>0-based start column of the TODO marker</td></tr>
+<tr><td><code>column_end</code></td><td>0-based end column of the TODO marker</td></tr>
+<tr><td><code>todo_type</code></td><td>Category (<code>Todo</code>, <code>Fixme</code>, etc.)</td></tr>
+<tr><td><code>original_text</code></td><td>The full original comment line</td></tr>
+<tr><td><code>description</code></td><td>Extracted description text after the marker</td></tr>
+<tr><td><code>context_lines</code></td><td>Surrounding source lines (configurable window)</td></tr>
+<tr><td><code>function_context</code></td><td>Enclosing function name, if detected</td></tr>
+</tbody></table>
+</div>
+<h3 id="trait-implementations-1"><a class="header" href="#trait-implementations-1">Trait Implementations</a></h3>
+<p><code>Debug</code>, <code>Clone</code>, <code>PartialEq</code>, <code>Eq</code>, <code>Serialize</code>, <code>Deserialize</code></p>
+<h2 id="scanresult-1"><a class="header" href="#scanresult-1"><code>ScanResult</code></a></h2>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub struct ScanResult {
+    pub todos: Vec&lt;TodoComment&gt;,
+    pub files_scanned: usize,
+    pub files_skipped: usize,
+    pub files_errored: usize,
+    pub duration: std::time::Duration,
+}
+<span class="boring">}</span></code></pre></pre>
+<p>Returned by <code>Scanner::scan()</code>. See <a href="api/./scanner.html">Scanner</a> for details.</p>
+<h2 id="owner--repo-1"><a class="header" href="#owner--repo-1"><code>Owner</code> / <code>Repo</code></a></h2>
+<p>Newtype wrappers for GitHub owner and repository names:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub struct Owner(String);
+pub struct Repo(String);
+<span class="boring">}</span></code></pre></pre>
+<p>Both provide <code>try_new(impl Into&lt;String&gt;) -&gt; Result&lt;Self, TowlConfigError&gt;</code> (validates length) and <code>Display</code>. See <a href="api/./config.html">Config</a> for details.</p>
+<h2 id="outputformat-1"><a class="header" href="#outputformat-1"><code>OutputFormat</code></a></h2>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub enum OutputFormat {
+    Table,
+    Json,
+    Csv,
+    Toml,
+    Markdown,
+    Terminal,
+}
+<span class="boring">}</span></code></pre></pre>
+<p>CLI-facing enum for selecting output format. <code>Table</code> and <code>Terminal</code> produce identical output. See <a href="api/./output.html">Output</a> for details.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="errors-7"><a class="header" href="#errors-7">Errors</a></h1>
+<p>towl uses typed errors throughout, built with <code>thiserror</code>. Each module defines its own error enum, and the top-level <code>TowlError</code> aggregates them.</p>
+<h2 id="error-hierarchy-1"><a class="header" href="#error-hierarchy-1">Error Hierarchy</a></h2>
+<pre><code class="language-text">TowlError
+├── TowlConfigError
+├── TowlScannerError
+│   └── TowlParserError
+│       └── TowlCommentError
+├── TowlOutputError
+│   ├── FormatterError
+│   └── WriterError
+├── TowlGitHubError
+├── TowlProcessorError
+└── TowlTuiError
+</code></pre>
+<h2 id="towlerror"><a class="header" href="#towlerror"><code>TowlError</code></a></h2>
+<p>Top-level error type used by the CLI binary. All sub-error types convert automatically via <code>#[from]</code>.</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub enum TowlError {
+    Config(TowlConfigError),
+    Scanner(TowlScannerError),
+    Output(TowlOutputError),
+    GitHub(TowlGitHubError),
+    Processor(TowlProcessorError),
+    Tui(TowlTuiError),
+}
+<span class="boring">}</span></code></pre></pre>
+<h2 id="towlconfigerror"><a class="header" href="#towlconfigerror"><code>TowlConfigError</code></a></h2>
+<p>Errors during configuration loading, initialisation, and validation.</p>
+<div class="table-wrapper"><table><thead><tr><th>Variant</th><th>Cause</th></tr></thead><tbody>
+<tr><td><code>PathTraversalAttempt(PathBuf)</code></td><td>Config path contains <code>..</code></td></tr>
+<tr><td><code>ConfigAlreadyExists(PathBuf)</code></td><td><code>towl init</code> without <code>--force</code> on existing file</td></tr>
+<tr><td><code>WriteToFileError(PathBuf, io::Error)</code></td><td>Failed to write config file</td></tr>
+<tr><td><code>UnableToParseToml(toml::ser::Error)</code></td><td>TOML serialisation failure</td></tr>
+<tr><td><code>CouldNotCreateConfig(ConfigError)</code></td><td>Config crate loading error</td></tr>
+<tr><td><code>GitRepoNotFound { message }</code></td><td>Not inside a git repository</td></tr>
+<tr><td><code>GitRemoteNotFound { message }</code></td><td>No <code>origin</code> remote</td></tr>
+<tr><td><code>GitInvalidUrl { url, message }</code></td><td>Cannot parse owner/repo from remote URL</td></tr>
+<tr><td><code>TooManyConfigPatterns { field, count, max_allowed }</code></td><td>Pattern array exceeds 100 entries</td></tr>
+<tr><td><code>ConfigValueTooLong { field, length, max_length }</code></td><td>Config string exceeds 512 characters</td></tr>
+<tr><td><code>ContextLinesOutOfRange { value, min, max }</code></td><td>Context lines outside 1..=50</td></tr>
+<tr><td><code>RateLimitDelayTooHigh { value, max }</code></td><td>Rate limit delay exceeds maximum</td></tr>
+</tbody></table>
+</div>
+<h2 id="towlscannererror"><a class="header" href="#towlscannererror"><code>TowlScannerError</code></a></h2>
+<p>Errors during directory walking and file reading.</p>
+<div class="table-wrapper"><table><thead><tr><th>Variant</th><th>Cause</th></tr></thead><tbody>
+<tr><td><code>UnableToWalkFile(ignore::Error)</code></td><td>Directory traversal error</td></tr>
+<tr><td><code>ParsingError(TowlParserError)</code></td><td>Parser failure (propagated)</td></tr>
+<tr><td><code>UnableToReadFileAtPath(PathBuf, io::Error)</code></td><td>File I/O error</td></tr>
+<tr><td><code>InvalidPath { path }</code></td><td>Path could not be canonicalised</td></tr>
+<tr><td><code>FileTooLarge { path, size, max_allowed }</code></td><td>File exceeds 10 MB</td></tr>
+<tr><td><code>TooManyTodos { path, count, max_allowed }</code></td><td>File exceeds 10,000 TODOs</td></tr>
+</tbody></table>
+</div>
+<h2 id="towlparsererror"><a class="header" href="#towlparsererror"><code>TowlParserError</code></a></h2>
+<p>Errors during regex compilation and TODO extraction.</p>
+<div class="table-wrapper"><table><thead><tr><th>Variant</th><th>Cause</th></tr></thead><tbody>
+<tr><td><code>InvalidRegexPattern(String, regex::Error)</code></td><td>Regex failed to compile</td></tr>
+<tr><td><code>UnknownConfigPattern(TowlCommentError)</code></td><td>Pattern matched but type unknown</td></tr>
+<tr><td><code>RegexGroupMissing</code></td><td>Pattern lacks a capture group <code>(.*)</code></td></tr>
+<tr><td><code>PatternTooLong(usize, usize)</code></td><td>Pattern exceeds 256 characters</td></tr>
+<tr><td><code>TooManyTotalPatterns { count, max_allowed }</code></td><td>Total patterns across all categories exceeds 50</td></tr>
+</tbody></table>
+</div>
+<h2 id="towlcommenterror"><a class="header" href="#towlcommenterror"><code>TowlCommentError</code></a></h2>
+<p>Errors in comment type resolution.</p>
+<div class="table-wrapper"><table><thead><tr><th>Variant</th><th>Cause</th></tr></thead><tbody>
+<tr><td><code>UnknownTodoType { comment }</code></td><td>String does not map to a known <code>TodoType</code></td></tr>
+</tbody></table>
+</div>
+<h2 id="towloutputerror-1"><a class="header" href="#towloutputerror-1"><code>TowlOutputError</code></a></h2>
+<p>Errors during formatting and writing.</p>
+<div class="table-wrapper"><table><thead><tr><th>Variant</th><th>Cause</th></tr></thead><tbody>
+<tr><td><code>InvalidOutputPath(String)</code></td><td>Missing/wrong extension, terminal format with file path</td></tr>
+<tr><td><code>UnableToFormatTodos(FormatterError)</code></td><td>Formatter failure</td></tr>
+<tr><td><code>UnableToWriteTodos(WriterError)</code></td><td>Writer failure</td></tr>
+</tbody></table>
+</div>
+<h2 id="formattererror-1"><a class="header" href="#formattererror-1"><code>FormatterError</code></a></h2>
+<p>Errors in output formatting.</p>
+<div class="table-wrapper"><table><thead><tr><th>Variant</th><th>Cause</th></tr></thead><tbody>
+<tr><td><code>SerializationError(String)</code></td><td>JSON/TOML/CSV serialisation failure</td></tr>
+<tr><td><code>IntegerOverflow(usize)</code></td><td>Count exceeds safe integer bounds</td></tr>
+</tbody></table>
+</div>
+<h2 id="writererror-1"><a class="header" href="#writererror-1"><code>WriterError</code></a></h2>
+<p>Errors in output writing.</p>
+<div class="table-wrapper"><table><thead><tr><th>Variant</th><th>Cause</th></tr></thead><tbody>
+<tr><td><code>IoError(io::Error)</code></td><td>File system I/O error</td></tr>
+<tr><td><code>PathTraversal(PathBuf)</code></td><td>Output path contains <code>..</code></td></tr>
+</tbody></table>
+</div>
+<h2 id="towlgithuberror"><a class="header" href="#towlgithuberror"><code>TowlGitHubError</code></a></h2>
+<p>Errors from GitHub API interactions.</p>
+<div class="table-wrapper"><table><thead><tr><th>Variant</th><th>Cause</th></tr></thead><tbody>
+<tr><td><code>ApiError { message, source }</code></td><td>General GitHub API failure</td></tr>
+<tr><td><code>AuthError</code></td><td>401 response -- invalid or expired token</td></tr>
+<tr><td><code>RateLimitExceeded { retry_after_secs }</code></td><td>403 with rate limit message</td></tr>
+<tr><td><code>IssueAlreadyExists { title }</code></td><td>Duplicate detected before creation</td></tr>
+<tr><td><code>RepositoryNotFound { owner, repo }</code></td><td>404 response -- owner/repo not found</td></tr>
+<tr><td><code>MissingToken</code></td><td><code>TOWL_GITHUB_TOKEN</code> not set or empty</td></tr>
+</tbody></table>
+</div>
+<h2 id="towlprocessorerror"><a class="header" href="#towlprocessorerror"><code>TowlProcessorError</code></a></h2>
+<p>Errors from replacing TODO comments with issue links in source files.</p>
+<div class="table-wrapper"><table><thead><tr><th>Variant</th><th>Cause</th></tr></thead><tbody>
+<tr><td><code>FileReadError(PathBuf, io::Error)</code></td><td>Failed to read source file</td></tr>
+<tr><td><code>FileWriteError(PathBuf, io::Error)</code></td><td>Failed to write modified file</td></tr>
+<tr><td><code>LineOutOfBounds { path, line, total_lines }</code></td><td>TODO line number exceeds file length</td></tr>
+<tr><td><code>CommentPrefixNotFound { path, line }</code></td><td>Column offset points past end of line</td></tr>
+<tr><td><code>PathOutsideRoot { path, root }</code></td><td>File is outside the repository root</td></tr>
+<tr><td><code>InvalidIssueUrl { url }</code></td><td>URL does not start with <code>https://github.com/</code></td></tr>
+</tbody></table>
+</div>
+<h2 id="towltuierror"><a class="header" href="#towltuierror"><code>TowlTuiError</code></a></h2>
+<p>Errors from the interactive terminal UI.</p>
+<div class="table-wrapper"><table><thead><tr><th>Variant</th><th>Cause</th></tr></thead><tbody>
+<tr><td><code>Io(io::Error)</code></td><td>Terminal I/O error from crossterm or ratatui</td></tr>
+</tbody></table>
+</div>
+<h2 id="error-propagation"><a class="header" href="#error-propagation">Error Propagation</a></h2>
+<p>Errors propagate upward using <code>?</code> and <code>#[from]</code>:</p>
+<pre><code class="language-text">TowlCommentError  --&gt;  TowlParserError    --&gt;  TowlScannerError  --&gt;  TowlError
+FormatterError    --&gt;  TowlOutputError     --&gt;  TowlError
+WriterError       --&gt;  TowlOutputError     --&gt;  TowlError
+TowlGitHubError   ----------------------------&gt;  TowlError
+TowlProcessorError ---------------------------&gt;  TowlError
+TowlTuiError      ----------------------------&gt;  TowlError
+</code></pre>
+<p>All errors implement <code>std::fmt::Display</code> with human-readable messages and <code>std::error::Error</code> for standard error handling.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="architecture"><a class="header" href="#architecture">Architecture</a></h1>
+<p>towl follows a pipeline architecture: Config -&gt; Scanner -&gt; Parser -&gt; TUI / Output. Each stage is a separate module with clear boundaries and typed errors.</p>
+<h2 id="pipeline"><a class="header" href="#pipeline">Pipeline</a></h2>
+<pre><code class="language-text">                ┌──────────┐
+                │  Config   │  .towl.toml + env vars + git remote
+                └────┬─────┘
+                     │
+                ┌────▼─────┐
+                │  Scanner  │  Walks directory tree, scans files concurrently
+                └────┬─────┘
+                     │
+                ┌────▼─────┐
+                │  Parser   │  Matches comment prefixes + TODO patterns
+                └────┬─────┘
+                     │
+              ┌──────┴──────┐
+              │             │
+        ┌─────▼────┐  ┌────▼─────┐
+        │   TUI     │  │  Output   │  Non-interactive: formats + writes
+        │ (default) │  │  (-N)     │
+        └─────┬────┘  └──────────┘
+              │
+        ┌─────▼─────┐
+        │ Processor  │  Replaces TODOs with GitHub issue links
+        └───────────┘
+</code></pre>
+<h2 id="module-boundaries"><a class="header" href="#module-boundaries">Module Boundaries</a></h2>
+<h3 id="config-srclibconfig"><a class="header" href="#config-srclibconfig">Config (<code>src/lib/config/</code>)</a></h3>
+<ul>
+<li>Loads <code>.towl.toml</code> using the <code>config</code> crate</li>
+<li>Merges environment variable overrides (<code>TOWL_GITHUB_*</code>)</li>
+<li>Discovers GitHub owner/repo from <code>git remote get-url origin</code></li>
+<li>Validates pattern array sizes</li>
+<li>Produces <code>TowlConfig</code> containing <code>ParsingConfig</code> + <code>GitHubConfig</code></li>
+</ul>
+<p>Submodules:</p>
+<ul>
+<li><code>types.rs</code> -- <code>TowlConfig</code>, <code>ParsingConfig</code>, <code>GitHubConfig</code></li>
+<li><code>defaults.rs</code> -- Default values for config fields</li>
+<li><code>display.rs</code> -- <code>Display</code> implementation for config tree view</li>
+<li><code>newtypes.rs</code> -- <code>Owner</code> and <code>Repo</code> newtype wrappers</li>
+<li><code>validation.rs</code> -- Config validation logic</li>
+<li><code>git.rs</code> -- <code>GitRepoInfo</code> for parsing git remotes</li>
+<li><code>error.rs</code> -- <code>TowlConfigError</code></li>
+</ul>
+<h3 id="scanner-srclibscanner"><a class="header" href="#scanner-srclibscanner">Scanner (<code>src/lib/scanner/</code>)</a></h3>
+<ul>
+<li>Accepts a <code>ParsingConfig</code> and a root path</li>
+<li>Walks the directory tree using the <code>ignore</code> crate (respects <code>.gitignore</code>)</li>
+<li>Filters files by extension and exclude patterns</li>
+<li>Scans files concurrently with bounded parallelism (up to 64 files)</li>
+<li>Reads files asynchronously via <code>tokio::fs</code></li>
+<li>Enforces resource limits (file size, TODO counts, file counts)</li>
+<li>Delegates content parsing to the <code>Parser</code></li>
+<li>Returns <code>ScanResult</code> with TODOs and scan metrics</li>
+</ul>
+<p>Submodules:</p>
+<ul>
+<li><code>types.rs</code> -- <code>Scanner</code> implementation</li>
+<li><code>limits.rs</code> -- <code>ScanResult</code> and resource limit constants</li>
+<li><code>walker.rs</code> -- Directory walker construction</li>
+<li><code>error.rs</code> -- <code>TowlScannerError</code></li>
+</ul>
+<h3 id="parser-srclibparser"><a class="header" href="#parser-srclibparser">Parser (<code>src/lib/parser/</code>)</a></h3>
+<ul>
+<li>Compiles regex patterns once during construction</li>
+<li>Identifies comment lines via <code>comment_prefixes</code></li>
+<li>Extracts TODO items via <code>todo_patterns</code></li>
+<li>Captures context lines (configurable window, 1-50)</li>
+<li>Detects enclosing function names via <code>function_patterns</code></li>
+<li>Produces <code>Vec&lt;TodoComment&gt;</code></li>
+</ul>
+<p>Submodules:</p>
+<ul>
+<li><code>types.rs</code> -- <code>Parser</code> implementation</li>
+<li><code>context.rs</code> -- Context line extraction logic</li>
+<li><code>pattern.rs</code> -- Pattern compilation and matching</li>
+<li><code>error.rs</code> -- <code>TowlParserError</code></li>
+</ul>
+<h3 id="tui-srclibtui"><a class="header" href="#tui-srclibtui">TUI (<code>src/lib/tui/</code>)</a></h3>
+<ul>
+<li>Full-screen terminal interface using ratatui and crossterm</li>
+<li>Browse, filter, sort, and peek at TODOs</li>
+<li>Select TODOs and create GitHub issues with progress tracking</li>
+<li>Replaces TODO comments in source files with issue links via the Processor</li>
+</ul>
+<p>Submodules:</p>
+<ul>
+<li><code>app.rs</code> -- <code>App</code> state machine and <code>AppMode</code> enum (Browse, Peek, Confirm, Creating, Done)</li>
+<li><code>input.rs</code> -- Keyboard event handling and action dispatch</li>
+<li><code>render.rs</code> -- UI rendering (list, peek popup, confirm dialog, progress view)</li>
+<li><code>error.rs</code> -- <code>TowlTuiError</code></li>
+</ul>
+<h3 id="processor-srclibprocessor"><a class="header" href="#processor-srclibprocessor">Processor (<code>src/lib/processor/</code>)</a></h3>
+<ul>
+<li>Replaces TODO comments in source files with GitHub issue links</li>
+<li>Groups replacements by file for efficient batch processing</li>
+<li>Validates file paths stay within the repository root</li>
+<li>Returns <code>ProcessorResult</code> with counts and error details</li>
+</ul>
+<p>Submodules:</p>
+<ul>
+<li><code>types.rs</code> -- <code>Processor</code> and <code>ProcessorResult</code></li>
+<li><code>error.rs</code> -- <code>TowlProcessorError</code></li>
+</ul>
+<h3 id="github-srclibgithub"><a class="header" href="#github-srclibgithub">GitHub (<code>src/lib/github/</code>)</a></h3>
+<ul>
+<li>Creates GitHub issues from <code>TodoComment</code> items via the Octocrab API</li>
+<li>Loads existing issues to detect and skip duplicates</li>
+<li>Constructs issue titles and bodies with file/line metadata</li>
+</ul>
+<h3 id="output-srcliboutput"><a class="header" href="#output-srcliboutput">Output (<code>src/lib/output/</code>)</a></h3>
+<ul>
+<li>Combines a <code>FormatterImpl</code> and a <code>WriterImpl</code></li>
+<li>Groups TODOs by type before formatting</li>
+<li>Uses enum dispatch (not trait objects) for zero-cost abstraction</li>
+</ul>
+<pre><code class="language-text">Output
+├── FormatterImpl (enum dispatch)
+│   ├── CsvFormatter
+│   ├── JsonFormatter
+│   ├── MarkdownFormatter
+│   ├── TableFormatter
+│   └── TomlFormatter
+└── WriterImpl (enum dispatch)
+    ├── StdoutWriter
+    └── FileWriter
+</code></pre>
+<h2 id="key-design-decisions"><a class="header" href="#key-design-decisions">Key Design Decisions</a></h2>
+<h3 id="enum-dispatch-over-trait-objects"><a class="header" href="#enum-dispatch-over-trait-objects">Enum Dispatch Over Trait Objects</a></h3>
+<p>Both <code>FormatterImpl</code> and <code>WriterImpl</code> use enum variants rather than <code>Box&lt;dyn Trait&gt;</code>. This provides:</p>
+<ul>
+<li>Static dispatch (no vtable overhead)</li>
+<li>Exhaustive matching at compile time</li>
+<li>Simpler lifetime management</li>
+</ul>
+<h3 id="regex-compilation-strategy"><a class="header" href="#regex-compilation-strategy">Regex Compilation Strategy</a></h3>
+<p>All regex patterns are compiled once during <code>Scanner::new()</code> / <code>Parser::new()</code> and reused for every file. This avoids per-file compilation overhead.</p>
+<h3 id="concurrent-file-scanning"><a class="header" href="#concurrent-file-scanning">Concurrent File Scanning</a></h3>
+<p>The scanner discovers all scannable files first, then scans them concurrently using <code>futures::stream::buffer_unordered</code> with a concurrency limit of 64. This provides significant speedup on large codebases while bounding resource usage.</p>
+<h3 id="async-io"><a class="header" href="#async-io">Async I/O</a></h3>
+<p>File reading uses <code>tokio::fs</code> for non-blocking I/O. The scanner is async, allowing integration into async applications. The CLI uses <code>#[tokio::main]</code>.</p>
+<h3 id="tui-event-loop"><a class="header" href="#tui-event-loop">TUI Event Loop</a></h3>
+<p>The TUI uses a synchronous event loop with crossterm polling. GitHub issue creation runs in a background tokio task, communicating progress back to the UI via an <code>mpsc</code> channel. This keeps the UI responsive during network operations.</p>
+<h3 id="error-type-hierarchy"><a class="header" href="#error-type-hierarchy">Error Type Hierarchy</a></h3>
+<p>Each module owns its error type. Errors propagate upward via <code>#[from]</code> conversions:</p>
+<pre><code class="language-text">TowlCommentError → TowlParserError → TowlScannerError → TowlError
+FormatterError → TowlOutputError → TowlError
+WriterError → TowlOutputError → TowlError
+TowlProcessorError → TowlError
+TowlTuiError → TowlError
+</code></pre>
+<h3 id="newtype-pattern"><a class="header" href="#newtype-pattern">Newtype Pattern</a></h3>
+<p><code>Owner</code> and <code>Repo</code> are newtype wrappers over <code>String</code>, preventing accidental misuse (e.g., passing an owner where a repo is expected).</p>
+<h3 id="secret-handling"><a class="header" href="#secret-handling">Secret Handling</a></h3>
+<p>The GitHub token is stored as <code>secrecy::SecretString</code>, which:</p>
+<ul>
+<li>Masks the value in <code>Debug</code> and <code>Display</code> output</li>
+<li>Zeroes memory on drop</li>
+<li>Prevents accidental logging</li>
+</ul>
+<h2 id="directory-layout"><a class="header" href="#directory-layout">Directory Layout</a></h2>
+<pre><code class="language-text">src/
+├── bin/
+│   └── towl.rs              CLI binary
+└── lib/
+    ├── mod.rs                Library root
+    ├── cli/
+    │   └── mod.rs            Clap argument definitions
+    ├── comment/
+    │   ├── mod.rs
+    │   ├── todo.rs           TodoType, TodoComment
+    │   └── error.rs          TowlCommentError
+    ├── config/
+    │   ├── mod.rs
+    │   ├── types.rs          TowlConfig, ParsingConfig, GitHubConfig
+    │   ├── defaults.rs       Default config values
+    │   ├── display.rs        Config Display implementation
+    │   ├── newtypes.rs       Owner, Repo newtypes
+    │   ├── validation.rs     Config validation
+    │   ├── git.rs            GitRepoInfo
+    │   └── error.rs          TowlConfigError
+    ├── scanner/
+    │   ├── mod.rs
+    │   ├── types.rs          Scanner
+    │   ├── limits.rs         ScanResult, resource limits
+    │   ├── walker.rs         Directory walker construction
+    │   └── error.rs          TowlScannerError
+    ├── parser/
+    │   ├── mod.rs
+    │   ├── types.rs          Parser
+    │   ├── context.rs        Context line extraction
+    │   ├── pattern.rs        Pattern compilation
+    │   └── error.rs          TowlParserError
+    ├── github/
+    │   ├── mod.rs
+    │   ├── client.rs         GitHubClient
+    │   ├── types.rs          CreatedIssue
+    │   └── error.rs          TowlGitHubError
+    ├── processor/
+    │   ├── mod.rs
+    │   ├── types.rs          Processor, ProcessorResult
+    │   └── error.rs          TowlProcessorError
+    ├── tui/
+    │   ├── mod.rs             TUI entry point and event loop
+    │   ├── app.rs             App state machine, AppMode
+    │   ├── input.rs           Keyboard input handling
+    │   ├── render.rs          UI rendering
+    │   └── error.rs           TowlTuiError
+    ├── output/
+    │   ├── mod.rs             Output
+    │   ├── error.rs           TowlOutputError
+    │   ├── formatter/
+    │   │   ├── mod.rs         FormatterImpl
+    │   │   ├── error.rs       FormatterError
+    │   │   └── formatters/
+    │   │       ├── mod.rs     Formatter dispatch
+    │   │       ├── csv.rs
+    │   │       ├── json.rs
+    │   │       ├── markdown.rs
+    │   │       ├── table.rs
+    │   │       └── toml.rs
+    │   └── writer/
+    │       ├── mod.rs         WriterImpl
+    │       ├── error.rs       WriterError
+    │       └── writers/
+    │           ├── file.rs    FileWriter
+    │           └── stdout.rs  StdoutWriter
+    └── error/
+        └── mod.rs             TowlError
+
+tests/
+├── integration/               Integration tests
+├── property/                  Property-based tests
+└── fixtures/                  Test fixtures
+</code></pre>
+<h2 id="dependencies"><a class="header" href="#dependencies">Dependencies</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Crate</th><th>Purpose</th></tr></thead><tbody>
+<tr><td><code>clap</code></td><td>CLI argument parsing</td></tr>
+<tr><td><code>tokio</code></td><td>Async runtime and file I/O</td></tr>
+<tr><td><code>serde</code> / <code>serde_json</code> / <code>toml</code></td><td>Serialisation</td></tr>
+<tr><td><code>regex</code></td><td>TODO pattern matching</td></tr>
+<tr><td><code>ignore</code></td><td>Directory walking (respects <code>.gitignore</code>)</td></tr>
+<tr><td><code>thiserror</code></td><td>Error type derivation</td></tr>
+<tr><td><code>secrecy</code></td><td>Secret string handling</td></tr>
+<tr><td><code>config</code></td><td>Configuration file loading</td></tr>
+<tr><td><code>octocrab</code></td><td>GitHub API client</td></tr>
+<tr><td><code>ratatui</code></td><td>Terminal UI framework</td></tr>
+<tr><td><code>crossterm</code></td><td>Terminal input/output</td></tr>
+<tr><td><code>futures</code></td><td>Async stream utilities</td></tr>
+<tr><td><code>proptest</code></td><td>Property-based testing</td></tr>
+<tr><td><code>rstest</code></td><td>Parameterised testing</td></tr>
+<tr><td><code>insta</code></td><td>Snapshot testing</td></tr>
+</tbody></table>
+</div><div style="break-before: page; page-break-before: always;"></div><h1 id="security"><a class="header" href="#security">Security</a></h1>
+<p>towl applies defence-in-depth across configuration, scanning, and output.</p>
+<h2 id="path-traversal-protection"><a class="header" href="#path-traversal-protection">Path Traversal Protection</a></h2>
+<p>All user-supplied paths are checked for <code>..</code> components before use:</p>
+<ul>
+<li><strong>Config paths</strong> -- <code>towl init --path</code> rejects traversal attempts</li>
+<li><strong>Scan paths</strong> -- <code>towl scan &lt;path&gt;</code> validates before walking</li>
+<li><strong>Output paths</strong> -- <code>-o &lt;path&gt;</code> is validated and symlinks are resolved</li>
+</ul>
+<p>The check uses <code>contains_path_traversal()</code> which inspects each path component for <code>..</code>.</p>
+<h2 id="symlink-resolution"><a class="header" href="#symlink-resolution">Symlink Resolution</a></h2>
+<p>Output file paths are resolved via <code>std::fs::canonicalize()</code> before writing. This prevents symlink-based escape from the intended output directory.</p>
+<h2 id="resource-limits-2"><a class="header" href="#resource-limits-2">Resource Limits</a></h2>
+<p>Hard limits prevent denial-of-service via large repositories or malicious inputs:</p>
+<div class="table-wrapper"><table><thead><tr><th>Limit</th><th>Value</th><th>Purpose</th></tr></thead><tbody>
+<tr><td>Max file size</td><td>10 MB</td><td>Prevents reading huge binary/generated files</td></tr>
+<tr><td>Max TODOs per file</td><td>10,000</td><td>Bounds per-file memory usage</td></tr>
+<tr><td>Max total TODOs</td><td>100,000</td><td>Bounds overall memory usage</td></tr>
+<tr><td>Max files scanned</td><td>100,000</td><td>Bounds directory walk</td></tr>
+<tr><td>Max pattern length</td><td>256 chars</td><td>Prevents regex DoS via long patterns</td></tr>
+<tr><td>Max compiled regex</td><td>256 KB</td><td>Bounds regex engine memory</td></tr>
+<tr><td>Max total patterns (combined)</td><td>50</td><td>Bounds total regex compilation across all categories</td></tr>
+<tr><td>Max patterns per config field</td><td>100</td><td>Limits config file attack surface</td></tr>
+</tbody></table>
+</div>
+<h2 id="secret-handling-1"><a class="header" href="#secret-handling-1">Secret Handling</a></h2>
+<p>The GitHub token (<code>TOWL_GITHUB_TOKEN</code>) is:</p>
+<ul>
+<li><strong>Never stored in config files</strong> -- Only accepted via environment variable</li>
+<li><strong>Stored as <code>SecretString</code></strong> -- Uses the <code>secrecy</code> crate</li>
+<li><strong>Masked in debug output</strong> -- <code>Debug</code> and <code>Display</code> show <code>[REDACTED]</code></li>
+<li><strong>Zeroed on drop</strong> -- Memory is cleared when the config is dropped</li>
+</ul>
+<h2 id="environment-variable-restriction"><a class="header" href="#environment-variable-restriction">Environment Variable Restriction</a></h2>
+<p>Only three environment variables are read:</p>
+<div class="table-wrapper"><table><thead><tr><th>Variable</th><th>Purpose</th></tr></thead><tbody>
+<tr><td><code>TOWL_GITHUB_TOKEN</code></td><td>GitHub authentication</td></tr>
+<tr><td><code>TOWL_GITHUB_OWNER</code></td><td>Repository owner override</td></tr>
+<tr><td><code>TOWL_GITHUB_REPO</code></td><td>Repository name override</td></tr>
+</tbody></table>
+</div>
+<p>No other environment variables influence behaviour.</p>
+<h2 id="config-file-safety"><a class="header" href="#config-file-safety">Config File Safety</a></h2>
+<ul>
+<li><strong><code>--force</code> required</strong> for overwriting existing config files</li>
+<li><strong>Pattern array limits</strong> -- Each pattern field is capped at 100 entries</li>
+<li><strong>Pattern length limits</strong> -- Individual regex patterns capped at 256 characters</li>
+<li><strong>TOML parsing</strong> -- Uses <code>config</code> crate with <code>serde</code> for type-safe deserialization</li>
+</ul>
+<h2 id="git-integration"><a class="header" href="#git-integration">Git Integration</a></h2>
+<ul>
+<li>Git operations use <code>tokio::process::Command</code> to run <code>git</code> as a subprocess</li>
+<li>Only read-only git commands are executed (<code>git remote get-url origin</code>)</li>
+<li>No git credentials are accessed or stored</li>
+</ul>
+<h2 id="gitignore-respect"><a class="header" href="#gitignore-respect">.gitignore Respect</a></h2>
+<p>The <code>ignore</code> crate automatically respects <code>.gitignore</code> rules during directory walking, preventing scanning of files the user has excluded from version control.</p>
+<h2 id="error-messages"><a class="header" href="#error-messages">Error Messages</a></h2>
+<p>Error messages include file paths and context for debugging but do not expose internal implementation details or sensitive data. The <code>SecretString</code> type ensures tokens cannot leak through error formatting.</p>
+<h2 id="threat-model"><a class="header" href="#threat-model">Threat Model</a></h2>
+<div class="table-wrapper"><table><thead><tr><th>Threat</th><th>Mitigation</th></tr></thead><tbody>
+<tr><td>Path traversal via config/scan/output paths</td><td><code>..</code> component detection, symlink resolution</td></tr>
+<tr><td>Regex DoS via malicious patterns</td><td>Pattern length limit (256), regex size limit (256 KB), total pattern cap (50)</td></tr>
+<tr><td>Memory exhaustion via large repos</td><td>File size, TODO count, and file count limits</td></tr>
+<tr><td>Token leakage</td><td><code>SecretString</code>, env-only token, masked debug</td></tr>
+<tr><td>Config file overwrite</td><td><code>--force</code> flag required</td></tr>
+<tr><td>Arbitrary file write via symlinks</td><td><code>canonicalize()</code> on output paths</td></tr>
+<tr><td>Scanning outside intended directory</td><td><code>.gitignore</code> respect, extension filtering</td></tr>
+</tbody></table>
+</div><div style="break-before: page; page-break-before: always;"></div><h1 id="contributing"><a class="header" href="#contributing">Contributing</a></h1>
+<h2 id="getting-started"><a class="header" href="#getting-started">Getting Started</a></h2>
+<pre><code class="language-bash">git clone https://github.com/glottologist/towl.git
+cd towl
+cargo build
+</code></pre>
+<h3 id="requirements-1"><a class="header" href="#requirements-1">Requirements</a></h3>
+<ul>
+<li><strong>Rust</strong> 1.75+ (see <code>rust-toolchain.toml</code>)</li>
+<li><strong>git</strong> on <code>PATH</code></li>
+</ul>
+<h2 id="development-commands"><a class="header" href="#development-commands">Development Commands</a></h2>
+<pre><code class="language-bash"># Build
+cargo build
+
+# Run all tests
+cargo nextest run   # preferred
+cargo test          # fallback
+
+# Clippy (strict)
+cargo clippy --all-targets --all-features
+
+# Format
+cargo fmt
+
+# Run the binary
+cargo run -- scan
+cargo run -- scan -f json -o todos.json
+cargo run -- config
+cargo run -- init
+</code></pre>
+<h2 id="project-structure"><a class="header" href="#project-structure">Project Structure</a></h2>
+<p>See <a href="reference/./architecture.html">Architecture</a> for a full layout. Key entry points:</p>
+<ul>
+<li><code>src/bin/towl.rs</code> -- CLI binary</li>
+<li><code>src/lib/mod.rs</code> -- Library root</li>
+<li><code>tests/</code> -- Integration and property-based tests</li>
+</ul>
+<h2 id="testing"><a class="header" href="#testing">Testing</a></h2>
+<h3 id="test-hierarchy"><a class="header" href="#test-hierarchy">Test Hierarchy</a></h3>
+<p>Tests follow a strict hierarchy:</p>
+<ol>
+<li><strong>proptest</strong> (property-based) -- First choice for pure functions, parsers, validators, serialisation roundtrips</li>
+<li><strong>rstest</strong> (parameterized) -- For specific known cases (&lt; 10 inputs with exact expected outputs)</li>
+<li><strong>Standalone</strong> -- Last resort, for complex integration scenarios</li>
+</ol>
+<h3 id="running-tests"><a class="header" href="#running-tests">Running Tests</a></h3>
+<pre><code class="language-bash"># All tests
+cargo nextest run
+
+# Specific module
+cargo nextest run scanner
+
+# Property-based tests only
+cargo nextest run proptest
+
+# Integration tests only
+cargo nextest run --test '*'
+</code></pre>
+<h2 id="code-style"><a class="header" href="#code-style">Code Style</a></h2>
+<ul>
+<li>Follow Rust naming conventions (<code>snake_case</code> for functions, <code>CamelCase</code> for types)</li>
+<li>All public items need doc comments (<code>///</code>)</li>
+<li>No <code>#[allow(...)]</code> attributes -- fix the underlying issue</li>
+<li>No <code>.unwrap()</code> / <code>.expect()</code> in production code -- use <code>?</code> with typed errors</li>
+<li>No <code>as</code> numeric casts -- use <code>try_from</code> / <code>into</code> / <code>From</code></li>
+<li>Minimise <code>.clone()</code> -- prefer borrowing, see Clone Reduction Policy</li>
+</ul>
+<h2 id="error-handling"><a class="header" href="#error-handling">Error Handling</a></h2>
+<ul>
+<li>Use <code>thiserror</code> for error type derivation</li>
+<li>Each module defines its own error enum</li>
+<li>Errors propagate upward via <code>?</code> and <code>#[from]</code></li>
+<li>Never silently discard <code>Result</code> values</li>
+</ul>
+<h2 id="adding-a-new-output-format"><a class="header" href="#adding-a-new-output-format">Adding a New Output Format</a></h2>
+<ol>
+<li>Create <code>src/lib/output/formatter/formatters/yourformat.rs</code></li>
+<li>Implement the <code>Formatter</code> trait</li>
+<li>Add a variant to <code>FormatterImpl</code> in <code>formatters/mod.rs</code></li>
+<li>Add dispatch in <code>FormatterImpl::format()</code></li>
+<li>Add a variant to <code>OutputFormat</code> in <code>src/lib/cli/mod.rs</code></li>
+<li>Update the format-to-writer mapping in <code>Output::new()</code></li>
+<li>Add tests (proptest for roundtrips, rstest for edge cases)</li>
+</ol>
+<h2 id="adding-a-new-todo-type"><a class="header" href="#adding-a-new-todo-type">Adding a New TODO Type</a></h2>
+<ol>
+<li>Add a variant to <code>TodoType</code> in <code>src/lib/comment/todo.rs</code></li>
+<li>Update <code>Display</code>, <code>TryFrom&lt;&amp;str&gt;</code>, <code>as_filter_str()</code></li>
+<li>Add a default pattern to <code>default_todo_patterns()</code> in <code>src/lib/config/types.rs</code></li>
+<li>Add a pattern mapping in the parser</li>
+<li>Update tests</li>
+</ol>
+<h2 id="pull-requests"><a class="header" href="#pull-requests">Pull Requests</a></h2>
+<ul>
+<li>Keep PRs focused on a single change</li>
+<li>Include tests for new functionality</li>
+<li>Ensure <code>cargo clippy</code> passes with zero warnings</li>
+<li>Ensure <code>cargo fmt</code> produces no changes</li>
+<li>Ensure all tests pass</li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr.min.js"></script>
+        <script src="mark.min.js"></script>
+        <script src="searcher.js"></script>
+
+        <script src="clipboard.min.js"></script>
+        <script src="highlight.js"></script>
+        <script src="book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+        <script>
+        window.addEventListener('load', function() {
+            window.setTimeout(window.print, 100);
+        });
+        </script>
+
+
+    </div>
+    </body>
+</html>

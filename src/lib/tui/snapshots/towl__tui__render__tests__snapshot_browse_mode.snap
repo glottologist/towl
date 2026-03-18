@@ -7,9 +7,9 @@ expression: output
 └──────────────────────────────────────────────────────────────────────────────┘
  Filter: All | Sort: File (asc)
 ┌ TODOs ───────────────────────────────────────────────────────────────────────▲
-│ [ ] [TODO] main.rs:10 - implement error handling                             █
-│ [ ] [FIXME] lib.rs:25 - fix memory leak                                      █
-│ [ ] [BUG] integration.rs:42 - race condition in tests                        █
+│ [ ] - [TODO] main.rs:10 - implement error handling                           █
+│ [ ] - [FIXME] lib.rs:25 - fix memory leak                                    █
+│ [ ] - [BUG] integration.rs:42 - race condition in tests                      █
 │                                                                              █
 │                                                                              █
 │                                                                              █
@@ -20,4 +20,4 @@ expression: output
 │                                                                              █
 │                                                                              ║
 └──────────────────────────────────────────────────────────────────────────────▼
- j/k:nav  space:toggle  a:all  n:none  f:filter  s:sort  r:reverse  p:peek  ente
+ j/k:nav  space:toggle  a:all  n:none  f:filter  s:sort  r:reverse  p:peek  d:de

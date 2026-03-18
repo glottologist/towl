@@ -16,11 +16,13 @@ To bypass the TUI (for CI/scripting), use `--non-interactive` / `-N`.
 
 ## Modes
 
-The TUI has five modes:
+The TUI has six modes:
 
 ### Browse
 
 The main view. Displays all TODOs in a scrollable list with type, description, file path, and line number.
+
+When launched with `--ai`, each row shows a validity indicator (`V`/`I`/`?`) and is colour-coded: green for valid, red for invalid, yellow for uncertain.
 
 | Key | Action |
 |-----|--------|
@@ -33,13 +35,14 @@ The main view. Displays all TODOs in a scrollable list with type, description, f
 | `s` | Cycle sort field (File, Line, Type, Priority) |
 | `r` | Reverse sort order |
 | `p` | Open peek view for current TODO |
+| `d` | Delete selected invalid TODOs (requires `--ai`) |
 | `Enter` | Confirm selection and proceed to create GitHub issues |
 | `q` / `Esc` | Quit |
 | `Ctrl+C` | Force quit (works in any mode) |
 
 ### Peek
 
-Shows the source code surrounding the selected TODO with syntax context. The TODO line is highlighted.
+Shows the source code surrounding the selected TODO with syntax context. The TODO line is highlighted. When `--ai` is active, the LLM's reasoning is displayed below the source code.
 
 | Key | Action |
 |-----|--------|
@@ -65,6 +68,17 @@ No keyboard input is accepted during creation (except `Ctrl+C` to force quit).
 ### Done
 
 Shows the results after issue creation completes -- number of issues created, any errors encountered. Press `q`, `Esc`, or `Enter` to exit.
+
+### Delete Confirm (requires `--ai`)
+
+Appears after pressing `d` in Browse mode with selected invalid TODOs. Lists the TODOs that will be removed from source files.
+
+| Key | Action |
+|-----|--------|
+| `y` / `Enter` | Confirm and delete the TODO comment lines |
+| `n` / `q` / `Esc` | Cancel and return to browse |
+
+Only TODOs marked as Invalid by the AI are eligible for deletion.
 
 ## Workflow
 

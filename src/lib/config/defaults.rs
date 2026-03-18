@@ -62,3 +62,23 @@ pub(super) fn default_function_patterns() -> Vec<String> {
 pub(super) const fn default_rate_limit_delay_ms() -> u64 {
     1000
 }
+
+pub(super) fn default_llm_provider() -> String {
+    "claude".to_string() // clone: &str → owned String for config default
+}
+
+pub(crate) fn default_llm_model() -> String {
+    "claude-opus-4-6".to_string() // clone: &str → owned String for config default
+}
+
+pub(super) const fn default_max_concurrent_analyses() -> usize {
+    5
+}
+
+pub(super) const fn default_max_analyse_count() -> usize {
+    50
+}
+
+pub(super) const fn default_llm_max_tokens() -> u32 {
+    4096
+}

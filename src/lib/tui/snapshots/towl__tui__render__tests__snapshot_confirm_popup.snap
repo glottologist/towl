@@ -7,9 +7,9 @@ expression: output
 └──────────────────────────────────────────────────────────────────────────────┘
  Filter: All | Sort: File (asc)
 ┌ TODOs ───────────────────────────────────────────────────────────────────────▲
-│ [x] [TODO] main.rs:10 - implement error handling                             █
-│ [ ] [FIXME] lib.rs:25 - fix memory leak                                      █
-│ [ ] [BUG] integrat┌ Confirm ─────────────────────────────┐                   █
+│ [x] - [TODO] main.rs:10 - implement error handling                           █
+│ [ ] - [FIXME] lib.rs:25 - fix memory leak                                    █
+│ [ ] - [BUG] integr┌ Confirm ─────────────────────────────┐                   █
 │                   │ Create GitHub issues for selected TOD│                   █
 │                   │ y/enter = yes, n/esc = no            │                   █
 │                   │                                      │                   █

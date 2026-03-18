@@ -123,7 +123,7 @@ impl Processor {
                     line: todo.line_number,
                 }
             })?;
-            lines[line_idx] = format!("{prefix}See: {}", issue.html_url);
+            lines[line_idx] = format!("{prefix}GH_ISSUE: {}", issue.html_url);
             replaced += 1;
         }
 
@@ -234,16 +234,16 @@ mod tests {
             prop_assert_eq!(result.errors.len(), 0);
 
             let content = std::fs::read_to_string(&file_path).unwrap();
-            let expected = format!("// See: {url}");
+            let expected = format!("// GH_ISSUE: {url}");
             prop_assert_eq!(content, expected);
         }
     }
 
     #[rstest]
-    #[case("// TODO: fix", 3, "// See:")]
-    #[case("# TODO: fix", 2, "# See:")]
-    #[case("/* TODO: fix", 3, "/* See:")]
-    #[case("* TODO: fix", 2, "* See:")]
+    #[case("// TODO: fix", 3, "// GH_ISSUE:")]
+    #[case("# TODO: fix", 2, "# GH_ISSUE:")]
+    #[case("/* TODO: fix", 3, "/* GH_ISSUE:")]
+    #[case("* TODO: fix", 2, "* GH_ISSUE:")]
     #[tokio::test]
     async fn test_comment_prefix_preserved(
         #[case] original: &str,

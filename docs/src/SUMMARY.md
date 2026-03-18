@@ -12,6 +12,7 @@
 
 - [Scanning for TODOs](./guides/scanning.md)
 - [Interactive TUI](./guides/tui.md)
+- [AI Analysis](./guides/ai-analysis.md)
 - [Output Formats](./guides/output-formats.md)
 - [Filtering](./guides/filtering.md)
 
@@ -23,6 +24,7 @@
 - [Config](./api/config.md)
 - [Output](./api/output.md)
 - [GitHub](./api/github.md)
+- [LLM](./api/llm.md)
 - [Processor](./api/processor.md)
 - [TUI](./api/tui.md)
 - [Types](./api/types.md)

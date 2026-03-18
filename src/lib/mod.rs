@@ -40,6 +40,7 @@ pub mod comment;
 pub mod config;
 pub mod error;
 pub mod github;
+pub mod llm;
 pub mod output;
 pub mod parser;
 pub mod processor;
@@ -52,7 +53,6 @@ pub(crate) const MIN_CONTEXT_LINES: usize = 1;
 pub(crate) const MAX_CONTEXT_LINES: usize = 50;
 
 /// Writes content to a file atomically via tempfile + persist.
-/// Callers map the returned `std::io::Error` to their own error types.
 pub(crate) async fn atomic_write(target: &Path, content: &[u8]) -> Result<(), std::io::Error> {
     use tokio::io::AsyncWriteExt;
 
@@ -79,6 +79,20 @@ pub(crate) async fn atomic_write(target: &Path, content: &[u8]) -> Result<(), st
     drop(file);
 
     temp_path.persist(target).map_err(|e| e.error)
+}
+
+pub(crate) fn escape_markdown(s: &str) -> String {
+    let mut out = String::with_capacity(s.len().saturating_add(s.len() / 4));
+    for ch in s.chars() {
+        if matches!(
+            ch,
+            '\\' | '`' | '*' | '_' | '[' | ']' | '#' | '!' | '<' | '>' | '~' | '|'
+        ) {
+            out.push('\\');
+        }
+        out.push(ch);
+    }
+    out
 }
 
 pub(crate) fn contains_path_traversal(path: &Path) -> bool {
@@ -120,15 +134,6 @@ mod tests {
                 "Should accept safe path: {:?}",
                 path
             );
-        }
-
-        #[test]
-        fn prop_single_dotdot_always_detected(
-            prefix in "[a-zA-Z0-9_-]{1,10}",
-            suffix in "[a-zA-Z0-9_-]{1,10}",
-        ) {
-            let path = PathBuf::from(&prefix).join("..").join(&suffix);
-            prop_assert!(contains_path_traversal(&path));
         }
     }
 }

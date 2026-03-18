@@ -165,6 +165,7 @@ impl Parser {
             description,
             context_lines,
             function_context,
+            analysis: None,
         })
     }
 }
@@ -362,6 +363,17 @@ mod tests {
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].column_start, 7);
         assert_eq!(result[0].column_end, content.len());
+    }
+
+    #[test]
+    fn test_pattern_too_long_rejected() {
+        let mut config = crate::config::test_parsing_config();
+        config.todo_patterns = vec!["a".repeat(257)];
+        let result = Parser::new(&config);
+        assert!(matches!(
+            result,
+            Err(TowlParserError::PatternTooLong(257, 256))
+        ));
     }
 
     proptest! {
@@ -568,6 +580,7 @@ mod tests {
                 description: desc,
                 context_lines: vec!["context".to_string()],
                 function_context: Some("main".to_string()),
+                analysis: None,
             };
 
             let json = serde_json::to_string(&todo).unwrap();

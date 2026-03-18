@@ -6,6 +6,7 @@ use towl::{
     config::{GitHubConfig, TowlConfig},
     error::TowlError,
     github::{CreatedIssue, GitHubClient},
+    llm::types::Validity,
     output::Output,
     processor::{Processor, ProcessorResult},
     scanner::{ScanResult, Scanner},
@@ -50,11 +51,22 @@ async fn run_cli(cli: Cli) -> Result<(), TowlError> {
             verbose,
             github,
             dry_run,
+            ai,
         } => {
             if non_interactive {
-                scan_todos(path, format, output, todo_type, verbose, github, dry_run).await
+                let opts = ScanOpts {
+                    path,
+                    format,
+                    output,
+                    todo_type,
+                    verbose,
+                    github,
+                    dry_run,
+                    ai,
+                };
+                scan_todos(opts).await
             } else {
-                run_interactive(path).await
+                run_interactive(path, ai).await
             }
         }
         TowlCommands::Config => show_config(),
@@ -67,11 +79,11 @@ async fn init_config(path: PathBuf, force: bool) -> Result<(), TowlError> {
     Ok(())
 }
 
-async fn load_and_scan(path: &Path) -> Result<(GitHubConfig, ScanResult), TowlError> {
+async fn load_and_scan(path: &Path) -> Result<(TowlConfig, ScanResult), TowlError> {
     info!("Scanning {}", path.display());
     let config = TowlConfig::load(None)?;
     info!("Scan config\n{}", config);
-    let scanner = Scanner::new(config.parsing)?;
+    let scanner = Scanner::new(config.parsing.clone())?; // clone: scanner takes ownership of ParsingConfig
     let scan_result = scanner.scan(path.to_path_buf()).await?; // clone: scan takes owned PathBuf
 
     if scan_result.all_files_failed() {
@@ -81,10 +93,10 @@ async fn load_and_scan(path: &Path) -> Result<(GitHubConfig, ScanResult), TowlEr
         );
     }
 
-    Ok((config.github, scan_result))
+    Ok((config, scan_result))
 }
 
-async fn scan_todos(
+struct ScanOpts {
     path: PathBuf,
     format: OutputFormat,
     output: Option<PathBuf>,
@@ -92,30 +104,54 @@ async fn scan_todos(
     verbose: bool,
     github: bool,
     dry_run: bool,
-) -> Result<(), TowlError> {
-    let (github_config, scan_result) = load_and_scan(&path).await?;
+    ai: bool,
+}
+
+async fn scan_todos(opts: ScanOpts) -> Result<(), TowlError> {
+    let (config, scan_result) = load_and_scan(&opts.path).await?;
 
     let files_scanned = scan_result.files_scanned;
     let files_skipped = scan_result.files_skipped;
     let files_errored = scan_result.files_errored;
     let duration = scan_result.duration;
-    let filtered_todos = filter_todos(scan_result.todos, todo_type);
+    let mut filtered_todos = filter_todos(scan_result.todos, opts.todo_type);
 
-    if verbose {
+    if opts.ai {
+        let summary = towl::llm::analyse::analyse_todos(&mut filtered_todos, &config.llm).await?;
+        let before = filtered_todos.len();
+        filtered_todos.retain(|t| {
+            t.analysis
+                .as_ref()
+                .map_or(true, |a| !matches!(a.validity, Validity::Invalid))
+        });
+        let removed = before - filtered_todos.len();
+        if removed > 0 {
+            info!("Filtered out {removed} invalid TODOs");
+        }
+        info!(
+            "AI analysis: {} valid, {} invalid, {} uncertain, {} errors",
+            summary.valid_count,
+            summary.invalid_count,
+            summary.uncertain_count,
+            summary.error_count
+        );
+    }
+
+    if opts.verbose {
         log_scan_verbose(
             &filtered_todos,
             files_scanned,
             files_skipped,
             files_errored,
             duration,
-            output.as_ref(),
+            opts.output.as_ref(),
         );
     }
 
-    save_output(format, output, &filtered_todos, verbose).await?;
+    save_output(opts.format, opts.output, &filtered_todos, opts.verbose).await?;
 
-    if github {
-        create_github_issues(&path, &github_config, filtered_todos, dry_run).await?;
+    if opts.github {
+        create_github_issues(&opts.path, &config.github, filtered_todos, opts.dry_run).await?;
     }
 
     Ok(())
@@ -219,15 +255,19 @@ fn report_dry_run(todos: &[TodoComment]) {
     }
 }
 
-async fn run_interactive(path: PathBuf) -> Result<(), TowlError> {
-    let (github_config, scan_result) = load_and_scan(&path).await?;
+async fn run_interactive(path: PathBuf, ai: bool) -> Result<(), TowlError> {
+    let (config, mut scan_result) = load_and_scan(&path).await?;
 
     if scan_result.todos.is_empty() {
         eprintln!("No TODOs found.");
         return Ok(());
     }
 
-    towl::tui::run(scan_result.todos, &github_config, &path)?;
+    if ai {
+        towl::llm::analyse::analyse_todos(&mut scan_result.todos, &config.llm).await?;
+    }
+
+    towl::tui::run(scan_result.todos, &config.github, &path)?;
 
     Ok(())
 }
@@ -301,15 +341,17 @@ mod tests {
             description: "test comment".to_string(),
             context_lines: vec![],
             function_context: None,
+            analysis: None,
         }
     }
 
     #[rstest]
-    #[case(None, 3)]
+    #[case(None, 4)]
     #[case(Some(TodoType::Todo), 1)]
     #[case(Some(TodoType::Fixme), 1)]
     #[case(Some(TodoType::Hack), 1)]
     #[case(Some(TodoType::Bug), 0)]
+    #[case(Some(TodoType::Note), 1)]
     fn test_todo_filtering_logic(
         #[case] todo_type: Option<TodoType>,
         #[case] expected_count: usize,
@@ -318,10 +360,10 @@ mod tests {
             create_mock_todo(TodoType::Todo),
             create_mock_todo(TodoType::Fixme),
             create_mock_todo(TodoType::Hack),
+            create_mock_todo(TodoType::Note),
         ];
 
         let filtered_todos = super::filter_todos(todos, todo_type);
-
         assert_eq!(filtered_todos.len(), expected_count);
     }
 }

@@ -91,12 +91,19 @@ fn event_loop(
         if matches!(app.mode(), AppMode::Creating(_)) && creation_rx.is_none() {
             let (tx, rx) = mpsc::channel(32);
             creation_rx = Some(rx);
-            let todos = app.selected_todos();
-            let config = github_config.clone(); // clone: spawned task needs owned config
-            let root = repo_root.to_path_buf(); // clone: spawned task needs owned path
-            tokio::spawn(async move {
-                create_issues_task(todos, config, root, tx).await;
-            });
+
+            if let Some(delete_todos) = app.take_pending_delete() {
+                tokio::spawn(async move {
+                    delete_todos_task(delete_todos, tx).await;
+                });
+            } else {
+                let todos = app.selected_todos();
+                let config = github_config.clone(); // clone: spawned task needs owned config
+                let root = repo_root.to_path_buf(); // clone: spawned task needs owned path
+                tokio::spawn(async move {
+                    create_issues_task(todos, config, root, tx).await;
+                });
+            }
             continue;
         }
 
@@ -225,6 +232,94 @@ async fn create_issues_task(
                 CreationEvent::Error(format!("{}: {err}", path.display())),
             )
             .await;
+        }
+    }
+
+    send_event(&tx, CreationEvent::Finished).await;
+}
+
+async fn delete_todos_task(todos: Vec<TodoComment>, tx: mpsc::Sender<CreationEvent>) {
+    send_event(
+        &tx,
+        CreationEvent::Phase("Deleting invalid TODOs...".into()),
+    )
+    .await;
+
+    let cwd = match std::env::current_dir() {
+        Ok(d) => d,
+        Err(e) => {
+            send_event(
+                &tx,
+                CreationEvent::Error(format!("Cannot resolve cwd: {e}")),
+            )
+            .await;
+            send_event(&tx, CreationEvent::Finished).await;
+            return;
+        }
+    };
+
+    let mut by_file: std::collections::HashMap<&std::path::Path, Vec<usize>> =
+        std::collections::HashMap::new();
+    for todo in &todos {
+        by_file
+            .entry(todo.file_path.as_path())
+            .or_default()
+            .push(todo.line_number);
+    }
+
+    let total = by_file.len();
+    for (i, (path, mut line_numbers)) in by_file.into_iter().enumerate() {
+        send_event(
+            &tx,
+            CreationEvent::Progress {
+                current: i + 1,
+                total,
+            },
+        )
+        .await;
+
+        line_numbers.sort_unstable();
+        line_numbers.dedup();
+
+        if let Ok(canonical) = std::fs::canonicalize(path) {
+            if !canonical.starts_with(&cwd) {
+                send_event(
+                    &tx,
+                    CreationEvent::Error(format!("{}: outside working directory", path.display())),
+                )
+                .await;
+                continue;
+            }
+        }
+
+        match tokio::fs::read_to_string(path).await {
+            Ok(content) => {
+                let line_set: std::collections::HashSet<usize> = line_numbers.into_iter().collect();
+                let filtered: Vec<&str> = content
+                    .lines()
+                    .enumerate()
+                    .filter(|(i, _)| !line_set.contains(&(i + 1)))
+                    .map(|(_, line)| line)
+                    .collect();
+                let mut new_content = filtered.join("\n");
+                if content.ends_with('\n') {
+                    new_content.push('\n');
+                }
+                if let Err(e) = crate::atomic_write(path, new_content.as_bytes()).await {
+                    send_event(
+                        &tx,
+                        CreationEvent::Error(format!("{}: {e}", path.display())),
+                    )
+                    .await;
+                }
+            }
+            Err(e) => {
+                send_event(
+                    &tx,
+                    CreationEvent::Error(format!("{}: {e}", path.display())),
+                )
+                .await;
+            }
         }
     }
 

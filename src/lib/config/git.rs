@@ -42,6 +42,32 @@ impl GitRepoInfo {
         Self::parse_github_url(url.trim())
     }
 
+    /// Sync variant of [`from_path`] for use in non-async contexts.
+    pub(crate) fn from_path_sync<P: AsRef<Path>>(path: P) -> Result<Self, TowlConfigError> {
+        let output = std::process::Command::new("git")
+            .args(["remote", "get-url", "origin"])
+            .current_dir(path.as_ref())
+            .output()
+            .map_err(|e| TowlConfigError::GitRepoNotFound {
+                message: format!("Failed to run git command: {e}"),
+            })?;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            if stderr.contains("not a git repository") {
+                return Err(TowlConfigError::GitRepoNotFound {
+                    message: "Not a git repository".to_string(), // clone: &str → owned String for error field
+                });
+            }
+            return Err(TowlConfigError::GitRemoteNotFound {
+                message: format!("Failed to find 'origin' remote: {}", stderr.trim()),
+            });
+        }
+
+        let url = String::from_utf8_lossy(&output.stdout);
+        Self::parse_github_url(url.trim())
+    }
+
     fn parse_github_url(url: &str) -> Result<Self, TowlConfigError> {
         let url = url.trim();
 

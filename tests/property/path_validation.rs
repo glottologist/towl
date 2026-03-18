@@ -3,7 +3,6 @@ use std::path::PathBuf;
 use tempfile::TempDir;
 use towl::{config::TowlConfig, error::TowlError, scanner::Scanner};
 
-// Property test strategies for generating various path types
 prop_compose! {
     fn arbitrary_path_component()(s in "[a-zA-Z0-9_-]{1,20}") -> String {
         s
@@ -18,25 +17,12 @@ prop_compose! {
     }
 }
 
-prop_compose! {
-    fn arbitrary_filename()(
-        name in "[a-zA-Z0-9_-]{1,20}",
-        ext in prop::option::of("[a-z]{1,5}")
-    ) -> String {
-        match ext {
-            Some(extension) => format!("{name}.{extension}"),
-            None => name,
-        }
-    }
-}
-
 proptest! {
     #[test]
     fn init_config_handles_arbitrary_safe_paths(path in arbitrary_safe_path()) {
         let temp_dir = TempDir::new().expect("Failed to create temp directory");
         let full_path = temp_dir.path().join(&path).join("towl.toml");
 
-        // Ensure parent directory exists
         if let Some(parent) = full_path.parent() {
             std::fs::create_dir_all(parent).ok();
         }
@@ -46,7 +32,6 @@ proptest! {
             towl::config::TowlConfig::init(&full_path, true).await
         });
 
-        // If successful, config file should exist
         if result.is_ok() {
             prop_assert!(full_path.exists());
         }
@@ -71,20 +56,6 @@ proptest! {
     }
 
     #[test]
-    fn output_filename_generation_is_safe(filename in arbitrary_filename()) {
-        let temp_dir = TempDir::new().expect("Failed to create temp directory");
-        let output_path = temp_dir.path().join(&filename);
-
-        // Property: Generated paths should not contain dangerous sequences
-        let path_str = output_path.to_string_lossy();
-        prop_assert!(!path_str.contains(".."));
-        prop_assert!(!path_str.contains("//"));
-
-        // Property: Path should be constructible and not cause issues
-        prop_assert!(output_path.file_name().is_some());
-    }
-
-    #[test]
     fn path_traversal_protection_invariant(
         base_components in prop::collection::vec(arbitrary_path_component(), 1..3),
         malicious_suffix in "(\\.\\./){1,5}[a-zA-Z0-9_-]{1,10}"
@@ -97,7 +68,6 @@ proptest! {
 
         let malicious_path = base_path.join(&malicious_suffix);
 
-        // Property: Paths with ".." components should contain ParentDir components
         let has_parent_dir = malicious_path.components()
             .any(|c| matches!(c, std::path::Component::ParentDir));
         let path_str = malicious_path.to_string_lossy();
@@ -106,7 +76,6 @@ proptest! {
             prop_assert!(has_parent_dir, "Path traversal should be detected for: {}", path_str);
         }
 
-        // If canonicalization succeeds, verify it stays within the temp directory
         if let Ok(canonical) = malicious_path.canonicalize() {
             let canonical_str = canonical.to_string_lossy();
             let temp_str = temp_dir.path().to_string_lossy();
@@ -134,19 +103,16 @@ proptest! {
             path.join("towl.toml")
         };
 
-        // Create parent directories
         if let Some(parent) = config_path.parent() {
             std::fs::create_dir_all(parent).ok();
         }
 
         let rt = tokio::runtime::Runtime::new().unwrap();
 
-        // Property: TowlConfig operations should be robust to various path structures
         let init_result = rt.block_on(async {
             TowlConfig::init(&config_path, true).await
         });
 
-        // If init succeeded, loading should also work
         if init_result.is_ok() && config_path.exists() {
             let load_result = TowlConfig::load(Some(&config_path));
             prop_assert!(load_result.is_ok(), "Loading a config we just initialized should succeed: {:?}", load_result);

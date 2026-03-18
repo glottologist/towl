@@ -34,6 +34,7 @@ pub fn handle_input(app: &mut App, timeout: std::time::Duration) -> std::io::Res
         AppMode::Confirm => handle_confirm(app, key),
         AppMode::Creating(_) => Action::Continue,
         AppMode::Done(_) => handle_done(key),
+        AppMode::DeleteConfirm(_) => handle_delete_confirm(app, key),
     })
 }
 
@@ -49,6 +50,7 @@ fn handle_browse(app: &mut App, key: KeyEvent) -> Action {
         KeyCode::Char('s') => app.cycle_sort(),
         KeyCode::Char('r') => app.reverse_sort(),
         KeyCode::Char('p') => app.enter_peek(),
+        KeyCode::Char('d') => app.enter_delete_confirm(),
         KeyCode::Enter => app.enter_confirm(),
         _ => {}
     }
@@ -72,6 +74,19 @@ fn handle_confirm(app: &mut App, key: KeyEvent) -> Action {
         }
         KeyCode::Char('n' | 'q') | KeyCode::Esc => {
             app.cancel_confirm();
+        }
+        _ => {}
+    }
+    Action::Continue
+}
+
+fn handle_delete_confirm(app: &mut App, key: KeyEvent) -> Action {
+    match key.code {
+        KeyCode::Char('y') | KeyCode::Enter => {
+            app.start_deleting();
+        }
+        KeyCode::Char('n' | 'q') | KeyCode::Esc => {
+            app.cancel_delete();
         }
         _ => {}
     }

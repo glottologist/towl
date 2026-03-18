@@ -8,7 +8,7 @@ Inside a git repository with a GitHub remote:
 towl init
 ```
 
-This creates `.towl.toml` with sensible defaults and auto-detects the GitHub owner/repo from `git remote get-url origin`.
+This creates `.towl.toml` with sensible defaults. GitHub owner/repo are auto-detected from `git remote get-url origin` at runtime (not stored in the config file).
 
 If `.towl.toml` already exists, use `--force` to overwrite:
 

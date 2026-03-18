@@ -20,4 +20,4 @@ expression: output
 │                                                                              │
 │                                                                              │
 └──────────────────────────────────────────────────────────────────────────────┘
- j/k:nav  space:toggle  a:all  n:none  f:filter  s:sort  r:reverse  p:peek  ente
+ j/k:nav  space:toggle  a:all  n:none  f:filter  s:sort  r:reverse  p:peek  d:de

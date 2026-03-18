@@ -6,6 +6,7 @@ A fast command-line tool that scans your codebase for TODO comments, lets you br
 
 ## Features
 
+- **AI Validation**: Use `--ai` to validate TODOs with an LLM (Claude API, OpenAI API, or local CLI agents like Claude Code and Codex) -- filters stale TODOs and enriches GitHub issues
 - **Interactive TUI**: Browse, filter, sort, and peek at TODOs in a full-screen terminal interface
 - **GitHub Integration**: Create GitHub issues from selected TODOs and replace comments with issue links
 - **Smart Detection**: Finds TODO, FIXME, HACK, NOTE, and BUG comments
@@ -42,6 +43,12 @@ towl scan -N -g
 # Preview GitHub issues without creating them
 towl scan -N -g -n
 
+# AI-validate TODOs (filters out stale ones)
+towl scan -N --ai
+
+# AI + GitHub: create issues for valid TODOs only
+towl scan -N --ai -g
+
 # Initialise config
 towl init
 
@@ -64,6 +71,7 @@ Options:
   -v, --verbose             Enable verbose output
   -g, --github              Create GitHub issues for found TODOs
   -n, --dry-run             Preview GitHub issues without creating them
+      --ai                  Analyse TODOs with AI to validate relevance
 
 towl init [OPTIONS]
 
@@ -89,6 +97,7 @@ By default, `towl scan` opens an interactive terminal interface:
 | `s` | Cycle sort field (file, line, type, priority) |
 | `r` | Reverse sort order |
 | `p` | Peek at source code around the TODO |
+| `d` | Delete selected invalid TODOs (with `--ai`) |
 | `Enter` | Confirm selection and create GitHub issues |
 | `q` / `Esc` | Quit |
 
@@ -104,12 +113,19 @@ file_extensions = ["rs", "toml", "json", "yaml", "yml", "sh", "bash"]
 exclude_patterns = ["target/*", ".git/*"]
 include_context_lines = 3
 
-[github]
-owner = "your-github-username"
-repo = "your-repo-name"
+[llm]
+provider = "claude"           # "claude", "openai", "claude-code", or "codex"
+model = "claude-opus-4-6"
 ```
 
-The GitHub token can be set via the `TOWL_GITHUB_TOKEN` environment variable. Owner and repo are auto-detected from the git remote on `towl init`.
+GitHub owner and repo are always auto-detected from `git remote get-url origin` at runtime. Set secrets via environment variables (never stored in the config file):
+
+| Variable | Description |
+|----------|-------------|
+| `TOWL_GITHUB_TOKEN` | GitHub personal access token |
+| `TOWL_LLM_API_KEY` | LLM API key (Claude or OpenAI) |
+
+See the [configuration guide](https://glottologist.github.io/towl/getting-started/configuration.html) for all options.
 
 ## License
 

@@ -1,6 +1,6 @@
 [package]
 name = "towl"
-version = "0.2.3"
+version = "0.3.0"
 authors = ["Jason Ridgway-Taylor <jason@glottologist.co.uk>"]
 description = "A fast CLI tool to scan codebases for TODO comments and output them in multiple formats"
 license = "MIT"
@@ -36,9 +36,11 @@ ignore = "0.4.23"
 regex = "1.11.2"
 tempfile = "3.8"
 octocrab = "0.44"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 ratatui = "0.29"
 crossterm = "0.28"
 futures = "0.3"
+which = "8"
 
 [dev-dependencies]
 rstest = "0.18"

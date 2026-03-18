@@ -77,6 +77,23 @@ When issues are created, towl automatically replaces the TODO comment in source 
 
 In interactive mode, select TODOs with `Space` and press `Enter` to create issues.
 
+## AI Analysis
+
+Use the `--ai` flag to validate TODOs with an LLM:
+
+```bash
+# Analyse and filter out invalid TODOs
+towl scan -N --ai
+
+# Interactive mode with AI analysis
+towl scan --ai
+
+# Create GitHub issues for valid TODOs only (enriched with AI reasoning)
+towl scan -N --ai -g
+```
+
+In non-interactive mode, TODOs classified as Invalid are automatically excluded from the output. See [AI Analysis](./ai-analysis.md) for full details.
+
 ## Combining Options
 
 Options compose freely:
@@ -87,6 +104,9 @@ towl scan -N src/ -t fixme -f json -o fixmes.json -v
 
 # Scan and create GitHub issues for TODO comments only
 towl scan -N -t todo -g
+
+# AI-validated FIXMEs as JSON
+towl scan -N --ai -t fixme -f json -o fixmes.json
 ```
 
 ## Resource Limits

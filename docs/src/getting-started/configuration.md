@@ -11,10 +11,6 @@ Create `.towl.toml` manually or run `towl init`:
 file_extensions = ["rs", "toml", "json", "yaml", "yml", "sh", "bash"]
 exclude_patterns = ["target/*", ".git/*"]
 include_context_lines = 3
-
-[github]
-owner = "your-username"
-repo = "your-repo"
 ```
 
 ## Parsing Section
@@ -62,28 +58,47 @@ Each pattern field is limited to 100 entries. Individual regex patterns are limi
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `owner` | `string` | Auto-detected from git remote | GitHub repository owner |
-| `repo` | `string` | Auto-detected from git remote | GitHub repository name |
-| `token` | -- | -- | Set via environment variable only |
 | `rate_limit_delay_ms` | `integer` | `100` | Delay in ms between GitHub API calls |
+
+Owner and repo are **always** auto-detected from `git remote get-url origin` at runtime -- they are not stored in the config file. Use `TOWL_GITHUB_OWNER` and `TOWL_GITHUB_REPO` environment variables to override if needed.
 
 > **Note:** The GitHub token is never stored in the config file. Use the `TOWL_GITHUB_TOKEN` environment variable.
 
+## LLM Section
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `provider` | `string` | `claude` | LLM provider: `"claude"`, `"openai"`, `"claude-code"`, or `"codex"` |
+| `model` | `string` | `claude-opus-4-6` | Model identifier |
+| `base_url` | `string` | Provider default | Custom endpoint URL (for Ollama, vLLM, etc.) |
+| `max_concurrent_analyses` | `integer` | `5` | Max concurrent LLM requests (1-20) |
+| `max_analyse_count` | `integer` | `50` | Max TODOs to analyse per scan (1-500) |
+| `max_tokens` | `integer` | `4096` | LLM response token limit |
+| `command` | `string` | Auto (provider-dependent) | Override CLI binary path |
+| `args` | `string[]` | Auto (provider-dependent) | Override CLI arguments |
+
+> **Note:** The LLM API key is never stored in the config file. Use the `TOWL_LLM_API_KEY` environment variable. See [AI Analysis](../guides/ai-analysis.md) for usage details.
+
 ## Environment Variables
 
-Three environment variables override config file values:
+Seven environment variables override defaults:
 
 | Variable | Overrides | Description |
 |----------|-----------|-------------|
-| `TOWL_GITHUB_TOKEN` | `github.token` | GitHub personal access token (stored as `SecretString`, masked in logs) |
-| `TOWL_GITHUB_OWNER` | `github.owner` | GitHub repository owner |
-| `TOWL_GITHUB_REPO` | `github.repo` | GitHub repository name |
+| `TOWL_GITHUB_TOKEN` | -- | GitHub personal access token (stored as `SecretString`, masked in logs) |
+| `TOWL_GITHUB_OWNER` | git remote detection | GitHub repository owner |
+| `TOWL_GITHUB_REPO` | git remote detection | GitHub repository name |
+| `TOWL_LLM_API_KEY` | `llm.api_key` | LLM API key (stored as `SecretString`, env-only) |
+| `TOWL_LLM_PROVIDER` | `llm.provider` | LLM provider (`"claude"` or `"openai"`) |
+| `TOWL_LLM_MODEL` | `llm.model` | LLM model identifier |
+| `TOWL_LLM_BASE_URL` | `llm.base_url` | Custom LLM endpoint URL |
 
 ## Config Loading Order
 
 1. Built-in defaults
 2. `.towl.toml` file (or path specified with `--path`)
-3. Environment variable overrides (`TOWL_GITHUB_TOKEN`, `TOWL_GITHUB_OWNER`, `TOWL_GITHUB_REPO`)
+3. Git remote auto-detection for owner/repo
+4. Environment variable overrides (`TOWL_GITHUB_*`, `TOWL_LLM_*`)
 
 If no `.towl.toml` exists, defaults are used without error.
 
