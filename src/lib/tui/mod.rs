@@ -1,3 +1,9 @@
+//! Interactive terminal UI for browsing, filtering, and selecting TODO comments.
+//!
+//! Provides a full-screen TUI built on [`ratatui`] with keyboard navigation,
+//! type filtering, sorting, source-code peeking, and GitHub issue creation.
+//! Launch with [`run`].
+
 pub mod app;
 pub mod error;
 pub mod input;
@@ -31,6 +37,11 @@ enum CreationEvent {
     Finished,
 }
 
+/// Launches the interactive TUI for browsing and acting on TODO comments.
+///
+/// Takes ownership of the terminal, entering raw mode and an alternate screen.
+/// Terminal state is always restored on exit, even on error.
+///
 /// # Errors
 /// Returns `TowlTuiError` on terminal I/O failures.
 pub fn run(

@@ -72,11 +72,13 @@ pub struct GitHubConfig {
     pub token: SecretString,
     pub owner: Owner,
     pub repo: Repo,
+    pub rate_limit_delay_ms: u64,
 }
 ```
 
 - `token` is stored as `secrecy::SecretString` and masked in debug/display output
-- `owner` and `repo` are newtype wrappers over `String`
+- `owner` and `repo` are validated newtype wrappers over `String`
+- `rate_limit_delay_ms` adds a delay between GitHub API calls (default: 100ms)
 
 ### Environment Variable Overrides
 
@@ -88,15 +90,26 @@ pub struct GitHubConfig {
 
 ## `Owner` / `Repo`
 
-Newtype wrappers providing type safety:
+Validated newtype wrappers providing type safety:
 
 ```rust
 pub struct Owner(String);
 pub struct Repo(String);
 ```
 
-Both implement:
-- `new(s: impl Into<String>) -> Self`
+### `try_new`
+
+```rust
+pub fn try_new(s: impl Into<String>) -> Result<Self, TowlConfigError>
+```
+
+Constructs a new `Owner` or `Repo`, rejecting values exceeding `MAX_CONFIG_STRING_LENGTH` (512 characters).
+
+**Errors:**
+
+- `ConfigValueTooLong` -- Value exceeds 512 characters
+
+Both also implement:
 - `Display`, `Default`, `Debug`, `Clone`, `PartialEq`, `Eq`
 - `Serialize`, `Deserialize`
 

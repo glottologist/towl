@@ -4,6 +4,9 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::path::PathBuf;
 
+/// The category of a TODO comment, ordered by priority (Bug=1 highest, Note=5 lowest).
+///
+/// Parsed from comment text via [`TryFrom<&str>`] (case-insensitive).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, ValueEnum)]
 pub enum TodoType {
     Todo,
@@ -76,17 +79,27 @@ impl TryFrom<&str> for TodoType {
     }
 }
 
+/// A located TODO comment extracted from a source file.
+///
+/// Contains the comment text, its position within the file, surrounding context,
+/// and the enclosing function name (if detected). The `id` field
+/// (`{file_path}_L{line_number}`) is used for GitHub issue deduplication.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TodoComment {
+    /// Unique identifier: `{file_path}_L{line_number}`.
     pub id: String,
     pub file_path: PathBuf,
     pub line_number: usize,
     pub column_start: usize,
     pub column_end: usize,
     pub todo_type: TodoType,
+    /// The full original comment line as it appears in the source file.
     pub original_text: String,
+    /// The extracted description text after the TODO keyword and colon.
     pub description: String,
+    /// Surrounding source lines for context display.
     pub context_lines: Vec<String>,
+    /// Name of the enclosing function, if detected by pattern matching.
     pub function_context: Option<String>,
 }
 

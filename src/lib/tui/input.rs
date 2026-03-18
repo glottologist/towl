@@ -2,8 +2,11 @@ use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyModifiers};
 
 use super::app::{App, AppMode};
 
+/// Result of processing a keyboard event.
 pub enum Action {
+    /// No state change; continue the event loop.
     Continue,
+    /// Exit the TUI.
     Quit,
 }
 

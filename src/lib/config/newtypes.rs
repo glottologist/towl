@@ -5,7 +5,8 @@ use std::fmt;
 pub const MAX_CONFIG_STRING_LENGTH: usize = 512;
 
 macro_rules! validated_newtype {
-    ($name:ident, $field:expr, $default:expr) => {
+    ($name:ident, $field:expr, $default:expr, $doc:expr) => {
+        #[doc = $doc]
         #[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
         pub struct $name(String);
 
@@ -45,8 +46,18 @@ macro_rules! validated_newtype {
     };
 }
 
-validated_newtype!(Owner, "github.owner", "no owner");
-validated_newtype!(Repo, "github.repo", "no repo");
+validated_newtype!(
+    Owner,
+    "github.owner",
+    "no owner",
+    "GitHub repository owner name, validated to not exceed `MAX_CONFIG_STRING_LENGTH`."
+);
+validated_newtype!(
+    Repo,
+    "github.repo",
+    "no repo",
+    "GitHub repository name, validated to not exceed `MAX_CONFIG_STRING_LENGTH`."
+);
 
 #[cfg(test)]
 mod tests {

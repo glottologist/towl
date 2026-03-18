@@ -6,13 +6,16 @@ use crate::github::types::CreatedIssue;
 
 use super::error::TowlProcessorError;
 
+/// Summary of a batch TODO replacement operation.
 #[derive(Debug)]
 pub struct ProcessorResult {
     pub files_modified: usize,
     pub todos_replaced: usize,
+    /// Per-file errors that did not abort the overall operation.
     pub errors: Vec<(PathBuf, TowlProcessorError)>,
 }
 
+/// Replaces TODO comments in source files with GitHub issue links.
 pub struct Processor;
 
 impl Processor {

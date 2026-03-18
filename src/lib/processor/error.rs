@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 use thiserror::Error;
 
+/// Errors from replacing TODO comments with issue links in source files.
 #[derive(Error, Debug)]
 pub enum TowlProcessorError {
     #[error("Failed to read file {0}: {1}")]

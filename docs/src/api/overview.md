@@ -29,6 +29,18 @@ towl (lib)
 │   │   ├── writers      StdoutWriter, FileWriter
 │   │   └── error        WriterError
 │   └── error            TowlOutputError
+├── github       GitHub issue creation
+│   ├── client   GitHubClient
+│   ├── types    CreatedIssue
+│   └── error    TowlGitHubError
+├── processor    TODO replacement with issue links
+│   ├── types    Processor, ProcessorResult
+│   └── error    TowlProcessorError
+├── tui          Interactive terminal UI
+│   ├── app      App, AppMode, SortField, PeekState
+│   ├── input    Action, handle_input
+│   ├── render   draw
+│   └── error    TowlTuiError
 └── error        Top-level TowlError (aggregates all error types)
 ```
 
@@ -60,18 +72,27 @@ TowlConfig ──► Scanner ──► Parser ──► Output
 | `TodoComment` | `comment` | A single extracted TODO item |
 | `TodoType` | `comment` | Enum: Todo, Fixme, Hack, Note, Bug |
 | `Output` | `output` | Formatter + writer combination |
+| `GitHubClient` | `github` | Authenticated GitHub API client |
+| `CreatedIssue` | `github` | Metadata for a created GitHub issue |
+| `Processor` | `processor` | Replaces TODOs with issue links in source files |
+| `ProcessorResult` | `processor` | Summary of a batch replacement operation |
+| `App` | `tui` | TUI application state and mode management |
+| `AppMode` | `tui` | Current UI mode (Browse, Peek, Confirm, etc.) |
 | `TowlError` | `error` | Top-level error aggregating all sub-errors |
 
 ## Error Hierarchy
 
 ```text
 TowlError
-├── TowlConfigError    Config loading, TOML parsing, git discovery
-├── TowlScannerError   File walk, I/O, resource limits
-│   └── TowlParserError   Regex compilation, pattern validation
-└── TowlOutputError    Formatting, file writing
-    ├── FormatterError    Serialization failures
-    └── WriterError       I/O, path traversal
+├── TowlConfigError      Config loading, TOML parsing, git discovery
+├── TowlScannerError     File walk, I/O, resource limits
+│   └── TowlParserError  Regex compilation, pattern validation
+├── TowlOutputError      Formatting, file writing
+│   ├── FormatterError   Serialisation failures
+│   └── WriterError      I/O, path traversal
+├── TowlGitHubError      API errors, auth, rate limiting
+├── TowlProcessorError   File replacement errors
+└── TowlTuiError         Terminal I/O errors
 ```
 
 All error types use `thiserror` for `Display` and `Error` trait implementations. Conversion between levels uses `#[from]` attributes for ergonomic `?` propagation.

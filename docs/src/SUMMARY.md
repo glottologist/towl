@@ -22,6 +22,9 @@
 - [Parser](./api/parser.md)
 - [Config](./api/config.md)
 - [Output](./api/output.md)
+- [GitHub](./api/github.md)
+- [Processor](./api/processor.md)
+- [TUI](./api/tui.md)
 - [Types](./api/types.md)
 - [Errors](./api/errors.md)
 

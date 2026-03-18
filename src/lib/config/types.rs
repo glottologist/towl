@@ -15,6 +15,10 @@ use std::path::{Path, PathBuf};
 
 pub const DEFAULT_CONFIG_PATH: &str = ".towl.toml";
 
+/// Root configuration combining parsing rules and GitHub settings.
+///
+/// Load from a `.towl.toml` file with [`TowlConfig::load`], or create a new
+/// config file with [`TowlConfig::init`].
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
 pub struct TowlConfig {
     #[serde(default)]
@@ -122,6 +126,7 @@ impl TowlConfig {
     }
 }
 
+/// Controls which files to scan, what patterns to match, and how much context to capture.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ParsingConfig {
     #[serde(default = "default_file_extensions")]
@@ -151,6 +156,10 @@ impl Default for ParsingConfig {
     }
 }
 
+/// GitHub integration settings for issue creation.
+///
+/// The token is loaded from the `TOWL_GITHUB_TOKEN` environment variable (never
+/// serialised to disk). Owner and repo can be auto-detected from the git remote.
 #[derive(Clone, Serialize, Deserialize)]
 pub struct GitHubConfig {
     #[serde(skip)]

@@ -1,7 +1,10 @@
+//! Command-line interface definitions using [`clap`].
+
 use crate::comment::todo::TodoType;
 use clap::{Parser, Subcommand, ValueEnum};
 use std::path::PathBuf;
 
+/// Top-level CLI parser. Use [`Cli::command`] to access the chosen subcommand.
 #[derive(Debug, Parser)]
 #[command(
     name = "towl",
@@ -67,6 +70,7 @@ pub enum TowlCommands {
     Config,
 }
 
+/// Output format for non-interactive scan results.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 pub enum OutputFormat {
     Table,

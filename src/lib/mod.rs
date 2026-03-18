@@ -1,3 +1,40 @@
+//! # towl
+//!
+//! A fast CLI tool and library for scanning codebases for TODO, FIXME, HACK, NOTE,
+//! and BUG comments. Supports interactive browsing via a terminal UI, multiple output
+//! formats, and automatic GitHub issue creation.
+//!
+//! ## Library usage
+//!
+//! ```no_run
+//! use towl::scanner::Scanner;
+//! use towl::config::{ParsingConfig, TowlConfig};
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! let config = TowlConfig::load(None)?;
+//! let scanner = Scanner::new(config.parsing)?;
+//! let result = scanner.scan(".".into()).await?;
+//!
+//! for todo in &result.todos {
+//!     println!("{}: {} ({}:{})", todo.todo_type, todo.description,
+//!              todo.file_path.display(), todo.line_number);
+//! }
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## Modules
+//!
+//! - [`scanner`] — Directory traversal and file scanning
+//! - [`config`] — Configuration loading and validation
+//! - [`output`] — Formatting and writing results (JSON, CSV, Markdown, etc.)
+//! - [`github`] — GitHub issue creation from TODO comments
+//! - [`tui`] — Interactive terminal UI for browsing and selecting TODOs
+//! - [`processor`] — Post-creation replacement of TODO comments with issue links
+//! - [`comment`] — TODO comment types and data structures
+//! - [`cli`] — Command-line argument parsing
+//! - [`error`] — Top-level error type aggregating all module errors
+
 pub mod cli;
 pub mod comment;
 pub mod config;

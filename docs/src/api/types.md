@@ -110,7 +110,7 @@ pub struct Owner(String);
 pub struct Repo(String);
 ```
 
-Both provide `new(impl Into<String>)` and `Display`. See [Config](./config.md) for details.
+Both provide `try_new(impl Into<String>) -> Result<Self, TowlConfigError>` (validates length) and `Display`. See [Config](./config.md) for details.
 
 ## `OutputFormat`
 

@@ -5,6 +5,7 @@ use crate::github::types::CreatedIssue;
 
 const PEEK_CONTEXT: usize = 10;
 
+/// State for the source-code peek overlay showing lines around a TODO.
 #[derive(Debug)]
 pub struct PeekState {
     pub lines: Vec<(usize, String)>,
@@ -13,6 +14,7 @@ pub struct PeekState {
     pub scroll: usize,
 }
 
+/// State tracked during background GitHub issue creation.
 #[derive(Debug)]
 pub struct CreatingState {
     pub phase: String,
@@ -22,12 +24,14 @@ pub struct CreatingState {
     pub created_issues: Vec<CreatedIssue>,
 }
 
+/// Final state after issue creation completes, showing results and errors.
 #[derive(Debug)]
 pub struct DoneState {
     pub created_issues: Vec<CreatedIssue>,
     pub errors: Vec<String>,
 }
 
+/// The current UI mode, determining which view is rendered and which keys are active.
 #[derive(Debug)]
 pub enum AppMode {
     Browse,
@@ -37,6 +41,7 @@ pub enum AppMode {
     Done(DoneState),
 }
 
+/// Field used to sort the TODO list. Cycle with the `s` key.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SortField {
     File,
@@ -53,6 +58,7 @@ const ALL_TYPES: [TodoType; 5] = [
     TodoType::Bug,
 ];
 
+/// Core TUI application state: TODO list, selection, filtering, sorting, and mode.
 pub struct App {
     todos: Vec<TodoComment>,
     filtered: Vec<usize>,

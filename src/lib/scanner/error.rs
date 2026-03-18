@@ -3,6 +3,7 @@ use thiserror::Error;
 
 use crate::parser::error::TowlParserError;
 
+/// Errors from directory traversal and file scanning.
 #[derive(Error, Debug)]
 pub enum TowlScannerError {
     #[error("Unable to walk file {0}")]

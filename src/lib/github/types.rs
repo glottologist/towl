@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 
+/// Metadata for a successfully created GitHub issue.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct CreatedIssue {
     pub number: u64,

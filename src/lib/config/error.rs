@@ -18,6 +18,7 @@ fn truncate_url(url: &str) -> String {
     }
 }
 
+/// Errors produced during configuration loading, validation, or initialisation.
 #[derive(Error, Debug)]
 pub enum TowlConfigError {
     #[error("Config file should be under the repo root: {0} ")]

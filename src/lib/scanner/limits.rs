@@ -1,8 +1,12 @@
 use crate::comment::todo::TodoComment;
 
+/// Maximum file size to scan (10 MB). Larger files are skipped.
 pub const MAX_FILE_SIZE: u64 = 10 * 1024 * 1024;
+/// Maximum TODOs per file. Files exceeding this are rejected.
 pub const MAX_TODO_COUNT: usize = 10_000;
+/// Maximum aggregate TODOs across all files. Scanning stops after this limit.
 pub const MAX_TOTAL_TODO_COUNT: usize = 100_000;
+/// Maximum number of files to discover during directory traversal.
 pub const MAX_FILES_SCANNED: usize = 100_000;
 
 /// Structured result from a scan operation, distinguishing "no TODOs found"

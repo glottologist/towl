@@ -1,3 +1,8 @@
+//! Output formatting and writing for scan results.
+//!
+//! Supports JSON, CSV, TOML, Markdown, and terminal table formats. File-based
+//! formats write to a path; terminal formats write to stdout.
+
 pub mod error;
 pub mod formatter;
 pub mod writer;

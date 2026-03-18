@@ -65,6 +65,7 @@ Each pattern field is limited to 100 entries. Individual regex patterns are limi
 | `owner` | `string` | Auto-detected from git remote | GitHub repository owner |
 | `repo` | `string` | Auto-detected from git remote | GitHub repository name |
 | `token` | -- | -- | Set via environment variable only |
+| `rate_limit_delay_ms` | `integer` | `100` | Delay in ms between GitHub API calls |
 
 > **Note:** The GitHub token is never stored in the config file. Use the `TOWL_GITHUB_TOKEN` environment variable.
 

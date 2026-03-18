@@ -14,6 +14,10 @@ const MAX_TITLE_LENGTH: usize = 50;
 const MAX_RATE_LIMIT_RETRIES: u32 = 3;
 const MAX_PAGES: u32 = 100;
 
+/// Authenticated GitHub API client for creating issues from TODO comments.
+///
+/// Maintains a cache of existing issue titles and TODO IDs for deduplication.
+/// Includes rate-limit handling with configurable delays and automatic retries.
 pub struct GitHubClient {
     client: Octocrab,
     owner: String,

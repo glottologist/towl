@@ -3,6 +3,7 @@ use thiserror::Error;
 use super::formatter::error::FormatterError;
 use super::writer::error::WriterError;
 
+/// Errors from formatting or writing scan output.
 #[derive(Error, Debug)]
 pub enum TowlOutputError {
     #[error("Unable to format todos: {0}")]

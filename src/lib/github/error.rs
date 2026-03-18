@@ -2,6 +2,7 @@ use thiserror::Error;
 
 const DEFAULT_RATE_LIMIT_RETRY_SECS: u64 = 60;
 
+/// Errors from GitHub API interactions.
 #[derive(Error, Debug)]
 pub enum TowlGitHubError {
     #[error("GitHub API error: {message}")]

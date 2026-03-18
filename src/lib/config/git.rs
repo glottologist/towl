@@ -2,6 +2,7 @@ use super::{error::TowlConfigError, Owner, Repo};
 use std::path::Path;
 use tokio::process::Command;
 
+/// Owner and repo name extracted from a GitHub remote URL.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GitRepoInfo {
     pub owner: Owner,

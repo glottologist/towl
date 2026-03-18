@@ -2,6 +2,7 @@ use thiserror::Error;
 
 use crate::comment::error::TowlCommentError;
 
+/// Errors from compiling or applying regex patterns for TODO detection.
 #[derive(Error, Debug)]
 pub enum TowlParserError {
     #[error("Pattern {0} is not a valid regex pattern for a supported todo")]

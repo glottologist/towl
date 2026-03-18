@@ -1,3 +1,9 @@
+//! Configuration loading, validation, and initialisation.
+//!
+//! Configuration is read from a `.towl.toml` file (see [`DEFAULT_CONFIG_PATH`]) and
+//! can be overridden by environment variables (`TOWL_GITHUB_TOKEN`, `TOWL_GITHUB_OWNER`,
+//! `TOWL_GITHUB_REPO`).
+
 mod defaults;
 mod display;
 pub mod error;
