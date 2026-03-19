@@ -43,6 +43,7 @@ async fn run_cli(cli: Cli) -> Result<(), TowlError> {
     match cli.command {
         TowlCommands::Init { path, force } => init_config(path, force).await,
         TowlCommands::Scan {
+            config,
             path,
             non_interactive,
             format,
@@ -55,6 +56,7 @@ async fn run_cli(cli: Cli) -> Result<(), TowlError> {
         } => {
             if non_interactive {
                 let opts = ScanOpts {
+                    config,
                     path,
                     format,
                     output,
@@ -66,10 +68,10 @@ async fn run_cli(cli: Cli) -> Result<(), TowlError> {
                 };
                 scan_todos(opts).await
             } else {
-                run_interactive(path, ai).await
+                run_interactive(config, path, ai).await
             }
         }
-        TowlCommands::Config => show_config(),
+        TowlCommands::Config { config } => show_config(config.as_ref()),
     }
 }
 
@@ -79,9 +81,12 @@ async fn init_config(path: PathBuf, force: bool) -> Result<(), TowlError> {
     Ok(())
 }
 
-async fn load_and_scan(path: &Path) -> Result<(TowlConfig, ScanResult), TowlError> {
+async fn load_and_scan(
+    config_path: Option<&PathBuf>,
+    path: &Path,
+) -> Result<(TowlConfig, ScanResult), TowlError> {
     info!("Scanning {}", path.display());
-    let config = TowlConfig::load(None)?;
+    let config = TowlConfig::load(config_path)?;
     info!("Scan config\n{}", config);
     let scanner = Scanner::new(config.parsing.clone())?; // clone: scanner takes ownership of ParsingConfig
     let scan_result = scanner.scan(path.to_path_buf()).await?; // clone: scan takes owned PathBuf
@@ -97,6 +102,7 @@ async fn load_and_scan(path: &Path) -> Result<(TowlConfig, ScanResult), TowlErro
 }
 
 struct ScanOpts {
+    config: Option<PathBuf>,
     path: PathBuf,
     format: OutputFormat,
     output: Option<PathBuf>,
@@ -108,7 +114,7 @@ struct ScanOpts {
 }
 
 async fn scan_todos(opts: ScanOpts) -> Result<(), TowlError> {
-    let (config, scan_result) = load_and_scan(&opts.path).await?;
+    let (config, scan_result) = load_and_scan(opts.config.as_ref(), &opts.path).await?;
 
     let files_scanned = scan_result.files_scanned;
     let files_skipped = scan_result.files_skipped;
@@ -255,8 +261,12 @@ fn report_dry_run(todos: &[TodoComment]) {
     }
 }
 
-async fn run_interactive(path: PathBuf, ai: bool) -> Result<(), TowlError> {
-    let (config, mut scan_result) = load_and_scan(&path).await?;
+async fn run_interactive(
+    config_path: Option<PathBuf>,
+    path: PathBuf,
+    ai: bool,
+) -> Result<(), TowlError> {
+    let (config, mut scan_result) = load_and_scan(config_path.as_ref(), &path).await?;
 
     if scan_result.todos.is_empty() {
         eprintln!("No TODOs found.");
@@ -317,8 +327,8 @@ async fn save_output(
     Ok(())
 }
 
-fn show_config() -> Result<(), TowlError> {
-    let config = TowlConfig::load(None)?;
+fn show_config(config_path: Option<&PathBuf>) -> Result<(), TowlError> {
+    let config = TowlConfig::load(config_path)?;
     info!("Scan config\n{}", config);
     Ok(())
 }

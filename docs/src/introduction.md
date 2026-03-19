@@ -10,7 +10,7 @@
 - **Multiple output formats** -- JSON, CSV, Markdown, TOML, and terminal table (non-interactive mode)
 - **Type filtering & sorting** -- Filter results by TODO type; sort by file, line, type, or priority
 - **Context-aware** -- Captures surrounding code lines and enclosing function names
-- **Configurable** -- Customise file extensions, exclude patterns, comment prefixes, and TODO patterns via `.towl.toml`
+- **Configurable** -- Customise file extensions, exclude patterns, comment prefixes, and TODO patterns via `.towl.toml` (override with `--config` or `TOWL_CONFIG` env var)
 - **Safe by design** -- Path traversal protection, resource limits, symlink resolution, and secret handling for GitHub tokens
 - **Fast** -- Concurrent file scanning, async I/O with tokio, compiled regex patterns, and static enum dispatch
 
@@ -18,7 +18,7 @@
 
 ```text
                 ┌──────────┐
-                │  Config   │  .towl.toml + env vars + git remote
+                │  Config   │  --config / TOWL_CONFIG / .towl.toml + env vars
                 └────┬─────┘
                      │
                 ┌────▼─────┐
@@ -41,7 +41,7 @@
         └──────────┘
 ```
 
-1. **Config** loads settings from `.towl.toml` (with defaults), merges environment variables for GitHub integration
+1. **Config** loads settings from `.towl.toml` (or a custom path via `--config` / `TOWL_CONFIG`), merges environment variables for GitHub and LLM integration
 2. **Scanner** walks the directory tree using the `ignore` crate, scanning matching files concurrently with bounded parallelism
 3. **Parser** reads each file, matches comment prefixes and TODO patterns via compiled regex, extracts context lines and function names
 4. **TUI** (default) presents an interactive interface for browsing, filtering, and selecting TODOs to create as GitHub issues

@@ -2,6 +2,13 @@
 
 towl uses a `.towl.toml` file in the project root for configuration. All fields have sensible defaults -- you only need to override what you want to change.
 
+You can point to a config file in a different location using:
+
+- `--config` / `-c` flag on `scan` and `config` commands
+- `TOWL_CONFIG` environment variable
+
+The `--config` flag takes precedence over `TOWL_CONFIG`, which takes precedence over the default `.towl.toml`.
+
 ## Config File
 
 Create `.towl.toml` manually or run `towl init`:
@@ -81,10 +88,11 @@ Owner and repo are **always** auto-detected from `git remote get-url origin` at 
 
 ## Environment Variables
 
-Seven environment variables override defaults:
+Eight environment variables override defaults:
 
 | Variable | Overrides | Description |
 |----------|-----------|-------------|
+| `TOWL_CONFIG` | `DEFAULT_CONFIG_PATH` | Path to a `.towl.toml` file (overridden by `--config` flag) |
 | `TOWL_GITHUB_TOKEN` | -- | GitHub personal access token (stored as `SecretString`, masked in logs) |
 | `TOWL_GITHUB_OWNER` | git remote detection | GitHub repository owner |
 | `TOWL_GITHUB_REPO` | git remote detection | GitHub repository name |
@@ -96,16 +104,20 @@ Seven environment variables override defaults:
 ## Config Loading Order
 
 1. Built-in defaults
-2. `.towl.toml` file (or path specified with `--path`)
+2. Config file resolved as: `--config` flag > `TOWL_CONFIG` env var > `.towl.toml`
 3. Git remote auto-detection for owner/repo
 4. Environment variable overrides (`TOWL_GITHUB_*`, `TOWL_LLM_*`)
 
-If no `.towl.toml` exists, defaults are used without error.
+If no config file exists at the resolved path, defaults are used without error.
 
 ## Viewing Active Configuration
 
 ```bash
+# Show config from default .towl.toml
 towl config
+
+# Show config from a custom path
+towl config -c .config/.towl.toml
 ```
 
 Example output:

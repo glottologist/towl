@@ -8,6 +8,7 @@ The config module loads settings from `.towl.toml`, merges environment variables
 pub struct TowlConfig {
     pub parsing: ParsingConfig,
     pub github: GitHubConfig,
+    pub llm: LlmConfig,
 }
 ```
 
@@ -22,8 +23,9 @@ impl TowlConfig {
 Loads configuration with this precedence:
 
 1. Built-in defaults
-2. `.towl.toml` file (or custom path via `--path`)
-3. Environment variable overrides
+2. Config file resolved as: explicit `path` argument > `TOWL_CONFIG` env var > `.towl.toml`
+3. Git remote auto-detection for owner/repo
+4. Environment variable overrides (`TOWL_GITHUB_*`, `TOWL_LLM_*`)
 
 If no config file exists, defaults are used without error.
 
@@ -84,6 +86,7 @@ pub struct GitHubConfig {
 
 | Variable | Overrides |
 |----------|-----------|
+| `TOWL_CONFIG` | `DEFAULT_CONFIG_PATH` (overridden by explicit `path` argument) |
 | `TOWL_GITHUB_TOKEN` | -- (env-only) |
 | `TOWL_GITHUB_OWNER` | git remote detection |
 | `TOWL_GITHUB_REPO` | git remote detection |

@@ -6,7 +6,7 @@ towl follows a pipeline architecture: Config -> Scanner -> Parser -> TUI / Outpu
 
 ```text
                 ┌──────────┐
-                │  Config   │  .towl.toml + env vars + git remote
+                │  Config   │  --config / TOWL_CONFIG / .towl.toml + env vars
                 └────┬─────┘
                      │
                 ┌────▼─────┐
@@ -33,11 +33,12 @@ towl follows a pipeline architecture: Config -> Scanner -> Parser -> TUI / Outpu
 
 ### Config (`src/lib/config/`)
 
-- Loads `.towl.toml` using the `config` crate
-- Merges environment variable overrides (`TOWL_GITHUB_*`)
+- Resolves config file path: `--config` flag > `TOWL_CONFIG` env var > `.towl.toml`
+- Loads config using the `config` crate
+- Merges environment variable overrides (`TOWL_GITHUB_*`, `TOWL_LLM_*`)
 - Discovers GitHub owner/repo from `git remote get-url origin`
 - Validates pattern array sizes
-- Produces `TowlConfig` containing `ParsingConfig` + `GitHubConfig`
+- Produces `TowlConfig` containing `ParsingConfig` + `GitHubConfig` + `LlmConfig`
 
 Submodules:
 - `types.rs` -- `TowlConfig`, `ParsingConfig`, `GitHubConfig`

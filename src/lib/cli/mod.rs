@@ -33,6 +33,10 @@ pub enum TowlCommands {
 
     /// Scan for TODO comments in source code
     Scan {
+        /// Path to a .towl.toml configuration file
+        #[arg(long, short = 'c')]
+        config: Option<PathBuf>,
+
         /// Directory to scan for TODO comments
         #[arg(default_value = ".")]
         path: PathBuf,
@@ -71,7 +75,11 @@ pub enum TowlCommands {
     },
 
     /// Display the current configuration
-    Config,
+    Config {
+        /// Path to a .towl.toml configuration file
+        #[arg(long, short = 'c')]
+        config: Option<PathBuf>,
+    },
 }
 
 /// Output format for non-interactive scan results.

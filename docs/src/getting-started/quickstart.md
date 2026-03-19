@@ -24,6 +24,9 @@ towl scan
 
 # Scan a specific path
 towl scan src/
+
+# Use a config file from a custom location
+towl scan -c .config/.towl.toml
 ```
 
 The interactive TUI lets you browse, filter, sort, peek at source code, and create GitHub issues from selected TODOs.
@@ -102,6 +105,16 @@ In interactive mode, select TODOs with `Space` and press `Enter` to create issue
 
 ```bash
 towl config
+
+# From a custom config path
+towl config -c .config/.towl.toml
 ```
 
 Displays a tree view of all active settings including file extensions, exclude patterns, comment prefixes, TODO patterns, and GitHub configuration.
+
+You can also set the `TOWL_CONFIG` environment variable to avoid passing `--config` every time:
+
+```bash
+export TOWL_CONFIG=.config/.towl.toml
+towl scan
+```

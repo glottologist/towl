@@ -80,8 +80,9 @@ impl TowlConfig {
     /// # Errors
     /// Returns `TowlConfigError` if the config file is malformed or cannot be parsed.
     pub fn load(path: Option<&PathBuf>) -> Result<Self, TowlConfigError> {
+        let env_path = std::env::var("TOWL_CONFIG").ok().map(PathBuf::from);
         let default_path = PathBuf::from(DEFAULT_CONFIG_PATH);
-        let config_path = path.unwrap_or(&default_path);
+        let config_path = path.or(env_path.as_ref()).unwrap_or(&default_path);
         Self::validate_path(config_path)?;
 
         let mut builder = ConfigBuilder::builder().add_source(

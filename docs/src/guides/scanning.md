@@ -2,6 +2,17 @@
 
 The `towl scan` command walks a directory tree, reads each matching file, and extracts TODO-style comments using compiled regex patterns.
 
+## Config Override
+
+By default, towl reads `.towl.toml` from the project root. Use `--config` / `-c` to load from a different path:
+
+```bash
+towl scan -c .config/.towl.toml
+towl scan -c .config/.towl.toml src/
+```
+
+You can also set the `TOWL_CONFIG` environment variable. The `--config` flag takes precedence over the env var.
+
 ## Interactive Mode (Default)
 
 By default, `towl scan` opens an interactive TUI:
@@ -107,6 +118,9 @@ towl scan -N -t todo -g
 
 # AI-validated FIXMEs as JSON
 towl scan -N --ai -t fixme -f json -o fixmes.json
+
+# Use a custom config for everything
+towl scan -c .config/.towl.toml -N src/ -t fixme -f json -o fixmes.json
 ```
 
 ## Resource Limits

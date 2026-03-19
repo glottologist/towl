@@ -13,7 +13,7 @@ A fast command-line tool that scans your codebase for TODO comments, lets you br
 - **Multiple Output Formats**: JSON, CSV, Markdown, TOML, terminal table (non-interactive mode)
 - **Filtering & Sorting**: Filter by TODO type, sort by file, line, type, or priority
 - **Fast**: Async I/O, concurrent file scanning, compiled regex patterns
-- **Configurable**: Customise file extensions, patterns, and exclusions via `.towl.toml`
+- **Configurable**: Customise file extensions, patterns, and exclusions via `.towl.toml` (override with `--config` or `TOWL_CONFIG` env var)
 - **Context-Aware**: Shows surrounding code lines and enclosing function names
 
 ## Installation
@@ -49,11 +49,17 @@ towl scan -N --ai
 # AI + GitHub: create issues for valid TODOs only
 towl scan -N --ai -g
 
+# Use a config file from a custom path
+towl scan -c .config/.towl.toml
+
 # Initialise config
 towl init
 
 # Show current config
 towl config
+
+# Show config from a custom path
+towl config -c .config/.towl.toml
 ```
 
 ## Usage
@@ -62,6 +68,7 @@ towl config
 towl scan [OPTIONS] [PATH]
 
 Options:
+  -c, --config <PATH>       Path to a .towl.toml configuration file
   -N, --non-interactive     Disable interactive TUI mode (for CI/scripting)
   -f, --format <FORMAT>     Output format (non-interactive only) [default: terminal]
                             [possible values: table, json, csv, toml, markdown, terminal]
@@ -79,7 +86,10 @@ Options:
   -p, --path <PATH>         Config file path [default: .towl.toml]
   -F, --force               Overwrite existing config file
 
-towl config                 Show current configuration
+towl config [OPTIONS]       Show current configuration
+
+Options:
+  -c, --config <PATH>       Path to a .towl.toml configuration file
 ```
 
 ## Interactive TUI
@@ -105,7 +115,7 @@ Use `--non-interactive` / `-N` to bypass the TUI for CI pipelines and scripting.
 
 ## Configuration
 
-Create a `.towl.toml` file in your project root (or run `towl init`):
+Create a `.towl.toml` file in your project root (or run `towl init`). To load from a different path, use `--config` / `-c` or set `TOWL_CONFIG`:
 
 ```toml
 [parsing]
@@ -122,6 +132,7 @@ GitHub owner and repo are always auto-detected from `git remote get-url origin` 
 
 | Variable | Description |
 |----------|-------------|
+| `TOWL_CONFIG` | Path to a `.towl.toml` file (overridden by `--config`) |
 | `TOWL_GITHUB_TOKEN` | GitHub personal access token |
 | `TOWL_LLM_API_KEY` | LLM API key (Claude or OpenAI) |
 
