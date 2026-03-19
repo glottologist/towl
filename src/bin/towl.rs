@@ -11,7 +11,7 @@ use towl::{
     processor::{Processor, ProcessorResult},
     scanner::{ScanResult, Scanner},
 };
-use tracing::{debug, error, info, warn};
+use tracing::{debug, info, warn};
 
 #[tokio::main]
 async fn main() -> Result<(), TowlError> {
@@ -32,7 +32,7 @@ async fn main() -> Result<(), TowlError> {
     }
 
     if let Err(e) = run_cli(cli).await {
-        error!("Error: {e}");
+        eprintln!("Error: {e}");
         std::process::exit(1);
     }
 
