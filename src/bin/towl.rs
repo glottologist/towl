@@ -123,7 +123,8 @@ async fn scan_todos(opts: ScanOpts) -> Result<(), TowlError> {
     let mut filtered_todos = filter_todos(scan_result.todos, opts.todo_type);
 
     if opts.ai {
-        let summary = towl::llm::analyse::analyse_todos(&mut filtered_todos, &config.llm).await?;
+        let summary =
+            towl::llm::analyse::analyse_todos(&mut filtered_todos, &config.llm, |_, _| {}).await?;
         let before = filtered_todos.len();
         filtered_todos.retain(|t| {
             t.analysis
@@ -274,12 +275,28 @@ async fn run_interactive(
     }
 
     if ai {
-        towl::llm::analyse::analyse_todos(&mut scan_result.todos, &config.llm).await?;
+        towl::llm::analyse::analyse_todos(&mut scan_result.todos, &config.llm, |done, total| {
+            print_progress(done, total);
+        })
+        .await?;
+        eprint!("\r{}\r", " ".repeat(60));
     }
 
     towl::tui::run(scan_result.todos, &config.github, &path)?;
 
     Ok(())
+}
+
+fn print_progress(done: usize, total: usize) {
+    const BAR_WIDTH: usize = 30;
+    let filled = if total == 0 {
+        0
+    } else {
+        (done * BAR_WIDTH) / total
+    };
+    let bar_done = "█".repeat(filled);
+    let bar_rest = "░".repeat(BAR_WIDTH - filled);
+    eprint!("\r  Analysing TODOs [{bar_done}{bar_rest}] {done}/{total}");
 }
 
 fn filter_todos(todos: Vec<TodoComment>, todo_type: Option<TodoType>) -> Vec<TodoComment> {

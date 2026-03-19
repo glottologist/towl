@@ -223,10 +223,12 @@ fn draw_peek_popup(frame: &mut Frame, state: &PeekState) {
                 Style::default().fg(colour),
             ),
         ]));
-        visible.push(Line::from(vec![
-            Span::styled(" Reasoning: ", Style::default().fg(Color::DarkGray)),
-            Span::raw(&analysis.reasoning),
-        ]));
+        let inner_width = area.width.saturating_sub(2);
+        visible.extend(wrap_labelled_text(
+            " Reasoning: ",
+            &analysis.reasoning,
+            inner_width,
+        ));
     }
 
     let paragraph = Paragraph::new(visible).block(block);
@@ -238,6 +240,55 @@ fn draw_peek_popup(frame: &mut Frame, state: &PeekState) {
         area,
         &mut scrollbar_state,
     );
+}
+
+fn wrap_labelled_text<'a>(label: &'a str, text: &'a str, max_width: u16) -> Vec<Line<'a>> {
+    let width = usize::from(max_width);
+    let label_len = label.len();
+    let content_width = width.saturating_sub(label_len);
+
+    if content_width < 10 {
+        return vec![Line::from(vec![
+            Span::styled(label, Style::default().fg(Color::DarkGray)),
+            Span::raw(text),
+        ])];
+    }
+
+    let mut lines: Vec<Line<'a>> = Vec::new();
+    let mut current = String::new();
+    let mut is_first = true;
+
+    for word in text.split_whitespace() {
+        let needed = if current.is_empty() {
+            word.len()
+        } else {
+            current.len() + 1 + word.len()
+        };
+
+        if needed > content_width && !current.is_empty() {
+            let prefix = if is_first {
+                is_first = false;
+                Span::styled(label, Style::default().fg(Color::DarkGray))
+            } else {
+                Span::raw(" ".repeat(label_len))
+            };
+            lines.push(Line::from(vec![prefix, Span::raw(current)]));
+            current = word.to_string();
+        } else if current.is_empty() {
+            current = word.to_string();
+        } else {
+            current.push(' ');
+            current.push_str(word);
+        }
+    }
+
+    let prefix = if is_first {
+        Span::styled(label, Style::default().fg(Color::DarkGray))
+    } else {
+        Span::raw(" ".repeat(label_len))
+    };
+    lines.push(Line::from(vec![prefix, Span::raw(current)]));
+    lines
 }
 
 fn draw_confirm_popup(frame: &mut Frame) {

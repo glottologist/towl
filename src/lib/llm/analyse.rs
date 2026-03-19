@@ -148,6 +148,7 @@ async fn analyse_single_todo(
 /// Analyses TODOs using an LLM, attaching results to each `TodoComment`.
 ///
 /// Respects `config.max_analyse_count` (hard cap). TODOs beyond the cap are skipped.
+/// Calls `on_progress(completed, total)` after each TODO is analysed.
 ///
 /// # Errors
 /// Returns `TowlLlmError::NotConfigured` if the API key is empty for API providers.
@@ -155,6 +156,7 @@ async fn analyse_single_todo(
 pub async fn analyse_todos(
     todos: &mut [TodoComment],
     config: &LlmConfig,
+    mut on_progress: impl FnMut(usize, usize),
 ) -> Result<AnalysisSummary, TowlLlmError> {
     let provider = build_provider(config)?;
 
@@ -180,7 +182,7 @@ pub async fn analyse_todos(
 
     let mut summary = AnalysisSummary::default();
 
-    for todo in todos.iter_mut().take(count) {
+    for (i, todo) in todos.iter_mut().take(count).enumerate() {
         match analyse_single_todo(todo, &provider, &api_key).await {
             Ok(validity) => match validity {
                 Validity::Valid => summary.valid_count += 1,
@@ -195,6 +197,7 @@ pub async fn analyse_todos(
                 summary.error_count += 1;
             }
         }
+        on_progress(i + 1, count);
     }
 
     info!(
@@ -282,7 +285,7 @@ mod tests {
     async fn test_analyse_todos_not_configured() {
         let config = LlmConfig::default();
         let mut todos = vec![];
-        let result = analyse_todos(&mut todos, &config).await;
+        let result = analyse_todos(&mut todos, &config, |_, _| {}).await;
         assert!(matches!(result, Err(TowlLlmError::NotConfigured)));
     }
 
@@ -294,7 +297,7 @@ mod tests {
             ..Default::default()
         };
         let mut todos = vec![];
-        let result = analyse_todos(&mut todos, &config).await;
+        let result = analyse_todos(&mut todos, &config, |_, _| {}).await;
         assert!(
             matches!(result, Err(TowlLlmError::NotConfigured)),
             "CLI fallback to API with no key should fail as NotConfigured"
