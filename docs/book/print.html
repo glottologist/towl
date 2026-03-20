@@ -1635,9 +1635,12 @@ pub struct Repo(String);
 <li><code>AuthError</code> -- Authentication failure</li>
 </ul>
 <h3 id="issue-title-format"><a class="header" href="#issue-title-format">Issue Title Format</a></h3>
-<pre><code class="language-text">[TODO] Implement caching (cache.rs:42)
+<p>Follows a conventional commit-style pattern:</p>
+<pre><code class="language-text">todo: implement caching layer for database queries
+fixme: handle timeout in network connect
+bug: null pointer when processing empty input
 </code></pre>
-<p>Titles are capped at 50 characters (excluding the type prefix and location suffix). Long descriptions are truncated at word boundaries with <code>...</code>.</p>
+<p>The type prefix is the lowercase TODO type (<code>todo</code>, <code>fixme</code>, <code>hack</code>, <code>note</code>, <code>bug</code>), followed by a colon and the full description. Titles exceeding 256 characters are truncated at word boundaries with <code>...</code>.</p>
 <h3 id="issue-body-sections"><a class="header" href="#issue-body-sections">Issue Body Sections</a></h3>
 <ol>
 <li><strong>TODO Details</strong> -- Type, file, line, column range</li>

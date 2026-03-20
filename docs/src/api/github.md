@@ -69,11 +69,15 @@ Automatically retries on rate limiting (up to 3 attempts).
 
 ### Issue Title Format
 
+Follows a conventional commit-style pattern:
+
 ```text
-[TODO] Implement caching (cache.rs:42)
+todo: implement caching layer for database queries
+fixme: handle timeout in network connect
+bug: null pointer when processing empty input
 ```
 
-Titles are capped at 50 characters (excluding the type prefix and location suffix). Long descriptions are truncated at word boundaries with `...`.
+The type prefix is the lowercase TODO type (`todo`, `fixme`, `hack`, `note`, `bug`), followed by a colon and the full description. Titles exceeding 256 characters are truncated at word boundaries with `...`.
 
 ### Issue Body Sections
 

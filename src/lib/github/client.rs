@@ -10,7 +10,7 @@ use crate::config::GitHubConfig;
 use super::error::TowlGitHubError;
 use super::types::CreatedIssue;
 
-const MAX_TITLE_LENGTH: usize = 50;
+const MAX_TITLE_LENGTH: usize = 256;
 const MAX_RATE_LIMIT_RETRIES: u32 = 3;
 const MAX_PAGES: u32 = 100;
 
@@ -175,21 +175,16 @@ impl GitHubClient {
     }
 
     fn generate_issue_title(todo: &TodoComment) -> String {
-        let type_prefix = format!("[{}]", todo.todo_type);
-        let file_name = todo
-            .file_path
-            .file_name()
-            .unwrap_or_default()
-            .to_string_lossy();
-        let location_suffix = format!("({}:{})", file_name, todo.line_number);
-
-        let overhead = type_prefix.len() + location_suffix.len() + 2;
-        let available = MAX_TITLE_LENGTH.saturating_sub(overhead);
-
+        let type_prefix = todo.todo_type.as_filter_str();
         let desc = todo.description.trim();
-        let truncated_desc = truncate_at_word_boundary(desc, available);
 
-        format!("{type_prefix} {truncated_desc} {location_suffix}")
+        if desc.len() + type_prefix.len() + 2 <= MAX_TITLE_LENGTH {
+            format!("{type_prefix}: {desc}")
+        } else {
+            let available = MAX_TITLE_LENGTH.saturating_sub(type_prefix.len() + 2);
+            let truncated = truncate_at_word_boundary(desc, available);
+            format!("{type_prefix}: {truncated}")
+        }
     }
 
     fn generate_issue_body(todo: &TodoComment) -> Result<String, std::fmt::Error> {
@@ -460,7 +455,7 @@ mod tests {
 
     proptest! {
         #[test]
-        fn prop_title_bounded(
+        fn prop_title_uses_conventional_format(
             desc in "[a-zA-Z0-9 ]{1,200}",
             todo_type in prop::sample::select(vec![
                 TodoType::Todo, TodoType::Fixme, TodoType::Hack,
@@ -469,8 +464,14 @@ mod tests {
         ) {
             let todo = make_todo(&desc, todo_type);
             let title = GitHubClient::generate_issue_title(&todo);
-            prop_assert!(title.len() < 200);
-            prop_assert!(title.starts_with('['));
+            let prefix = todo_type.as_filter_str();
+            prop_assert!(
+                title.starts_with(&format!("{prefix}:")),
+                "Title {:?} should start with {:?}:", title, prefix
+            );
+            prop_assert!(title.len() <= MAX_TITLE_LENGTH);
+            prop_assert!(!title.contains('['));
+            prop_assert!(!title.contains(']'));
         }
 
         #[test]

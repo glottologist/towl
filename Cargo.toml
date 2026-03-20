@@ -1,6 +1,6 @@
 [package]
 name = "towl"
-version = "0.3.5"
+version = "0.3.6"
 authors = ["Jason Ridgway-Taylor <jason@glottologist.co.uk>"]
 description = "A fast CLI tool to scan codebases for TODO comments and output them in multiple formats"
 license = "MIT"

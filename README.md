@@ -121,7 +121,7 @@ Create a `.towl.toml` file in your project root (or run `towl init`). To load fr
 [parsing]
 file_extensions = ["rs", "toml", "json", "yaml", "yml", "sh", "bash"]
 exclude_patterns = ["target/*", ".git/*"]
-include_context_lines = 3
+include_context_lines = 10
 
 [llm]
 provider = "claude"           # "claude", "openai", "claude-code", or "codex"
