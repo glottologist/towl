@@ -17,7 +17,7 @@ Create `.towl.toml` manually or run `towl init`:
 [parsing]
 file_extensions = ["rs", "toml", "json", "yaml", "yml", "sh", "bash"]
 exclude_patterns = ["target/*", ".git/*"]
-include_context_lines = 3
+include_context_lines = 10
 ```
 
 ## Parsing Section
@@ -26,7 +26,7 @@ include_context_lines = 3
 |-------|------|---------|-------------|
 | `file_extensions` | `string[]` | `["rs", "toml", "json", "yaml", "yml", "sh", "bash"]` | File extensions to scan |
 | `exclude_patterns` | `string[]` | `["target/*", ".git/*"]` | Glob patterns to exclude |
-| `include_context_lines` | `integer` | `3` | Number of surrounding lines to capture (1-50) |
+| `include_context_lines` | `integer` | `10` | Number of surrounding lines to capture (1-50) |
 | `comment_prefixes` | `string[]` | `["//", "^\\s*#", "/\\*", "^\\s*\\*"]` | Regex patterns for comment line detection |
 | `todo_patterns` | `string[]` | See below | Regex patterns for TODO extraction |
 | `function_patterns` | `string[]` | See below | Regex patterns for function context detection |
@@ -59,13 +59,13 @@ function_patterns = [
 
 ### Pattern Limits
 
-Each pattern field is limited to 100 entries. Individual regex patterns are limited to 256 characters. These limits prevent denial-of-service via malicious configuration files.
+Each pattern field is limited to 100 entries. Individual regex patterns are limited to 256 characters. Config string values (e.g., owner, repo) are limited to 512 characters. These limits prevent denial-of-service via malicious configuration files.
 
 ## GitHub Section
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `rate_limit_delay_ms` | `integer` | `100` | Delay in ms between GitHub API calls |
+| `rate_limit_delay_ms` | `integer` | `1000` | Delay in ms between GitHub API calls |
 
 Owner and repo are **always** auto-detected from `git remote get-url origin` at runtime -- they are not stored in the config file. Use `TOWL_GITHUB_OWNER` and `TOWL_GITHUB_REPO` environment variables to override if needed.
 
@@ -127,7 +127,7 @@ Example output:
 ┌─ Parsing
 │  ├─ File Extensions: bash, json, rs, sh, toml, yaml, yml
 │  ├─ Exclude Patterns: target/*, .git/*
-│  ├─ Context Lines: 3
+│  ├─ Context Lines: 10
 │  ├─ Comment Prefixes:
 │  │  ├─ //
 │  │  ├─ ^\s*#

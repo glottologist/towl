@@ -65,6 +65,7 @@ pub struct TodoComment {
     pub description: String,
     pub context_lines: Vec<String>,
     pub function_context: Option<String>,
+    pub analysis: Option<AnalysisResult>,
 }
 ```
 
@@ -82,10 +83,11 @@ A single TODO comment extracted from a source file.
 | `description` | Extracted description text after the marker |
 | `context_lines` | Surrounding source lines (configurable window) |
 | `function_context` | Enclosing function name, if detected |
+| `analysis` | LLM validation result, populated when `--ai` is used (skipped during serialisation if `None`) |
 
 ### Trait Implementations
 
-`Debug`, `Clone`, `PartialEq`, `Eq`, `Serialize`, `Deserialize`
+`Debug`, `Clone`, `PartialEq`, `Serialize`, `Deserialize`
 
 ## `ScanResult`
 

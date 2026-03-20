@@ -183,6 +183,12 @@
                     <main>
                         <h1 id="scanning-for-todos"><a class="header" href="#scanning-for-todos">Scanning for TODOs</a></h1>
 <p>The <code>towl scan</code> command walks a directory tree, reads each matching file, and extracts TODO-style comments using compiled regex patterns.</p>
+<h2 id="config-override"><a class="header" href="#config-override">Config Override</a></h2>
+<p>By default, towl reads <code>.towl.toml</code> from the project root. Use <code>--config</code> / <code>-c</code> to load from a different path:</p>
+<pre><code class="language-bash">towl scan -c .config/.towl.toml
+towl scan -c .config/.towl.toml src/
+</code></pre>
+<p>You can also set the <code>TOWL_CONFIG</code> environment variable. The <code>--config</code> flag takes precedence over the env var.</p>
 <h2 id="interactive-mode-default"><a class="header" href="#interactive-mode-default">Interactive Mode (Default)</a></h2>
 <p>By default, <code>towl scan</code> opens an interactive TUI:</p>
 <pre><code class="language-bash">towl scan
@@ -254,6 +260,9 @@ towl scan -N -t todo -g
 
 # AI-validated FIXMEs as JSON
 towl scan -N --ai -t fixme -f json -o fixmes.json
+
+# Use a custom config for everything
+towl scan -c .config/.towl.toml -N src/ -t fixme -f json -o fixmes.json
 </code></pre>
 <h2 id="resource-limits"><a class="header" href="#resource-limits">Resource Limits</a></h2>
 <p>towl enforces hard limits to prevent runaway scans:</p>

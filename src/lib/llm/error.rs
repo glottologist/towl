@@ -23,6 +23,20 @@ pub enum TowlLlmError {
 }
 
 impl TowlLlmError {
+    /// Whether this error is transient and the operation should be retried.
+    #[must_use]
+    pub fn is_retryable(&self) -> bool {
+        matches!(
+            self,
+            Self::RateLimited { .. }
+                | Self::ApiError {
+                    status: Some(500..),
+                    ..
+                }
+                | Self::ApiError { status: None, .. }
+        )
+    }
+
     /// Classifies an HTTP status code into the appropriate error variant.
     ///
     /// Shared between Claude and OpenAI providers.

@@ -189,6 +189,7 @@
 </span>pub struct TowlConfig {
     pub parsing: ParsingConfig,
     pub github: GitHubConfig,
+    pub llm: LlmConfig,
 }
 <span class="boring">}</span></code></pre></pre>
 <h3 id="towlconfigload"><a class="header" href="#towlconfigload"><code>TowlConfig::load</code></a></h3>
@@ -201,8 +202,9 @@
 <p>Loads configuration with this precedence:</p>
 <ol>
 <li>Built-in defaults</li>
-<li><code>.towl.toml</code> file (or custom path via <code>--path</code>)</li>
-<li>Environment variable overrides</li>
+<li>Config file resolved as: explicit <code>path</code> argument &gt; <code>TOWL_CONFIG</code> env var &gt; <code>.towl.toml</code></li>
+<li>Git remote auto-detection for owner/repo</li>
+<li>Environment variable overrides (<code>TOWL_GITHUB_*</code>, <code>TOWL_LLM_*</code>)</li>
 </ol>
 <p>If no config file exists, defaults are used without error.</p>
 <h3 id="init"><a class="header" href="#init"><code>init</code></a></h3>
@@ -210,11 +212,11 @@
 </span><span class="boring">fn main() {
 </span>pub async fn init(path: &amp;Path, force: bool) -&gt; Result&lt;(), TowlConfigError&gt;
 <span class="boring">}</span></code></pre></pre>
-<p>Creates a <code>.towl.toml</code> file at the given path. Auto-detects GitHub owner and repo from <code>git remote get-url origin</code>.</p>
+<p>Creates a <code>.towl.toml</code> file at the given path. Validates that a GitHub git remote exists but does not write owner/repo to the file (they are always detected at runtime).</p>
 <ul>
 <li>Fails if the file already exists (unless <code>force</code> is <code>true</code>)</li>
 <li>Validates the path for traversal attacks</li>
-<li>Serializes <code>ParsingConfig</code> defaults to TOML</li>
+<li>Serializes <code>ParsingConfig</code> and <code>LlmConfig</code> defaults to TOML</li>
 </ul>
 <h2 id="parsingconfig"><a class="header" href="#parsingconfig"><code>ParsingConfig</code></a></h2>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -232,7 +234,7 @@
 <div class="table-wrapper"><table><thead><tr><th>Field</th><th>Default</th></tr></thead><tbody>
 <tr><td><code>file_extensions</code></td><td><code>rs</code>, <code>toml</code>, <code>json</code>, <code>yaml</code>, <code>yml</code>, <code>sh</code>, <code>bash</code></td></tr>
 <tr><td><code>exclude_patterns</code></td><td><code>target/*</code>, <code>.git/*</code></td></tr>
-<tr><td><code>include_context_lines</code></td><td><code>3</code></td></tr>
+<tr><td><code>include_context_lines</code></td><td><code>10</code></td></tr>
 <tr><td><code>comment_prefixes</code></td><td><code>//</code>, <code>^\s*#</code>, <code>/\*</code>, <code>^\s*\*</code></td></tr>
 <tr><td><code>todo_patterns</code></td><td><code>TODO:</code>, <code>FIXME:</code>, <code>HACK:</code>, <code>NOTE:</code>, <code>BUG:</code> (case-insensitive)</td></tr>
 <tr><td><code>function_patterns</code></td><td>Rust, Python, JS, Java/C#, Go patterns</td></tr>
@@ -251,14 +253,15 @@
 <span class="boring">}</span></code></pre></pre>
 <ul>
 <li><code>token</code> is stored as <code>secrecy::SecretString</code> and masked in debug/display output</li>
-<li><code>owner</code> and <code>repo</code> are validated newtype wrappers over <code>String</code></li>
-<li><code>rate_limit_delay_ms</code> adds a delay between GitHub API calls (default: 100ms)</li>
+<li><code>owner</code> and <code>repo</code> are auto-detected from <code>git remote get-url origin</code> at runtime (not serialised to config)</li>
+<li><code>rate_limit_delay_ms</code> adds a delay between GitHub API calls (default: 1000ms)</li>
 </ul>
 <h3 id="environment-variable-overrides"><a class="header" href="#environment-variable-overrides">Environment Variable Overrides</a></h3>
 <div class="table-wrapper"><table><thead><tr><th>Variable</th><th>Overrides</th></tr></thead><tbody>
-<tr><td><code>TOWL_GITHUB_TOKEN</code></td><td><code>github.token</code></td></tr>
-<tr><td><code>TOWL_GITHUB_OWNER</code></td><td><code>github.owner</code></td></tr>
-<tr><td><code>TOWL_GITHUB_REPO</code></td><td><code>github.repo</code></td></tr>
+<tr><td><code>TOWL_CONFIG</code></td><td><code>DEFAULT_CONFIG_PATH</code> (overridden by explicit <code>path</code> argument)</td></tr>
+<tr><td><code>TOWL_GITHUB_TOKEN</code></td><td>-- (env-only)</td></tr>
+<tr><td><code>TOWL_GITHUB_OWNER</code></td><td>git remote detection</td></tr>
+<tr><td><code>TOWL_GITHUB_REPO</code></td><td>git remote detection</td></tr>
 </tbody></table>
 </div>
 <h2 id="owner--repo"><a class="header" href="#owner--repo"><code>Owner</code> / <code>Repo</code></a></h2>
@@ -283,6 +286,45 @@ pub struct Repo(String);
 <li><code>Display</code>, <code>Default</code>, <code>Debug</code>, <code>Clone</code>, <code>PartialEq</code>, <code>Eq</code></li>
 <li><code>Serialize</code>, <code>Deserialize</code></li>
 </ul>
+<h2 id="llmconfig"><a class="header" href="#llmconfig"><code>LlmConfig</code></a></h2>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub struct LlmConfig {
+    pub provider: String,
+    pub model: String,
+    pub base_url: Option&lt;String&gt;,
+    pub api_key: SecretString,
+    pub max_concurrent_analyses: usize,
+    pub max_analyse_count: usize,
+    pub max_tokens: u32,
+    pub max_retries: usize,
+    pub command: Option&lt;String&gt;,
+    pub args: Option&lt;Vec&lt;String&gt;&gt;,
+}
+<span class="boring">}</span></code></pre></pre>
+<ul>
+<li><code>api_key</code> is stored as <code>secrecy::SecretString</code> and masked in debug output (env-only via <code>TOWL_LLM_API_KEY</code>)</li>
+<li><code>provider</code> selects the LLM backend: <code>"claude"</code>, <code>"openai"</code>, <code>"claude-code"</code>, or <code>"codex"</code></li>
+<li><code>command</code> and <code>args</code> allow overriding the CLI binary path and arguments for CLI providers</li>
+</ul>
+<div class="table-wrapper"><table><thead><tr><th>Field</th><th>Default</th></tr></thead><tbody>
+<tr><td><code>provider</code></td><td><code>"claude"</code></td></tr>
+<tr><td><code>model</code></td><td><code>"claude-opus-4-6"</code></td></tr>
+<tr><td><code>base_url</code></td><td><code>None</code> (provider default)</td></tr>
+<tr><td><code>max_concurrent_analyses</code></td><td><code>5</code></td></tr>
+<tr><td><code>max_analyse_count</code></td><td><code>50</code></td></tr>
+<tr><td><code>max_tokens</code></td><td><code>4096</code></td></tr>
+<tr><td><code>max_retries</code></td><td><code>3</code></td></tr>
+</tbody></table>
+</div>
+<h3 id="environment-variable-overrides-1"><a class="header" href="#environment-variable-overrides-1">Environment Variable Overrides</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>Variable</th><th>Overrides</th></tr></thead><tbody>
+<tr><td><code>TOWL_LLM_API_KEY</code></td><td>-- (env-only)</td></tr>
+<tr><td><code>TOWL_LLM_PROVIDER</code></td><td><code>llm.provider</code></td></tr>
+<tr><td><code>TOWL_LLM_MODEL</code></td><td><code>llm.model</code></td></tr>
+<tr><td><code>TOWL_LLM_BASE_URL</code></td><td><code>llm.base_url</code></td></tr>
+</tbody></table>
+</div>
 <h2 id="gitrepoinfo-internal"><a class="header" href="#gitrepoinfo-internal"><code>GitRepoInfo</code> (internal)</a></h2>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {

@@ -17,16 +17,19 @@ towl follows a pipeline architecture: Config -> Scanner -> Parser -> TUI / Outpu
                 │  Parser   │  Matches comment prefixes + TODO patterns
                 └────┬─────┘
                      │
-              ┌──────┴──────┐
-              │             │
-        ┌─────▼────┐  ┌────▼─────┐
-        │   TUI     │  │  Output   │  Non-interactive: formats + writes
-        │ (default) │  │  (-N)     │
-        └─────┬────┘  └──────────┘
-              │
-        ┌─────▼─────┐
-        │ Processor  │  Replaces TODOs with GitHub issue links
-        └───────────┘
+              ┌──────┼──────┐
+              │      │      │
+        ┌─────▼────┐ │ ┌────▼─────┐
+        │   TUI    │ │ │  Output   │  Non-interactive: formats + writes
+        │ (default)│ │ │  (-N)     │
+        └─────┬────┘ │ └──────────┘
+              │      │
+        ┌─────▼─────┐│
+        │ Processor  ││  Replaces TODOs with GitHub issue links
+        └───────────┘│
+                ┌────▼─────┐
+                │   LLM     │  --ai: validates TODOs with AI
+                └──────────┘
 ```
 
 ## Module Boundaries
@@ -93,6 +96,24 @@ Submodules:
 - `input.rs` -- Keyboard event handling and action dispatch
 - `render.rs` -- UI rendering (list, peek popup, confirm dialog, progress view)
 - `error.rs` -- `TowlTuiError`
+
+### LLM (`src/lib/llm/`)
+
+- AI-powered TODO validation using Claude, OpenAI, or local CLI agents
+- Enum-dispatched providers following the same pattern as `FormatterImpl`/`WriterImpl`
+- Gathers expanded context (~30 lines) and full function bodies for each TODO
+- Constructs structured prompts and parses JSON responses
+- Retry logic with exponential backoff via `backon`
+- CLI providers (`claude-code`, `codex`) auto-fall back to API providers if the binary is not on PATH
+
+Submodules:
+- `analyse.rs` -- `analyse_todos()`, `gather_expanded_context()`, retry logic
+- `claude.rs` -- `ClaudeProvider` (Anthropic Messages API)
+- `openai.rs` -- `OpenAiProvider` (OpenAI Chat Completions API)
+- `cli.rs` -- `ClaudeCodeProvider`, `CodexProvider` (subprocess-based)
+- `prompt.rs` -- System prompt and user content construction
+- `types.rs` -- `AnalysisResult`, `AnalysisSummary`, `Validity`, `LlmUsage`, JSON extraction
+- `error.rs` -- `TowlLlmError`
 
 ### Processor (`src/lib/processor/`)
 
@@ -166,6 +187,7 @@ FormatterError → TowlOutputError → TowlError
 WriterError → TowlOutputError → TowlError
 TowlProcessorError → TowlError
 TowlTuiError → TowlError
+TowlLlmError → TowlError
 ```
 
 ### Newtype Pattern
@@ -220,6 +242,15 @@ src/
     │   ├── client.rs         GitHubClient
     │   ├── types.rs          CreatedIssue
     │   └── error.rs          TowlGitHubError
+    ├── llm/
+    │   ├── mod.rs             LlmProvider enum dispatch
+    │   ├── analyse.rs         analyse_todos, gather_expanded_context
+    │   ├── claude.rs          ClaudeProvider
+    │   ├── openai.rs          OpenAiProvider
+    │   ├── cli.rs             ClaudeCodeProvider, CodexProvider
+    │   ├── prompt.rs          System prompt construction
+    │   ├── types.rs           AnalysisResult, Validity, JSON extraction
+    │   └── error.rs           TowlLlmError
     ├── processor/
     │   ├── mod.rs
     │   ├── types.rs          Processor, ProcessorResult
@@ -274,6 +305,9 @@ tests/
 | `ratatui` | Terminal UI framework |
 | `crossterm` | Terminal input/output |
 | `futures` | Async stream utilities |
+| `reqwest` | HTTP client (rustls TLS) |
+| `backon` | Retry logic with exponential backoff |
+| `which` | CLI binary PATH detection |
 | `proptest` | Property-based testing |
 | `rstest` | Parameterised testing |
 | `insta` | Snapshot testing |

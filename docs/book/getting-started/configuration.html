@@ -183,22 +183,24 @@
                     <main>
                         <h1 id="configuration"><a class="header" href="#configuration">Configuration</a></h1>
 <p>towl uses a <code>.towl.toml</code> file in the project root for configuration. All fields have sensible defaults -- you only need to override what you want to change.</p>
+<p>You can point to a config file in a different location using:</p>
+<ul>
+<li><code>--config</code> / <code>-c</code> flag on <code>scan</code> and <code>config</code> commands</li>
+<li><code>TOWL_CONFIG</code> environment variable</li>
+</ul>
+<p>The <code>--config</code> flag takes precedence over <code>TOWL_CONFIG</code>, which takes precedence over the default <code>.towl.toml</code>.</p>
 <h2 id="config-file"><a class="header" href="#config-file">Config File</a></h2>
 <p>Create <code>.towl.toml</code> manually or run <code>towl init</code>:</p>
 <pre><code class="language-toml">[parsing]
 file_extensions = ["rs", "toml", "json", "yaml", "yml", "sh", "bash"]
 exclude_patterns = ["target/*", ".git/*"]
-include_context_lines = 3
-
-[github]
-owner = "your-username"
-repo = "your-repo"
+include_context_lines = 10
 </code></pre>
 <h2 id="parsing-section"><a class="header" href="#parsing-section">Parsing Section</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Field</th><th>Type</th><th>Default</th><th>Description</th></tr></thead><tbody>
 <tr><td><code>file_extensions</code></td><td><code>string[]</code></td><td><code>["rs", "toml", "json", "yaml", "yml", "sh", "bash"]</code></td><td>File extensions to scan</td></tr>
 <tr><td><code>exclude_patterns</code></td><td><code>string[]</code></td><td><code>["target/*", ".git/*"]</code></td><td>Glob patterns to exclude</td></tr>
-<tr><td><code>include_context_lines</code></td><td><code>integer</code></td><td><code>3</code></td><td>Number of surrounding lines to capture (1-50)</td></tr>
+<tr><td><code>include_context_lines</code></td><td><code>integer</code></td><td><code>10</code></td><td>Number of surrounding lines to capture (1-50)</td></tr>
 <tr><td><code>comment_prefixes</code></td><td><code>string[]</code></td><td><code>["//", "^\\s*#", "/\\*", "^\\s*\\*"]</code></td><td>Regex patterns for comment line detection</td></tr>
 <tr><td><code>todo_patterns</code></td><td><code>string[]</code></td><td>See below</td><td>Regex patterns for TODO extraction</td></tr>
 <tr><td><code>function_patterns</code></td><td><code>string[]</code></td><td>See below</td><td>Regex patterns for function context detection</td></tr>
@@ -224,15 +226,13 @@ repo = "your-repo"
 ]
 </code></pre>
 <h3 id="pattern-limits"><a class="header" href="#pattern-limits">Pattern Limits</a></h3>
-<p>Each pattern field is limited to 100 entries. Individual regex patterns are limited to 256 characters. These limits prevent denial-of-service via malicious configuration files.</p>
+<p>Each pattern field is limited to 100 entries. Individual regex patterns are limited to 256 characters. Config string values (e.g., owner, repo) are limited to 512 characters. These limits prevent denial-of-service via malicious configuration files.</p>
 <h2 id="github-section"><a class="header" href="#github-section">GitHub Section</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Field</th><th>Type</th><th>Default</th><th>Description</th></tr></thead><tbody>
-<tr><td><code>owner</code></td><td><code>string</code></td><td>Auto-detected from git remote</td><td>GitHub repository owner</td></tr>
-<tr><td><code>repo</code></td><td><code>string</code></td><td>Auto-detected from git remote</td><td>GitHub repository name</td></tr>
-<tr><td><code>token</code></td><td>--</td><td>--</td><td>Set via environment variable only</td></tr>
-<tr><td><code>rate_limit_delay_ms</code></td><td><code>integer</code></td><td><code>100</code></td><td>Delay in ms between GitHub API calls</td></tr>
+<tr><td><code>rate_limit_delay_ms</code></td><td><code>integer</code></td><td><code>1000</code></td><td>Delay in ms between GitHub API calls</td></tr>
 </tbody></table>
 </div>
+<p>Owner and repo are <strong>always</strong> auto-detected from <code>git remote get-url origin</code> at runtime -- they are not stored in the config file. Use <code>TOWL_GITHUB_OWNER</code> and <code>TOWL_GITHUB_REPO</code> environment variables to override if needed.</p>
 <blockquote>
 <p><strong>Note:</strong> The GitHub token is never stored in the config file. Use the <code>TOWL_GITHUB_TOKEN</code> environment variable.</p>
 </blockquote>
@@ -252,11 +252,12 @@ repo = "your-repo"
 <p><strong>Note:</strong> The LLM API key is never stored in the config file. Use the <code>TOWL_LLM_API_KEY</code> environment variable. See <a href="../guides/ai-analysis.html">AI Analysis</a> for usage details.</p>
 </blockquote>
 <h2 id="environment-variables"><a class="header" href="#environment-variables">Environment Variables</a></h2>
-<p>Seven environment variables override config file values:</p>
+<p>Eight environment variables override defaults:</p>
 <div class="table-wrapper"><table><thead><tr><th>Variable</th><th>Overrides</th><th>Description</th></tr></thead><tbody>
-<tr><td><code>TOWL_GITHUB_TOKEN</code></td><td><code>github.token</code></td><td>GitHub personal access token (stored as <code>SecretString</code>, masked in logs)</td></tr>
-<tr><td><code>TOWL_GITHUB_OWNER</code></td><td><code>github.owner</code></td><td>GitHub repository owner</td></tr>
-<tr><td><code>TOWL_GITHUB_REPO</code></td><td><code>github.repo</code></td><td>GitHub repository name</td></tr>
+<tr><td><code>TOWL_CONFIG</code></td><td><code>DEFAULT_CONFIG_PATH</code></td><td>Path to a <code>.towl.toml</code> file (overridden by <code>--config</code> flag)</td></tr>
+<tr><td><code>TOWL_GITHUB_TOKEN</code></td><td>--</td><td>GitHub personal access token (stored as <code>SecretString</code>, masked in logs)</td></tr>
+<tr><td><code>TOWL_GITHUB_OWNER</code></td><td>git remote detection</td><td>GitHub repository owner</td></tr>
+<tr><td><code>TOWL_GITHUB_REPO</code></td><td>git remote detection</td><td>GitHub repository name</td></tr>
 <tr><td><code>TOWL_LLM_API_KEY</code></td><td><code>llm.api_key</code></td><td>LLM API key (stored as <code>SecretString</code>, env-only)</td></tr>
 <tr><td><code>TOWL_LLM_PROVIDER</code></td><td><code>llm.provider</code></td><td>LLM provider (<code>"claude"</code> or <code>"openai"</code>)</td></tr>
 <tr><td><code>TOWL_LLM_MODEL</code></td><td><code>llm.model</code></td><td>LLM model identifier</td></tr>
@@ -266,19 +267,24 @@ repo = "your-repo"
 <h2 id="config-loading-order"><a class="header" href="#config-loading-order">Config Loading Order</a></h2>
 <ol>
 <li>Built-in defaults</li>
-<li><code>.towl.toml</code> file (or path specified with <code>--path</code>)</li>
+<li>Config file resolved as: <code>--config</code> flag &gt; <code>TOWL_CONFIG</code> env var &gt; <code>.towl.toml</code></li>
+<li>Git remote auto-detection for owner/repo</li>
 <li>Environment variable overrides (<code>TOWL_GITHUB_*</code>, <code>TOWL_LLM_*</code>)</li>
 </ol>
-<p>If no <code>.towl.toml</code> exists, defaults are used without error.</p>
+<p>If no config file exists at the resolved path, defaults are used without error.</p>
 <h2 id="viewing-active-configuration"><a class="header" href="#viewing-active-configuration">Viewing Active Configuration</a></h2>
-<pre><code class="language-bash">towl config
+<pre><code class="language-bash"># Show config from default .towl.toml
+towl config
+
+# Show config from a custom path
+towl config -c .config/.towl.toml
 </code></pre>
 <p>Example output:</p>
 <pre><code class="language-text">📋 Towl Configuration
 ┌─ Parsing
 │  ├─ File Extensions: bash, json, rs, sh, toml, yaml, yml
 │  ├─ Exclude Patterns: target/*, .git/*
-│  ├─ Context Lines: 3
+│  ├─ Context Lines: 10
 │  ├─ Comment Prefixes:
 │  │  ├─ //
 │  │  ├─ ^\s*#

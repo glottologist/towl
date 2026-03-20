@@ -15,7 +15,8 @@ TowlError
 │   └── WriterError
 ├── TowlGitHubError
 ├── TowlProcessorError
-└── TowlTuiError
+├── TowlTuiError
+└── TowlLlmError
 ```
 
 ## `TowlError`
@@ -30,6 +31,7 @@ pub enum TowlError {
     GitHub(TowlGitHubError),
     Processor(TowlProcessorError),
     Tui(TowlTuiError),
+    Llm(TowlLlmError),
 }
 ```
 
@@ -139,6 +141,22 @@ Errors from replacing TODO comments with issue links in source files.
 | `PathOutsideRoot { path, root }` | File is outside the repository root |
 | `InvalidIssueUrl { url }` | URL does not start with `https://github.com/` |
 
+## `TowlLlmError`
+
+Errors from LLM API interactions and analysis.
+
+| Variant | Cause |
+|---------|-------|
+| `ApiError { message, status }` | LLM API returned a non-200 status |
+| `AuthError` | 401 -- invalid or missing API key |
+| `RateLimited { retry_after_secs }` | 429 -- too many requests |
+| `ParseError { message }` | LLM response could not be parsed as valid JSON |
+| `NotConfigured` | `TOWL_LLM_API_KEY` environment variable not set |
+| `UnsupportedProvider { provider }` | Provider is not "claude", "openai", "claude-code", or "codex" |
+| `IoError { message }` | File I/O error during context gathering |
+
+`is_retryable()` returns `true` for `RateLimited`, `ApiError` with status >= 500, and `ApiError` with no status (network failures).
+
 ## `TowlTuiError`
 
 Errors from the interactive terminal UI.
@@ -158,6 +176,7 @@ WriterError       -->  TowlOutputError     -->  TowlError
 TowlGitHubError   ---------------------------->  TowlError
 TowlProcessorError --------------------------->  TowlError
 TowlTuiError      ---------------------------->  TowlError
+TowlLlmError      ---------------------------->  TowlError
 ```
 
 All errors implement `std::fmt::Display` with human-readable messages and `std::error::Error` for standard error handling.

@@ -34,4 +34,5 @@
 
 - [Architecture](./reference/architecture.md)
 - [Security](./reference/security.md)
+- [CI/CD](./reference/ci-cd.md)
 - [Contributing](./reference/contributing.md)

@@ -215,14 +215,19 @@
 <li><strong>Zeroed on drop</strong> -- Memory is cleared when the config is dropped</li>
 </ul>
 <h2 id="environment-variable-restriction"><a class="header" href="#environment-variable-restriction">Environment Variable Restriction</a></h2>
-<p>Only three environment variables are read:</p>
+<p>Eight environment variables are read:</p>
 <div class="table-wrapper"><table><thead><tr><th>Variable</th><th>Purpose</th></tr></thead><tbody>
+<tr><td><code>TOWL_CONFIG</code></td><td>Config file path override</td></tr>
 <tr><td><code>TOWL_GITHUB_TOKEN</code></td><td>GitHub authentication</td></tr>
 <tr><td><code>TOWL_GITHUB_OWNER</code></td><td>Repository owner override</td></tr>
 <tr><td><code>TOWL_GITHUB_REPO</code></td><td>Repository name override</td></tr>
+<tr><td><code>TOWL_LLM_API_KEY</code></td><td>LLM API authentication</td></tr>
+<tr><td><code>TOWL_LLM_PROVIDER</code></td><td>LLM provider override</td></tr>
+<tr><td><code>TOWL_LLM_MODEL</code></td><td>LLM model override</td></tr>
+<tr><td><code>TOWL_LLM_BASE_URL</code></td><td>Custom LLM endpoint URL</td></tr>
 </tbody></table>
 </div>
-<p>No other environment variables influence behaviour.</p>
+<p>Secrets (<code>TOWL_GITHUB_TOKEN</code>, <code>TOWL_LLM_API_KEY</code>) are stored as <code>SecretString</code> and never written to config files or logs. No other environment variables influence behaviour.</p>
 <h2 id="config-file-safety"><a class="header" href="#config-file-safety">Config File Safety</a></h2>
 <ul>
 <li><strong><code>--force</code> required</strong> for overwriting existing config files</li>
@@ -235,6 +240,14 @@
 <li>Git operations use <code>tokio::process::Command</code> to run <code>git</code> as a subprocess</li>
 <li>Only read-only git commands are executed (<code>git remote get-url origin</code>)</li>
 <li>No git credentials are accessed or stored</li>
+</ul>
+<h2 id="llm-cli-subprocess-safety"><a class="header" href="#llm-cli-subprocess-safety">LLM CLI Subprocess Safety</a></h2>
+<p>When using <code>claude-code</code> or <code>codex</code> providers, towl spawns CLI subprocesses:</p>
+<ul>
+<li><strong>Command validation</strong> -- Relative paths containing <code>..</code> or non-absolute <code>/</code> are rejected</li>
+<li><strong>Timeout</strong> -- CLI processes are killed after 120 seconds</li>
+<li><strong>Input via stdin</strong> -- Prompts are piped through stdin, not shell arguments (prevents injection)</li>
+<li><strong>Stderr capture</strong> -- CLI error output is captured and included in error messages</li>
 </ul>
 <h2 id="gitignore-respect"><a class="header" href="#gitignore-respect">.gitignore Respect</a></h2>
 <p>The <code>ignore</code> crate automatically respects <code>.gitignore</code> rules during directory walking, preventing scanning of files the user has excluded from version control.</p>
@@ -249,6 +262,7 @@
 <tr><td>Config file overwrite</td><td><code>--force</code> flag required</td></tr>
 <tr><td>Arbitrary file write via symlinks</td><td><code>canonicalize()</code> on output paths</td></tr>
 <tr><td>Scanning outside intended directory</td><td><code>.gitignore</code> respect, extension filtering</td></tr>
+<tr><td>CLI command injection via LLM providers</td><td>Relative path rejection, stdin piping (not shell args), 120s timeout</td></tr>
 </tbody></table>
 </div>
                     </main>
@@ -259,7 +273,7 @@
                                 <i class="fa fa-angle-left"></i>
                             </a>
 
-                            <a rel="next prefetch" href="../reference/contributing.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="../reference/ci-cd.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
 
@@ -273,7 +287,7 @@
                         <i class="fa fa-angle-left"></i>
                     </a>
 
-                    <a rel="next prefetch" href="../reference/contributing.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="../reference/ci-cd.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
             </nav>

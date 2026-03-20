@@ -79,6 +79,10 @@ pub(super) const fn default_max_analyse_count() -> usize {
     50
 }
 
+pub(super) const fn default_llm_max_retries() -> usize {
+    3
+}
+
 pub(super) const fn default_llm_max_tokens() -> u32 {
     4096
 }

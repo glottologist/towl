@@ -197,7 +197,7 @@
     replacements: &amp;[(TodoComment, CreatedIssue)],
 ) -&gt; ProcessorResult
 <span class="boring">}</span></code></pre></pre>
-<p>Replaces TODO comments in source files with <code>See: &lt;issue_url&gt;</code> links.</p>
+<p>Replaces TODO comments in source files with <code>GH_ISSUE: &lt;issue_url&gt;</code> links.</p>
 <p><strong>Behaviour:</strong></p>
 <ol>
 <li>Groups replacements by file path for efficient batch processing</li>
@@ -213,8 +213,8 @@
 </ul>
 <p><strong>Replacement format:</strong></p>
 <p>The comment prefix (e.g., <code>// </code>, <code># </code>, <code>/* </code>) is preserved. The TODO text after the prefix is replaced:</p>
-<pre><code class="language-text">// TODO: Implement caching    --&gt;    // See: https://github.com/owner/repo/issues/42
-# FIXME: Handle timeout        --&gt;    # See: https://github.com/owner/repo/issues/43
+<pre><code class="language-text">// TODO: Implement caching    --&gt;    // GH_ISSUE: https://github.com/owner/repo/issues/42
+# FIXME: Handle timeout        --&gt;    # GH_ISSUE: https://github.com/owner/repo/issues/43
 </code></pre>
 <p><strong>Atomic writes:</strong></p>
 <p>Files are written via a tempfile in the same directory, then atomically persisted. This prevents partial writes if the process is interrupted.</p>

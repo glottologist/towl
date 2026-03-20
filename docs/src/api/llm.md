@@ -8,6 +8,8 @@ The LLM module provides AI-powered TODO validation using Claude (Anthropic API) 
 pub enum LlmProvider {
     Claude(ClaudeProvider),
     OpenAi(OpenAiProvider),
+    ClaudeCode(ClaudeCodeProvider),
+    Codex(CodexProvider),
 }
 ```
 
@@ -40,18 +42,20 @@ Factory function that creates the appropriate provider from configuration.
 pub async fn analyse_todos(
     todos: &mut [TodoComment],
     config: &LlmConfig,
+    on_progress: impl FnMut(usize, usize),
 ) -> Result<AnalysisSummary, TowlLlmError>
 ```
 
-Main entry point for TODO analysis. For each TODO (up to `max_analyse_count`):
+Main entry point for TODO analysis. Calls `on_progress(completed, total)` after each TODO is analysed, allowing callers to render progress feedback (e.g. a progress bar).
+
+For each TODO (up to `max_analyse_count`):
 
 1. Reads expanded context (~30 lines around the TODO + full function body)
 2. Constructs a prompt with the TODO description, file path, and code context
 3. Calls the LLM to determine validity
 4. Parses the structured JSON response into an `AnalysisResult`
 5. Attaches the result to `TodoComment.analysis`
-
-Concurrency is bounded by `max_concurrent_analyses` via a tokio `Semaphore`.
+6. Calls `on_progress` with the current count
 
 **Errors:**
 
@@ -163,14 +167,13 @@ See [Configuration](../getting-started/configuration.md#llm-section) for the `[l
 
 ```rust
 pub enum TowlLlmError {
-    ApiError { message, status },
+    ApiError { message: String, status: Option<u16> },
     AuthError,
-    RateLimited { retry_after_secs },
-    ParseError { message },
+    RateLimited { retry_after_secs: u64 },
+    ParseError { message: String },
     NotConfigured,
-    UnsupportedProvider { provider },
-    AnalysisLimitExceeded { count, max },
-    HttpError(String),
+    UnsupportedProvider { provider: String },
+    IoError { message: String },
 }
 ```
 
@@ -181,6 +184,13 @@ pub enum TowlLlmError {
 | `RateLimited` | 429 -- too many requests |
 | `ParseError` | LLM response could not be parsed as valid JSON |
 | `NotConfigured` | `TOWL_LLM_API_KEY` environment variable not set |
-| `UnsupportedProvider` | Provider is not "claude" or "openai" |
-| `AnalysisLimitExceeded` | TODO count exceeds `max_analyse_count` |
-| `HttpError` | HTTP client or file I/O error |
+| `UnsupportedProvider` | Provider is not "claude", "openai", "claude-code", or "codex" |
+| `IoError` | File I/O error during context gathering |
+
+### Retryable Errors
+
+`TowlLlmError` implements `is_retryable()` which returns `true` for:
+
+- `RateLimited` -- always retryable
+- `ApiError` with status >= 500 -- server errors
+- `ApiError` with no status -- network failures

@@ -1,5 +1,7 @@
 use std::path::Path;
+use std::time::Duration;
 
+use backon::{ExponentialBuilder, Retryable};
 use secrecy::{ExposeSecret, SecretString};
 use tracing::{debug, error, info, warn};
 
@@ -9,7 +11,7 @@ use crate::config::LlmConfig;
 use super::build_provider;
 use super::error::TowlLlmError;
 use super::prompt::{build_user_content, SYSTEM_PROMPT};
-use super::types::{parse_analysis_result, AnalysisSummary, Validity};
+use super::types::{parse_analysis_result, AnalysisResult, AnalysisSummary, Validity};
 use super::LlmProvider;
 
 const EXPANDED_CONTEXT_RADIUS: usize = 15;
@@ -102,10 +104,38 @@ fn extract_function_body(lines: &[&str], function_name: &str, todo_line: usize) 
     Some(body)
 }
 
+async fn call_llm_with_retry(
+    provider: &LlmProvider,
+    user_content: &str,
+    api_key: &SecretString,
+    max_retries: usize,
+) -> Result<AnalysisResult, TowlLlmError> {
+    let backoff = ExponentialBuilder::default()
+        .with_min_delay(Duration::from_secs(1))
+        .with_max_delay(Duration::from_secs(30))
+        .with_max_times(max_retries);
+
+    let result = (|| async {
+        let (response_text, _usage) = provider
+            .call_raw(user_content, SYSTEM_PROMPT, api_key)
+            .await?;
+        parse_analysis_result(&response_text)
+    })
+    .retry(backoff)
+    .when(|e: &TowlLlmError| e.is_retryable())
+    .notify(|err, dur| {
+        warn!("LLM call failed ({err}), retrying in {dur:?}");
+    })
+    .await?;
+
+    Ok(result)
+}
+
 async fn analyse_single_todo(
     todo: &mut TodoComment,
     provider: &LlmProvider,
     api_key: &SecretString,
+    max_retries: usize,
 ) -> Result<Validity, TowlLlmError> {
     let file_path_str = todo.file_path.display().to_string(); // clone: Display -> owned for logging
 
@@ -128,10 +158,7 @@ async fn analyse_single_todo(
         function_body.as_deref(),
     );
 
-    let (response_text, _usage) = provider
-        .call_raw(&user_content, SYSTEM_PROMPT, api_key)
-        .await?;
-    let mut result = parse_analysis_result(&response_text)?;
+    let mut result = call_llm_with_retry(provider, &user_content, api_key, max_retries).await?;
     result.confidence = result.confidence.clamp(0.0, 1.0);
 
     let validity = result.validity;
@@ -183,7 +210,7 @@ pub async fn analyse_todos(
     let mut summary = AnalysisSummary::default();
 
     for (i, todo) in todos.iter_mut().take(count).enumerate() {
-        match analyse_single_todo(todo, &provider, &api_key).await {
+        match analyse_single_todo(todo, &provider, &api_key, config.max_retries).await {
             Ok(validity) => match validity {
                 Validity::Valid => summary.valid_count += 1,
                 Validity::Invalid => summary.invalid_count += 1,

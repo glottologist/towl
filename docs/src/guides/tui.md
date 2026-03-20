@@ -42,7 +42,7 @@ When launched with `--ai`, each row shows a validity indicator (`V`/`I`/`?`) and
 
 ### Peek
 
-Shows the source code surrounding the selected TODO with syntax context. The TODO line is highlighted. When `--ai` is active, the LLM's reasoning is displayed below the source code.
+Shows the source code surrounding the selected TODO with syntax context. The TODO line is highlighted. When `--ai` is active, the AI Analysis section is displayed below the source code with the validity, confidence score, and reasoning. The reasoning text word-wraps to fit the popup width.
 
 | Key | Action |
 |-----|--------|
@@ -82,7 +82,7 @@ Only TODOs marked as Invalid by the AI are eligible for deletion.
 
 ## Workflow
 
-1. Run `towl scan` to open the TUI
+1. Run `towl scan` to open the TUI (with `--ai`, a progress bar shows during analysis)
 2. Browse the TODO list -- use `f` to filter by type, `s`/`r` to sort
 3. Press `p` to peek at source code around a TODO
 4. Select TODOs with `Space` (or `a` to select all visible)

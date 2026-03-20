@@ -194,7 +194,8 @@
 │   └── WriterError
 ├── TowlGitHubError
 ├── TowlProcessorError
-└── TowlTuiError
+├── TowlTuiError
+└── TowlLlmError
 </code></pre>
 <h2 id="towlerror"><a class="header" href="#towlerror"><code>TowlError</code></a></h2>
 <p>Top-level error type used by the CLI binary. All sub-error types convert automatically via <code>#[from]</code>.</p>
@@ -207,6 +208,7 @@
     GitHub(TowlGitHubError),
     Processor(TowlProcessorError),
     Tui(TowlTuiError),
+    Llm(TowlLlmError),
 }
 <span class="boring">}</span></code></pre></pre>
 <h2 id="towlconfigerror"><a class="header" href="#towlconfigerror"><code>TowlConfigError</code></a></h2>
@@ -297,6 +299,19 @@
 <tr><td><code>InvalidIssueUrl { url }</code></td><td>URL does not start with <code>https://github.com/</code></td></tr>
 </tbody></table>
 </div>
+<h2 id="towlllmerror"><a class="header" href="#towlllmerror"><code>TowlLlmError</code></a></h2>
+<p>Errors from LLM API interactions and analysis.</p>
+<div class="table-wrapper"><table><thead><tr><th>Variant</th><th>Cause</th></tr></thead><tbody>
+<tr><td><code>ApiError { message, status }</code></td><td>LLM API returned a non-200 status</td></tr>
+<tr><td><code>AuthError</code></td><td>401 -- invalid or missing API key</td></tr>
+<tr><td><code>RateLimited { retry_after_secs }</code></td><td>429 -- too many requests</td></tr>
+<tr><td><code>ParseError { message }</code></td><td>LLM response could not be parsed as valid JSON</td></tr>
+<tr><td><code>NotConfigured</code></td><td><code>TOWL_LLM_API_KEY</code> environment variable not set</td></tr>
+<tr><td><code>UnsupportedProvider { provider }</code></td><td>Provider is not "claude", "openai", "claude-code", or "codex"</td></tr>
+<tr><td><code>IoError { message }</code></td><td>File I/O error during context gathering</td></tr>
+</tbody></table>
+</div>
+<p><code>is_retryable()</code> returns <code>true</code> for <code>RateLimited</code>, <code>ApiError</code> with status &gt;= 500, and <code>ApiError</code> with no status (network failures).</p>
 <h2 id="towltuierror"><a class="header" href="#towltuierror"><code>TowlTuiError</code></a></h2>
 <p>Errors from the interactive terminal UI.</p>
 <div class="table-wrapper"><table><thead><tr><th>Variant</th><th>Cause</th></tr></thead><tbody>
@@ -311,6 +326,7 @@ WriterError       --&gt;  TowlOutputError     --&gt;  TowlError
 TowlGitHubError   ----------------------------&gt;  TowlError
 TowlProcessorError ---------------------------&gt;  TowlError
 TowlTuiError      ----------------------------&gt;  TowlError
+TowlLlmError      ----------------------------&gt;  TowlError
 </code></pre>
 <p>All errors implement <code>std::fmt::Display</code> with human-readable messages and <code>std::error::Error</code> for standard error handling.</p>
 

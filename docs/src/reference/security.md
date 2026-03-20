@@ -42,15 +42,20 @@ The GitHub token (`TOWL_GITHUB_TOKEN`) is:
 
 ## Environment Variable Restriction
 
-Only three environment variables are read:
+Eight environment variables are read:
 
 | Variable | Purpose |
 |----------|---------|
+| `TOWL_CONFIG` | Config file path override |
 | `TOWL_GITHUB_TOKEN` | GitHub authentication |
 | `TOWL_GITHUB_OWNER` | Repository owner override |
 | `TOWL_GITHUB_REPO` | Repository name override |
+| `TOWL_LLM_API_KEY` | LLM API authentication |
+| `TOWL_LLM_PROVIDER` | LLM provider override |
+| `TOWL_LLM_MODEL` | LLM model override |
+| `TOWL_LLM_BASE_URL` | Custom LLM endpoint URL |
 
-No other environment variables influence behaviour.
+Secrets (`TOWL_GITHUB_TOKEN`, `TOWL_LLM_API_KEY`) are stored as `SecretString` and never written to config files or logs. No other environment variables influence behaviour.
 
 ## Config File Safety
 
@@ -64,6 +69,15 @@ No other environment variables influence behaviour.
 - Git operations use `tokio::process::Command` to run `git` as a subprocess
 - Only read-only git commands are executed (`git remote get-url origin`)
 - No git credentials are accessed or stored
+
+## LLM CLI Subprocess Safety
+
+When using `claude-code` or `codex` providers, towl spawns CLI subprocesses:
+
+- **Command validation** -- Relative paths containing `..` or non-absolute `/` are rejected
+- **Timeout** -- CLI processes are killed after 120 seconds
+- **Input via stdin** -- Prompts are piped through stdin, not shell arguments (prevents injection)
+- **Stderr capture** -- CLI error output is captured and included in error messages
 
 ## .gitignore Respect
 
@@ -84,3 +98,4 @@ Error messages include file paths and context for debugging but do not expose in
 | Config file overwrite | `--force` flag required |
 | Arbitrary file write via symlinks | `canonicalize()` on output paths |
 | Scanning outside intended directory | `.gitignore` respect, extension filtering |
+| CLI command injection via LLM providers | Relative path rejection, stdin piping (not shell args), 120s timeout |

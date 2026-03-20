@@ -36,6 +36,14 @@ towl (lib)
 ├── processor    TODO replacement with issue links
 │   ├── types    Processor, ProcessorResult
 │   └── error    TowlProcessorError
+├── llm          LLM-powered TODO validation
+│   ├── analyse  analyse_todos, gather_expanded_context
+│   ├── claude   ClaudeProvider (Anthropic API)
+│   ├── openai   OpenAiProvider (OpenAI-compatible API)
+│   ├── cli      ClaudeCodeProvider, CodexProvider (CLI agents)
+│   ├── prompt   System prompt and user content construction
+│   ├── types    AnalysisResult, AnalysisSummary, Validity, LlmUsage
+│   └── error    TowlLlmError
 ├── tui          Interactive terminal UI
 │   ├── app      App, AppMode, SortField, PeekState
 │   ├── input    Action, handle_input
@@ -56,7 +64,9 @@ TowlConfig ──► Scanner ──► Parser ──► Output
    │              │
    │              └─ ScanResult { todos, files_scanned, ... }
    │
-   └─ ParsingConfig + GitHubConfig
+   ├─ ParsingConfig + GitHubConfig + LlmConfig
+   │
+   └─ LlmConfig ──► LlmProvider ──► analyse_todos ──► AnalysisSummary
 ```
 
 ## Key Types
@@ -76,6 +86,10 @@ TowlConfig ──► Scanner ──► Parser ──► Output
 | `CreatedIssue` | `github` | Metadata for a created GitHub issue |
 | `Processor` | `processor` | Replaces TODOs with issue links in source files |
 | `ProcessorResult` | `processor` | Summary of a batch replacement operation |
+| `LlmProvider` | `llm` | Enum-dispatched LLM provider (Claude, OpenAI, CLI agents) |
+| `AnalysisResult` | `llm` | LLM validation result for a single TODO |
+| `AnalysisSummary` | `llm` | Aggregate counts from a batch analysis run |
+| `Validity` | `llm` | TODO validity classification (Valid, Invalid, Uncertain) |
 | `App` | `tui` | TUI application state and mode management |
 | `AppMode` | `tui` | Current UI mode (Browse, Peek, Confirm, etc.) |
 | `TowlError` | `error` | Top-level error aggregating all sub-errors |
@@ -92,7 +106,8 @@ TowlError
 │   └── WriterError      I/O, path traversal
 ├── TowlGitHubError      API errors, auth, rate limiting
 ├── TowlProcessorError   File replacement errors
-└── TowlTuiError         Terminal I/O errors
+├── TowlTuiError         Terminal I/O errors
+└── TowlLlmError         LLM API, auth, parsing, I/O
 ```
 
 All error types use `thiserror` for `Display` and `Error` trait implementations. Conversion between levels uses `#[from]` attributes for ergonomic `?` propagation.

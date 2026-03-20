@@ -227,11 +227,14 @@ towl scan -N --ai -g
 # GitHub issues created only for valid TODOs, enriched with AI reasoning
 </code></pre>
 <h2 id="interactive-mode-tui"><a class="header" href="#interactive-mode-tui">Interactive Mode (TUI)</a></h2>
-<p>With <code>--ai</code> (no <code>-N</code>), the TUI shows analysis results:</p>
+<p>With <code>--ai</code> (no <code>-N</code>), a progress bar is displayed while TODOs are being analysed:</p>
+<pre><code class="language-text">  Analysing TODOs [████████████░░░░░░░░░░░░░░░░░░] 12/30
+</code></pre>
+<p>Once analysis completes, the TUI launches with results:</p>
 <ul>
 <li><strong>Validity column</strong> -- Each TODO shows <code>V</code> (Valid), <code>I</code> (Invalid), or <code>?</code> (Uncertain)</li>
 <li><strong>Colour coding</strong> -- Green for valid, red for invalid, yellow for uncertain</li>
-<li><strong>Peek view</strong> -- Press <code>p</code> to see the LLM's reasoning below the source code</li>
+<li><strong>Peek view</strong> -- Press <code>p</code> to see the LLM's reasoning below the source code (text wraps to fit the popup width)</li>
 <li><strong>Delete invalid TODOs</strong> -- Select invalid TODOs and press <code>d</code> to remove them from source files (with confirmation)</li>
 </ul>
 <h3 id="delete-workflow"><a class="header" href="#delete-workflow">Delete Workflow</a></h3>

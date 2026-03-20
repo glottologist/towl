@@ -11,7 +11,8 @@
 - **Type filtering & sorting** -- Filter results by TODO type; sort by file, line, type, or priority
 - **Context-aware** -- Captures surrounding code lines and enclosing function names
 - **Configurable** -- Customise file extensions, exclude patterns, comment prefixes, and TODO patterns via `.towl.toml` (override with `--config` or `TOWL_CONFIG` env var)
-- **Safe by design** -- Path traversal protection, resource limits, symlink resolution, and secret handling for GitHub tokens
+- **AI validation** -- LLM-powered TODO analysis using Claude, OpenAI, or local CLI agents (Claude Code, Codex)
+- **Safe by design** -- Path traversal protection, resource limits, symlink resolution, and secret handling for tokens
 - **Fast** -- Concurrent file scanning, async I/O with tokio, compiled regex patterns, and static enum dispatch
 
 ## How It Works
@@ -29,6 +30,10 @@
                 │  Parser   │  Matches comment prefixes + TODO patterns
                 └────┬─────┘
                      │
+                ┌────▼─────┐
+                │  LLM      │  --ai: validates TODOs with AI (optional)
+                └────┬─────┘
+                     │
               ┌──────┴──────┐
               │             │
         ┌─────▼────┐  ┌────▼─────┐
@@ -44,9 +49,10 @@
 1. **Config** loads settings from `.towl.toml` (or a custom path via `--config` / `TOWL_CONFIG`), merges environment variables for GitHub and LLM integration
 2. **Scanner** walks the directory tree using the `ignore` crate, scanning matching files concurrently with bounded parallelism
 3. **Parser** reads each file, matches comment prefixes and TODO patterns via compiled regex, extracts context lines and function names
-4. **TUI** (default) presents an interactive interface for browsing, filtering, and selecting TODOs to create as GitHub issues
-5. **Output** (non-interactive) formats the collected `TodoComment` items into the requested format and writes to a file or stdout
-6. **Processor** replaces TODO comments in source files with GitHub issue links after issues are created
+4. **LLM** (optional, `--ai`) validates each TODO with an AI model, classifying them as Valid, Invalid, or Uncertain
+5. **TUI** (default) presents an interactive interface for browsing, filtering, and selecting TODOs to create as GitHub issues
+6. **Output** (non-interactive) formats the collected `TodoComment` items into the requested format and writes to a file or stdout
+7. **Processor** replaces TODO comments in source files with GitHub issue links after issues are created
 
 ## Quick Example
 
@@ -62,6 +68,9 @@ towl scan -N -f json -o todos.json
 
 # Filter to only FIXME comments
 towl scan -N -t fixme
+
+# AI analysis: validate TODOs and filter out invalid ones
+towl scan -N --ai
 
 # Create GitHub issues
 towl scan -N -g

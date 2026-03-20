@@ -275,11 +275,24 @@ async fn run_interactive(
     }
 
     if ai {
-        towl::llm::analyse::analyse_todos(&mut scan_result.todos, &config.llm, |done, total| {
-            print_progress(done, total);
-        })
+        let summary = towl::llm::analyse::analyse_todos(
+            &mut scan_result.todos,
+            &config.llm,
+            |done, total| {
+                print_progress(done, total);
+            },
+        )
         .await?;
         eprint!("\r{}\r", " ".repeat(60));
+        if summary.error_count > 0 {
+            eprintln!(
+                "  AI analysis: {} valid, {} invalid, {} uncertain, {} errors",
+                summary.valid_count,
+                summary.invalid_count,
+                summary.uncertain_count,
+                summary.error_count
+            );
+        }
     }
 
     towl::tui::run(scan_result.todos, &config.github, &path)?;

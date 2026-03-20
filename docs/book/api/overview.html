@@ -215,6 +215,14 @@
 ├── processor    TODO replacement with issue links
 │   ├── types    Processor, ProcessorResult
 │   └── error    TowlProcessorError
+├── llm          LLM-powered TODO validation
+│   ├── analyse  analyse_todos, gather_expanded_context
+│   ├── claude   ClaudeProvider (Anthropic API)
+│   ├── openai   OpenAiProvider (OpenAI-compatible API)
+│   ├── cli      ClaudeCodeProvider, CodexProvider (CLI agents)
+│   ├── prompt   System prompt and user content construction
+│   ├── types    AnalysisResult, AnalysisSummary, Validity, LlmUsage
+│   └── error    TowlLlmError
 ├── tui          Interactive terminal UI
 │   ├── app      App, AppMode, SortField, PeekState
 │   ├── input    Action, handle_input
@@ -232,7 +240,9 @@
    │              │
    │              └─ ScanResult { todos, files_scanned, ... }
    │
-   └─ ParsingConfig + GitHubConfig
+   ├─ ParsingConfig + GitHubConfig + LlmConfig
+   │
+   └─ LlmConfig ──► LlmProvider ──► analyse_todos ──► AnalysisSummary
 </code></pre>
 <h2 id="key-types"><a class="header" href="#key-types">Key Types</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Type</th><th>Module</th><th>Purpose</th></tr></thead><tbody>
@@ -249,6 +259,10 @@
 <tr><td><code>CreatedIssue</code></td><td><code>github</code></td><td>Metadata for a created GitHub issue</td></tr>
 <tr><td><code>Processor</code></td><td><code>processor</code></td><td>Replaces TODOs with issue links in source files</td></tr>
 <tr><td><code>ProcessorResult</code></td><td><code>processor</code></td><td>Summary of a batch replacement operation</td></tr>
+<tr><td><code>LlmProvider</code></td><td><code>llm</code></td><td>Enum-dispatched LLM provider (Claude, OpenAI, CLI agents)</td></tr>
+<tr><td><code>AnalysisResult</code></td><td><code>llm</code></td><td>LLM validation result for a single TODO</td></tr>
+<tr><td><code>AnalysisSummary</code></td><td><code>llm</code></td><td>Aggregate counts from a batch analysis run</td></tr>
+<tr><td><code>Validity</code></td><td><code>llm</code></td><td>TODO validity classification (Valid, Invalid, Uncertain)</td></tr>
 <tr><td><code>App</code></td><td><code>tui</code></td><td>TUI application state and mode management</td></tr>
 <tr><td><code>AppMode</code></td><td><code>tui</code></td><td>Current UI mode (Browse, Peek, Confirm, etc.)</td></tr>
 <tr><td><code>TowlError</code></td><td><code>error</code></td><td>Top-level error aggregating all sub-errors</td></tr>
@@ -264,7 +278,8 @@
 │   └── WriterError      I/O, path traversal
 ├── TowlGitHubError      API errors, auth, rate limiting
 ├── TowlProcessorError   File replacement errors
-└── TowlTuiError         Terminal I/O errors
+├── TowlTuiError         Terminal I/O errors
+└── TowlLlmError         LLM API, auth, parsing, I/O
 </code></pre>
 <p>All error types use <code>thiserror</code> for <code>Display</code> and <code>Error</code> trait implementations. Conversion between levels uses <code>#[from]</code> attributes for ergonomic <code>?</code> propagation.</p>
 <h2 id="constants"><a class="header" href="#constants">Constants</a></h2>

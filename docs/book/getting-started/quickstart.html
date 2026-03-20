@@ -186,7 +186,7 @@
 <p>Inside a git repository with a GitHub remote:</p>
 <pre><code class="language-bash">towl init
 </code></pre>
-<p>This creates <code>.towl.toml</code> with sensible defaults and auto-detects the GitHub owner/repo from <code>git remote get-url origin</code>.</p>
+<p>This creates <code>.towl.toml</code> with sensible defaults. GitHub owner/repo are auto-detected from <code>git remote get-url origin</code> at runtime (not stored in the config file).</p>
 <p>If <code>.towl.toml</code> already exists, use <code>--force</code> to overwrite:</p>
 <pre><code class="language-bash">towl init --force
 </code></pre>
@@ -196,6 +196,9 @@ towl scan
 
 # Scan a specific path
 towl scan src/
+
+# Use a config file from a custom location
+towl scan -c .config/.towl.toml
 </code></pre>
 <p>The interactive TUI lets you browse, filter, sort, peek at source code, and create GitHub issues from selected TODOs.</p>
 <h2 id="3-scan-for-todos-non-interactive"><a class="header" href="#3-scan-for-todos-non-interactive">3. Scan for TODOs (Non-Interactive)</a></h2>
@@ -251,8 +254,15 @@ towl scan -N -g -n
 <p>In interactive mode, select TODOs with <code>Space</code> and press <code>Enter</code> to create issues.</p>
 <h2 id="7-view-configuration"><a class="header" href="#7-view-configuration">7. View Configuration</a></h2>
 <pre><code class="language-bash">towl config
+
+# From a custom config path
+towl config -c .config/.towl.toml
 </code></pre>
 <p>Displays a tree view of all active settings including file extensions, exclude patterns, comment prefixes, TODO patterns, and GitHub configuration.</p>
+<p>You can also set the <code>TOWL_CONFIG</code> environment variable to avoid passing <code>--config</code> every time:</p>
+<pre><code class="language-bash">export TOWL_CONFIG=.config/.towl.toml
+towl scan
+</code></pre>
 
                     </main>
 

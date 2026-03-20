@@ -191,13 +191,14 @@
 <li><strong>Multiple output formats</strong> -- JSON, CSV, Markdown, TOML, and terminal table (non-interactive mode)</li>
 <li><strong>Type filtering &amp; sorting</strong> -- Filter results by TODO type; sort by file, line, type, or priority</li>
 <li><strong>Context-aware</strong> -- Captures surrounding code lines and enclosing function names</li>
-<li><strong>Configurable</strong> -- Customise file extensions, exclude patterns, comment prefixes, and TODO patterns via <code>.towl.toml</code></li>
-<li><strong>Safe by design</strong> -- Path traversal protection, resource limits, symlink resolution, and secret handling for GitHub tokens</li>
+<li><strong>Configurable</strong> -- Customise file extensions, exclude patterns, comment prefixes, and TODO patterns via <code>.towl.toml</code> (override with <code>--config</code> or <code>TOWL_CONFIG</code> env var)</li>
+<li><strong>AI validation</strong> -- LLM-powered TODO analysis using Claude, OpenAI, or local CLI agents (Claude Code, Codex)</li>
+<li><strong>Safe by design</strong> -- Path traversal protection, resource limits, symlink resolution, and secret handling for tokens</li>
 <li><strong>Fast</strong> -- Concurrent file scanning, async I/O with tokio, compiled regex patterns, and static enum dispatch</li>
 </ul>
 <h2 id="how-it-works"><a class="header" href="#how-it-works">How It Works</a></h2>
 <pre><code class="language-text">                ┌──────────┐
-                │  Config   │  .towl.toml + env vars + git remote
+                │  Config   │  --config / TOWL_CONFIG / .towl.toml + env vars
                 └────┬─────┘
                      │
                 ┌────▼─────┐
@@ -206,6 +207,10 @@
                      │
                 ┌────▼─────┐
                 │  Parser   │  Matches comment prefixes + TODO patterns
+                └────┬─────┘
+                     │
+                ┌────▼─────┐
+                │  LLM      │  --ai: validates TODOs with AI (optional)
                 └────┬─────┘
                      │
               ┌──────┴──────┐
@@ -220,9 +225,10 @@
         └──────────┘
 </code></pre>
 <ol>
-<li><strong>Config</strong> loads settings from <code>.towl.toml</code> (with defaults), merges environment variables for GitHub integration</li>
+<li><strong>Config</strong> loads settings from <code>.towl.toml</code> (or a custom path via <code>--config</code> / <code>TOWL_CONFIG</code>), merges environment variables for GitHub and LLM integration</li>
 <li><strong>Scanner</strong> walks the directory tree using the <code>ignore</code> crate, scanning matching files concurrently with bounded parallelism</li>
 <li><strong>Parser</strong> reads each file, matches comment prefixes and TODO patterns via compiled regex, extracts context lines and function names</li>
+<li><strong>LLM</strong> (optional, <code>--ai</code>) validates each TODO with an AI model, classifying them as Valid, Invalid, or Uncertain</li>
 <li><strong>TUI</strong> (default) presents an interactive interface for browsing, filtering, and selecting TODOs to create as GitHub issues</li>
 <li><strong>Output</strong> (non-interactive) formats the collected <code>TodoComment</code> items into the requested format and writes to a file or stdout</li>
 <li><strong>Processor</strong> replaces TODO comments in source files with GitHub issue links after issues are created</li>
@@ -239,6 +245,9 @@ towl scan -N -f json -o todos.json
 
 # Filter to only FIXME comments
 towl scan -N -t fixme
+
+# AI analysis: validate TODOs and filter out invalid ones
+towl scan -N --ai
 
 # Create GitHub issues
 towl scan -N -g

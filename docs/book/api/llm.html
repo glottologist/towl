@@ -189,6 +189,8 @@
 </span>pub enum LlmProvider {
     Claude(ClaudeProvider),
     OpenAi(OpenAiProvider),
+    ClaudeCode(ClaudeCodeProvider),
+    Codex(CodexProvider),
 }
 <span class="boring">}</span></code></pre></pre>
 <p>Dispatches LLM calls to the configured provider. Follows towl's existing enum dispatch pattern (<code>FormatterImpl</code>, <code>WriterImpl</code>).</p>
@@ -215,17 +217,19 @@
 </span>pub async fn analyse_todos(
     todos: &amp;mut [TodoComment],
     config: &amp;LlmConfig,
+    on_progress: impl FnMut(usize, usize),
 ) -&gt; Result&lt;AnalysisSummary, TowlLlmError&gt;
 <span class="boring">}</span></code></pre></pre>
-<p>Main entry point for TODO analysis. For each TODO (up to <code>max_analyse_count</code>):</p>
+<p>Main entry point for TODO analysis. Calls <code>on_progress(completed, total)</code> after each TODO is analysed, allowing callers to render progress feedback (e.g. a progress bar).</p>
+<p>For each TODO (up to <code>max_analyse_count</code>):</p>
 <ol>
 <li>Reads expanded context (~30 lines around the TODO + full function body)</li>
 <li>Constructs a prompt with the TODO description, file path, and code context</li>
 <li>Calls the LLM to determine validity</li>
 <li>Parses the structured JSON response into an <code>AnalysisResult</code></li>
 <li>Attaches the result to <code>TodoComment.analysis</code></li>
+<li>Calls <code>on_progress</code> with the current count</li>
 </ol>
-<p>Concurrency is bounded by <code>max_concurrent_analyses</code> via a tokio <code>Semaphore</code>.</p>
 <p><strong>Errors:</strong></p>
 <ul>
 <li><code>NotConfigured</code> -- <code>TOWL_LLM_API_KEY</code> not set</li>
@@ -314,14 +318,13 @@ Default base URL: <code>https://api.openai.com/v1</code>. Configurable for Ollam
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>pub enum TowlLlmError {
-    ApiError { message, status },
+    ApiError { message: String, status: Option&lt;u16&gt; },
     AuthError,
-    RateLimited { retry_after_secs },
-    ParseError { message },
+    RateLimited { retry_after_secs: u64 },
+    ParseError { message: String },
     NotConfigured,
-    UnsupportedProvider { provider },
-    AnalysisLimitExceeded { count, max },
-    HttpError(String),
+    UnsupportedProvider { provider: String },
+    IoError { message: String },
 }
 <span class="boring">}</span></code></pre></pre>
 <div class="table-wrapper"><table><thead><tr><th>Variant</th><th>Cause</th></tr></thead><tbody>
@@ -330,11 +333,18 @@ Default base URL: <code>https://api.openai.com/v1</code>. Configurable for Ollam
 <tr><td><code>RateLimited</code></td><td>429 -- too many requests</td></tr>
 <tr><td><code>ParseError</code></td><td>LLM response could not be parsed as valid JSON</td></tr>
 <tr><td><code>NotConfigured</code></td><td><code>TOWL_LLM_API_KEY</code> environment variable not set</td></tr>
-<tr><td><code>UnsupportedProvider</code></td><td>Provider is not "claude" or "openai"</td></tr>
-<tr><td><code>AnalysisLimitExceeded</code></td><td>TODO count exceeds <code>max_analyse_count</code></td></tr>
-<tr><td><code>HttpError</code></td><td>HTTP client or file I/O error</td></tr>
+<tr><td><code>UnsupportedProvider</code></td><td>Provider is not "claude", "openai", "claude-code", or "codex"</td></tr>
+<tr><td><code>IoError</code></td><td>File I/O error during context gathering</td></tr>
 </tbody></table>
 </div>
+<h3 id="retryable-errors"><a class="header" href="#retryable-errors">Retryable Errors</a></h3>
+<p><code>TowlLlmError</code> implements <code>is_retryable()</code> which returns <code>true</code> for:</p>
+<ul>
+<li><code>RateLimited</code> -- always retryable</li>
+<li><code>ApiError</code> with status &gt;= 500 -- server errors</li>
+<li><code>ApiError</code> with no status -- network failures</li>
+</ul>
+
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">

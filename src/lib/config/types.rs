@@ -1,7 +1,7 @@
 use super::defaults::{
     default_comment_prefixes, default_exclude_patterns, default_file_extensions,
-    default_function_patterns, default_include_context_lines, default_llm_max_tokens,
-    default_llm_model, default_llm_provider, default_max_analyse_count,
+    default_function_patterns, default_include_context_lines, default_llm_max_retries,
+    default_llm_max_tokens, default_llm_model, default_llm_provider, default_max_analyse_count,
     default_max_concurrent_analyses, default_rate_limit_delay_ms, default_todo_patterns,
 };
 use super::error::TowlConfigError;
@@ -240,6 +240,8 @@ pub struct LlmConfig {
     pub max_analyse_count: usize,
     #[serde(default = "default_llm_max_tokens")]
     pub max_tokens: u32,
+    #[serde(default = "default_llm_max_retries")]
+    pub max_retries: usize,
     #[serde(default)]
     pub command: Option<String>,
     #[serde(default)]
@@ -256,6 +258,7 @@ impl Default for LlmConfig {
             max_concurrent_analyses: default_max_concurrent_analyses(),
             max_analyse_count: default_max_analyse_count(),
             max_tokens: default_llm_max_tokens(),
+            max_retries: default_llm_max_retries(),
             command: None,
             args: None,
         }
@@ -272,6 +275,7 @@ impl fmt::Debug for LlmConfig {
             .field("max_concurrent_analyses", &self.max_concurrent_analyses)
             .field("max_analyse_count", &self.max_analyse_count)
             .field("max_tokens", &self.max_tokens)
+            .field("max_retries", &self.max_retries)
             .field("command", &self.command)
             .field("args", &self.args)
             .finish()
@@ -286,6 +290,7 @@ impl PartialEq for LlmConfig {
             && self.max_concurrent_analyses == other.max_concurrent_analyses
             && self.max_analyse_count == other.max_analyse_count
             && self.max_tokens == other.max_tokens
+            && self.max_retries == other.max_retries
             && self.command == other.command
             && self.args == other.args
     }

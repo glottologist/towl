@@ -60,7 +60,7 @@ All fields have defaults via `#[serde(default)]`:
 |-------|---------|
 | `file_extensions` | `rs`, `toml`, `json`, `yaml`, `yml`, `sh`, `bash` |
 | `exclude_patterns` | `target/*`, `.git/*` |
-| `include_context_lines` | `3` |
+| `include_context_lines` | `10` |
 | `comment_prefixes` | `//`, `^\s*#`, `/\*`, `^\s*\*` |
 | `todo_patterns` | `TODO:`, `FIXME:`, `HACK:`, `NOTE:`, `BUG:` (case-insensitive) |
 | `function_patterns` | Rust, Python, JS, Java/C#, Go patterns |
@@ -80,7 +80,7 @@ pub struct GitHubConfig {
 
 - `token` is stored as `secrecy::SecretString` and masked in debug/display output
 - `owner` and `repo` are auto-detected from `git remote get-url origin` at runtime (not serialised to config)
-- `rate_limit_delay_ms` adds a delay between GitHub API calls (default: 100ms)
+- `rate_limit_delay_ms` adds a delay between GitHub API calls (default: 1000ms)
 
 ### Environment Variable Overrides
 
@@ -115,6 +115,46 @@ Constructs a new `Owner` or `Repo`, rejecting values exceeding `MAX_CONFIG_STRIN
 Both also implement:
 - `Display`, `Default`, `Debug`, `Clone`, `PartialEq`, `Eq`
 - `Serialize`, `Deserialize`
+
+## `LlmConfig`
+
+```rust
+pub struct LlmConfig {
+    pub provider: String,
+    pub model: String,
+    pub base_url: Option<String>,
+    pub api_key: SecretString,
+    pub max_concurrent_analyses: usize,
+    pub max_analyse_count: usize,
+    pub max_tokens: u32,
+    pub max_retries: usize,
+    pub command: Option<String>,
+    pub args: Option<Vec<String>>,
+}
+```
+
+- `api_key` is stored as `secrecy::SecretString` and masked in debug output (env-only via `TOWL_LLM_API_KEY`)
+- `provider` selects the LLM backend: `"claude"`, `"openai"`, `"claude-code"`, or `"codex"`
+- `command` and `args` allow overriding the CLI binary path and arguments for CLI providers
+
+| Field | Default |
+|-------|---------|
+| `provider` | `"claude"` |
+| `model` | `"claude-opus-4-6"` |
+| `base_url` | `None` (provider default) |
+| `max_concurrent_analyses` | `5` |
+| `max_analyse_count` | `50` |
+| `max_tokens` | `4096` |
+| `max_retries` | `3` |
+
+### Environment Variable Overrides
+
+| Variable | Overrides |
+|----------|-----------|
+| `TOWL_LLM_API_KEY` | -- (env-only) |
+| `TOWL_LLM_PROVIDER` | `llm.provider` |
+| `TOWL_LLM_MODEL` | `llm.model` |
+| `TOWL_LLM_BASE_URL` | `llm.base_url` |
 
 ## `GitRepoInfo` (internal)
 

@@ -185,7 +185,7 @@
 <p>towl follows a pipeline architecture: Config -&gt; Scanner -&gt; Parser -&gt; TUI / Output. Each stage is a separate module with clear boundaries and typed errors.</p>
 <h2 id="pipeline"><a class="header" href="#pipeline">Pipeline</a></h2>
 <pre><code class="language-text">                ┌──────────┐
-                │  Config   │  .towl.toml + env vars + git remote
+                │  Config   │  --config / TOWL_CONFIG / .towl.toml + env vars
                 └────┬─────┘
                      │
                 ┌────▼─────┐
@@ -196,25 +196,29 @@
                 │  Parser   │  Matches comment prefixes + TODO patterns
                 └────┬─────┘
                      │
-              ┌──────┴──────┐
-              │             │
-        ┌─────▼────┐  ┌────▼─────┐
-        │   TUI     │  │  Output   │  Non-interactive: formats + writes
-        │ (default) │  │  (-N)     │
-        └─────┬────┘  └──────────┘
-              │
-        ┌─────▼─────┐
-        │ Processor  │  Replaces TODOs with GitHub issue links
-        └───────────┘
+              ┌──────┼──────┐
+              │      │      │
+        ┌─────▼────┐ │ ┌────▼─────┐
+        │   TUI    │ │ │  Output   │  Non-interactive: formats + writes
+        │ (default)│ │ │  (-N)     │
+        └─────┬────┘ │ └──────────┘
+              │      │
+        ┌─────▼─────┐│
+        │ Processor  ││  Replaces TODOs with GitHub issue links
+        └───────────┘│
+                ┌────▼─────┐
+                │   LLM     │  --ai: validates TODOs with AI
+                └──────────┘
 </code></pre>
 <h2 id="module-boundaries"><a class="header" href="#module-boundaries">Module Boundaries</a></h2>
 <h3 id="config-srclibconfig"><a class="header" href="#config-srclibconfig">Config (<code>src/lib/config/</code>)</a></h3>
 <ul>
-<li>Loads <code>.towl.toml</code> using the <code>config</code> crate</li>
-<li>Merges environment variable overrides (<code>TOWL_GITHUB_*</code>)</li>
+<li>Resolves config file path: <code>--config</code> flag &gt; <code>TOWL_CONFIG</code> env var &gt; <code>.towl.toml</code></li>
+<li>Loads config using the <code>config</code> crate</li>
+<li>Merges environment variable overrides (<code>TOWL_GITHUB_*</code>, <code>TOWL_LLM_*</code>)</li>
 <li>Discovers GitHub owner/repo from <code>git remote get-url origin</code></li>
 <li>Validates pattern array sizes</li>
-<li>Produces <code>TowlConfig</code> containing <code>ParsingConfig</code> + <code>GitHubConfig</code></li>
+<li>Produces <code>TowlConfig</code> containing <code>ParsingConfig</code> + <code>GitHubConfig</code> + <code>LlmConfig</code></li>
 </ul>
 <p>Submodules:</p>
 <ul>
@@ -274,6 +278,25 @@
 <li><code>render.rs</code> -- UI rendering (list, peek popup, confirm dialog, progress view)</li>
 <li><code>error.rs</code> -- <code>TowlTuiError</code></li>
 </ul>
+<h3 id="llm-srclibllm"><a class="header" href="#llm-srclibllm">LLM (<code>src/lib/llm/</code>)</a></h3>
+<ul>
+<li>AI-powered TODO validation using Claude, OpenAI, or local CLI agents</li>
+<li>Enum-dispatched providers following the same pattern as <code>FormatterImpl</code>/<code>WriterImpl</code></li>
+<li>Gathers expanded context (~30 lines) and full function bodies for each TODO</li>
+<li>Constructs structured prompts and parses JSON responses</li>
+<li>Retry logic with exponential backoff via <code>backon</code></li>
+<li>CLI providers (<code>claude-code</code>, <code>codex</code>) auto-fall back to API providers if the binary is not on PATH</li>
+</ul>
+<p>Submodules:</p>
+<ul>
+<li><code>analyse.rs</code> -- <code>analyse_todos()</code>, <code>gather_expanded_context()</code>, retry logic</li>
+<li><code>claude.rs</code> -- <code>ClaudeProvider</code> (Anthropic Messages API)</li>
+<li><code>openai.rs</code> -- <code>OpenAiProvider</code> (OpenAI Chat Completions API)</li>
+<li><code>cli.rs</code> -- <code>ClaudeCodeProvider</code>, <code>CodexProvider</code> (subprocess-based)</li>
+<li><code>prompt.rs</code> -- System prompt and user content construction</li>
+<li><code>types.rs</code> -- <code>AnalysisResult</code>, <code>AnalysisSummary</code>, <code>Validity</code>, <code>LlmUsage</code>, JSON extraction</li>
+<li><code>error.rs</code> -- <code>TowlLlmError</code></li>
+</ul>
 <h3 id="processor-srclibprocessor"><a class="header" href="#processor-srclibprocessor">Processor (<code>src/lib/processor/</code>)</a></h3>
 <ul>
 <li>Replaces TODO comments in source files with GitHub issue links</li>
@@ -332,6 +355,7 @@ FormatterError → TowlOutputError → TowlError
 WriterError → TowlOutputError → TowlError
 TowlProcessorError → TowlError
 TowlTuiError → TowlError
+TowlLlmError → TowlError
 </code></pre>
 <h3 id="newtype-pattern"><a class="header" href="#newtype-pattern">Newtype Pattern</a></h3>
 <p><code>Owner</code> and <code>Repo</code> are newtype wrappers over <code>String</code>, preventing accidental misuse (e.g., passing an owner where a repo is expected).</p>
@@ -380,6 +404,15 @@ TowlTuiError → TowlError
     │   ├── client.rs         GitHubClient
     │   ├── types.rs          CreatedIssue
     │   └── error.rs          TowlGitHubError
+    ├── llm/
+    │   ├── mod.rs             LlmProvider enum dispatch
+    │   ├── analyse.rs         analyse_todos, gather_expanded_context
+    │   ├── claude.rs          ClaudeProvider
+    │   ├── openai.rs          OpenAiProvider
+    │   ├── cli.rs             ClaudeCodeProvider, CodexProvider
+    │   ├── prompt.rs          System prompt construction
+    │   ├── types.rs           AnalysisResult, Validity, JSON extraction
+    │   └── error.rs           TowlLlmError
     ├── processor/
     │   ├── mod.rs
     │   ├── types.rs          Processor, ProcessorResult
@@ -431,6 +464,9 @@ tests/
 <tr><td><code>ratatui</code></td><td>Terminal UI framework</td></tr>
 <tr><td><code>crossterm</code></td><td>Terminal input/output</td></tr>
 <tr><td><code>futures</code></td><td>Async stream utilities</td></tr>
+<tr><td><code>reqwest</code></td><td>HTTP client (rustls TLS)</td></tr>
+<tr><td><code>backon</code></td><td>Retry logic with exponential backoff</td></tr>
+<tr><td><code>which</code></td><td>CLI binary PATH detection</td></tr>
 <tr><td><code>proptest</code></td><td>Property-based testing</td></tr>
 <tr><td><code>rstest</code></td><td>Parameterised testing</td></tr>
 <tr><td><code>insta</code></td><td>Snapshot testing</td></tr>

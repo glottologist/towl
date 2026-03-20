@@ -264,6 +264,7 @@
     Confirm,
     Creating(CreatingState),
     Done(DoneState),
+    DeleteConfirm(Vec&lt;TodoComment&gt;),
 }
 <span class="boring">}</span></code></pre></pre>
 <p>The current UI mode determines which view is rendered and which keys are active.</p>
@@ -273,6 +274,7 @@
 <tr><td><code>Confirm</code></td><td>Summary of selected TODOs</td><td>Confirm or cancel</td></tr>
 <tr><td><code>Creating</code></td><td>Progress indicator during issue creation</td><td>None (Ctrl+C to abort)</td></tr>
 <tr><td><code>Done</code></td><td>Results summary (issues created, errors)</td><td>Dismiss to exit</td></tr>
+<tr><td><code>DeleteConfirm</code></td><td>Confirmation dialog for deleting invalid TODOs</td><td>Confirm or cancel</td></tr>
 </tbody></table>
 </div>
 <h2 id="sortfield"><a class="header" href="#sortfield"><code>SortField</code></a></h2>
@@ -301,9 +303,10 @@
     pub file: String,
     pub todo_line: usize,
     pub scroll: usize,
+    pub analysis: Option&lt;AnalysisResult&gt;,
 }
 <span class="boring">}</span></code></pre></pre>
-<p>State for the source-code peek overlay. Contains numbered source lines around the TODO, with scroll position.</p>
+<p>State for the source-code peek overlay. Contains numbered source lines around the TODO, with scroll position. When <code>--ai</code> is active, <code>analysis</code> holds the LLM result -- the reasoning text is word-wrapped to the popup width during rendering.</p>
 <h3 id="creatingstate"><a class="header" href="#creatingstate"><code>CreatingState</code></a></h3>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {

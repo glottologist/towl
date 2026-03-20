@@ -94,6 +94,7 @@ pub enum AppMode {
     Confirm,
     Creating(CreatingState),
     Done(DoneState),
+    DeleteConfirm(Vec<TodoComment>),
 }
 ```
 
@@ -106,6 +107,7 @@ The current UI mode determines which view is rendered and which keys are active.
 | `Confirm` | Summary of selected TODOs | Confirm or cancel |
 | `Creating` | Progress indicator during issue creation | None (Ctrl+C to abort) |
 | `Done` | Results summary (issues created, errors) | Dismiss to exit |
+| `DeleteConfirm` | Confirmation dialog for deleting invalid TODOs | Confirm or cancel |
 
 ## `SortField`
 
@@ -135,10 +137,11 @@ pub struct PeekState {
     pub file: String,
     pub todo_line: usize,
     pub scroll: usize,
+    pub analysis: Option<AnalysisResult>,
 }
 ```
 
-State for the source-code peek overlay. Contains numbered source lines around the TODO, with scroll position.
+State for the source-code peek overlay. Contains numbered source lines around the TODO, with scroll position. When `--ai` is active, `analysis` holds the LLM result -- the reasoning text is word-wrapped to the popup width during rendering.
 
 ### `CreatingState`
 

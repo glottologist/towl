@@ -189,13 +189,14 @@
 <li><strong>Multiple output formats</strong> -- JSON, CSV, Markdown, TOML, and terminal table (non-interactive mode)</li>
 <li><strong>Type filtering &amp; sorting</strong> -- Filter results by TODO type; sort by file, line, type, or priority</li>
 <li><strong>Context-aware</strong> -- Captures surrounding code lines and enclosing function names</li>
-<li><strong>Configurable</strong> -- Customise file extensions, exclude patterns, comment prefixes, and TODO patterns via <code>.towl.toml</code></li>
-<li><strong>Safe by design</strong> -- Path traversal protection, resource limits, symlink resolution, and secret handling for GitHub tokens</li>
+<li><strong>Configurable</strong> -- Customise file extensions, exclude patterns, comment prefixes, and TODO patterns via <code>.towl.toml</code> (override with <code>--config</code> or <code>TOWL_CONFIG</code> env var)</li>
+<li><strong>AI validation</strong> -- LLM-powered TODO analysis using Claude, OpenAI, or local CLI agents (Claude Code, Codex)</li>
+<li><strong>Safe by design</strong> -- Path traversal protection, resource limits, symlink resolution, and secret handling for tokens</li>
 <li><strong>Fast</strong> -- Concurrent file scanning, async I/O with tokio, compiled regex patterns, and static enum dispatch</li>
 </ul>
 <h2 id="how-it-works"><a class="header" href="#how-it-works">How It Works</a></h2>
 <pre><code class="language-text">                ┌──────────┐
-                │  Config   │  .towl.toml + env vars + git remote
+                │  Config   │  --config / TOWL_CONFIG / .towl.toml + env vars
                 └────┬─────┘
                      │
                 ┌────▼─────┐
@@ -204,6 +205,10 @@
                      │
                 ┌────▼─────┐
                 │  Parser   │  Matches comment prefixes + TODO patterns
+                └────┬─────┘
+                     │
+                ┌────▼─────┐
+                │  LLM      │  --ai: validates TODOs with AI (optional)
                 └────┬─────┘
                      │
               ┌──────┴──────┐
@@ -218,9 +223,10 @@
         └──────────┘
 </code></pre>
 <ol>
-<li><strong>Config</strong> loads settings from <code>.towl.toml</code> (with defaults), merges environment variables for GitHub integration</li>
+<li><strong>Config</strong> loads settings from <code>.towl.toml</code> (or a custom path via <code>--config</code> / <code>TOWL_CONFIG</code>), merges environment variables for GitHub and LLM integration</li>
 <li><strong>Scanner</strong> walks the directory tree using the <code>ignore</code> crate, scanning matching files concurrently with bounded parallelism</li>
 <li><strong>Parser</strong> reads each file, matches comment prefixes and TODO patterns via compiled regex, extracts context lines and function names</li>
+<li><strong>LLM</strong> (optional, <code>--ai</code>) validates each TODO with an AI model, classifying them as Valid, Invalid, or Uncertain</li>
 <li><strong>TUI</strong> (default) presents an interactive interface for browsing, filtering, and selecting TODOs to create as GitHub issues</li>
 <li><strong>Output</strong> (non-interactive) formats the collected <code>TodoComment</code> items into the requested format and writes to a file or stdout</li>
 <li><strong>Processor</strong> replaces TODO comments in source files with GitHub issue links after issues are created</li>
@@ -237,6 +243,9 @@ towl scan -N -f json -o todos.json
 
 # Filter to only FIXME comments
 towl scan -N -t fixme
+
+# AI analysis: validate TODOs and filter out invalid ones
+towl scan -N --ai
 
 # Create GitHub issues
 towl scan -N -g
@@ -270,7 +279,7 @@ towl --help
 <p>Inside a git repository with a GitHub remote:</p>
 <pre><code class="language-bash">towl init
 </code></pre>
-<p>This creates <code>.towl.toml</code> with sensible defaults and auto-detects the GitHub owner/repo from <code>git remote get-url origin</code>.</p>
+<p>This creates <code>.towl.toml</code> with sensible defaults. GitHub owner/repo are auto-detected from <code>git remote get-url origin</code> at runtime (not stored in the config file).</p>
 <p>If <code>.towl.toml</code> already exists, use <code>--force</code> to overwrite:</p>
 <pre><code class="language-bash">towl init --force
 </code></pre>
@@ -280,6 +289,9 @@ towl scan
 
 # Scan a specific path
 towl scan src/
+
+# Use a config file from a custom location
+towl scan -c .config/.towl.toml
 </code></pre>
 <p>The interactive TUI lets you browse, filter, sort, peek at source code, and create GitHub issues from selected TODOs.</p>
 <h2 id="3-scan-for-todos-non-interactive"><a class="header" href="#3-scan-for-todos-non-interactive">3. Scan for TODOs (Non-Interactive)</a></h2>
@@ -335,26 +347,35 @@ towl scan -N -g -n
 <p>In interactive mode, select TODOs with <code>Space</code> and press <code>Enter</code> to create issues.</p>
 <h2 id="7-view-configuration"><a class="header" href="#7-view-configuration">7. View Configuration</a></h2>
 <pre><code class="language-bash">towl config
+
+# From a custom config path
+towl config -c .config/.towl.toml
 </code></pre>
 <p>Displays a tree view of all active settings including file extensions, exclude patterns, comment prefixes, TODO patterns, and GitHub configuration.</p>
+<p>You can also set the <code>TOWL_CONFIG</code> environment variable to avoid passing <code>--config</code> every time:</p>
+<pre><code class="language-bash">export TOWL_CONFIG=.config/.towl.toml
+towl scan
+</code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="configuration"><a class="header" href="#configuration">Configuration</a></h1>
 <p>towl uses a <code>.towl.toml</code> file in the project root for configuration. All fields have sensible defaults -- you only need to override what you want to change.</p>
+<p>You can point to a config file in a different location using:</p>
+<ul>
+<li><code>--config</code> / <code>-c</code> flag on <code>scan</code> and <code>config</code> commands</li>
+<li><code>TOWL_CONFIG</code> environment variable</li>
+</ul>
+<p>The <code>--config</code> flag takes precedence over <code>TOWL_CONFIG</code>, which takes precedence over the default <code>.towl.toml</code>.</p>
 <h2 id="config-file"><a class="header" href="#config-file">Config File</a></h2>
 <p>Create <code>.towl.toml</code> manually or run <code>towl init</code>:</p>
 <pre><code class="language-toml">[parsing]
 file_extensions = ["rs", "toml", "json", "yaml", "yml", "sh", "bash"]
 exclude_patterns = ["target/*", ".git/*"]
-include_context_lines = 3
-
-[github]
-owner = "your-username"
-repo = "your-repo"
+include_context_lines = 10
 </code></pre>
 <h2 id="parsing-section"><a class="header" href="#parsing-section">Parsing Section</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Field</th><th>Type</th><th>Default</th><th>Description</th></tr></thead><tbody>
 <tr><td><code>file_extensions</code></td><td><code>string[]</code></td><td><code>["rs", "toml", "json", "yaml", "yml", "sh", "bash"]</code></td><td>File extensions to scan</td></tr>
 <tr><td><code>exclude_patterns</code></td><td><code>string[]</code></td><td><code>["target/*", ".git/*"]</code></td><td>Glob patterns to exclude</td></tr>
-<tr><td><code>include_context_lines</code></td><td><code>integer</code></td><td><code>3</code></td><td>Number of surrounding lines to capture (1-50)</td></tr>
+<tr><td><code>include_context_lines</code></td><td><code>integer</code></td><td><code>10</code></td><td>Number of surrounding lines to capture (1-50)</td></tr>
 <tr><td><code>comment_prefixes</code></td><td><code>string[]</code></td><td><code>["//", "^\\s*#", "/\\*", "^\\s*\\*"]</code></td><td>Regex patterns for comment line detection</td></tr>
 <tr><td><code>todo_patterns</code></td><td><code>string[]</code></td><td>See below</td><td>Regex patterns for TODO extraction</td></tr>
 <tr><td><code>function_patterns</code></td><td><code>string[]</code></td><td>See below</td><td>Regex patterns for function context detection</td></tr>
@@ -380,15 +401,13 @@ repo = "your-repo"
 ]
 </code></pre>
 <h3 id="pattern-limits"><a class="header" href="#pattern-limits">Pattern Limits</a></h3>
-<p>Each pattern field is limited to 100 entries. Individual regex patterns are limited to 256 characters. These limits prevent denial-of-service via malicious configuration files.</p>
+<p>Each pattern field is limited to 100 entries. Individual regex patterns are limited to 256 characters. Config string values (e.g., owner, repo) are limited to 512 characters. These limits prevent denial-of-service via malicious configuration files.</p>
 <h2 id="github-section"><a class="header" href="#github-section">GitHub Section</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Field</th><th>Type</th><th>Default</th><th>Description</th></tr></thead><tbody>
-<tr><td><code>owner</code></td><td><code>string</code></td><td>Auto-detected from git remote</td><td>GitHub repository owner</td></tr>
-<tr><td><code>repo</code></td><td><code>string</code></td><td>Auto-detected from git remote</td><td>GitHub repository name</td></tr>
-<tr><td><code>token</code></td><td>--</td><td>--</td><td>Set via environment variable only</td></tr>
-<tr><td><code>rate_limit_delay_ms</code></td><td><code>integer</code></td><td><code>100</code></td><td>Delay in ms between GitHub API calls</td></tr>
+<tr><td><code>rate_limit_delay_ms</code></td><td><code>integer</code></td><td><code>1000</code></td><td>Delay in ms between GitHub API calls</td></tr>
 </tbody></table>
 </div>
+<p>Owner and repo are <strong>always</strong> auto-detected from <code>git remote get-url origin</code> at runtime -- they are not stored in the config file. Use <code>TOWL_GITHUB_OWNER</code> and <code>TOWL_GITHUB_REPO</code> environment variables to override if needed.</p>
 <blockquote>
 <p><strong>Note:</strong> The GitHub token is never stored in the config file. Use the <code>TOWL_GITHUB_TOKEN</code> environment variable.</p>
 </blockquote>
@@ -408,11 +427,12 @@ repo = "your-repo"
 <p><strong>Note:</strong> The LLM API key is never stored in the config file. Use the <code>TOWL_LLM_API_KEY</code> environment variable. See <a href="getting-started/../guides/ai-analysis.html">AI Analysis</a> for usage details.</p>
 </blockquote>
 <h2 id="environment-variables"><a class="header" href="#environment-variables">Environment Variables</a></h2>
-<p>Seven environment variables override config file values:</p>
+<p>Eight environment variables override defaults:</p>
 <div class="table-wrapper"><table><thead><tr><th>Variable</th><th>Overrides</th><th>Description</th></tr></thead><tbody>
-<tr><td><code>TOWL_GITHUB_TOKEN</code></td><td><code>github.token</code></td><td>GitHub personal access token (stored as <code>SecretString</code>, masked in logs)</td></tr>
-<tr><td><code>TOWL_GITHUB_OWNER</code></td><td><code>github.owner</code></td><td>GitHub repository owner</td></tr>
-<tr><td><code>TOWL_GITHUB_REPO</code></td><td><code>github.repo</code></td><td>GitHub repository name</td></tr>
+<tr><td><code>TOWL_CONFIG</code></td><td><code>DEFAULT_CONFIG_PATH</code></td><td>Path to a <code>.towl.toml</code> file (overridden by <code>--config</code> flag)</td></tr>
+<tr><td><code>TOWL_GITHUB_TOKEN</code></td><td>--</td><td>GitHub personal access token (stored as <code>SecretString</code>, masked in logs)</td></tr>
+<tr><td><code>TOWL_GITHUB_OWNER</code></td><td>git remote detection</td><td>GitHub repository owner</td></tr>
+<tr><td><code>TOWL_GITHUB_REPO</code></td><td>git remote detection</td><td>GitHub repository name</td></tr>
 <tr><td><code>TOWL_LLM_API_KEY</code></td><td><code>llm.api_key</code></td><td>LLM API key (stored as <code>SecretString</code>, env-only)</td></tr>
 <tr><td><code>TOWL_LLM_PROVIDER</code></td><td><code>llm.provider</code></td><td>LLM provider (<code>"claude"</code> or <code>"openai"</code>)</td></tr>
 <tr><td><code>TOWL_LLM_MODEL</code></td><td><code>llm.model</code></td><td>LLM model identifier</td></tr>
@@ -422,19 +442,24 @@ repo = "your-repo"
 <h2 id="config-loading-order"><a class="header" href="#config-loading-order">Config Loading Order</a></h2>
 <ol>
 <li>Built-in defaults</li>
-<li><code>.towl.toml</code> file (or path specified with <code>--path</code>)</li>
+<li>Config file resolved as: <code>--config</code> flag &gt; <code>TOWL_CONFIG</code> env var &gt; <code>.towl.toml</code></li>
+<li>Git remote auto-detection for owner/repo</li>
 <li>Environment variable overrides (<code>TOWL_GITHUB_*</code>, <code>TOWL_LLM_*</code>)</li>
 </ol>
-<p>If no <code>.towl.toml</code> exists, defaults are used without error.</p>
+<p>If no config file exists at the resolved path, defaults are used without error.</p>
 <h2 id="viewing-active-configuration"><a class="header" href="#viewing-active-configuration">Viewing Active Configuration</a></h2>
-<pre><code class="language-bash">towl config
+<pre><code class="language-bash"># Show config from default .towl.toml
+towl config
+
+# Show config from a custom path
+towl config -c .config/.towl.toml
 </code></pre>
 <p>Example output:</p>
 <pre><code class="language-text">📋 Towl Configuration
 ┌─ Parsing
 │  ├─ File Extensions: bash, json, rs, sh, toml, yaml, yml
 │  ├─ Exclude Patterns: target/*, .git/*
-│  ├─ Context Lines: 3
+│  ├─ Context Lines: 10
 │  ├─ Comment Prefixes:
 │  │  ├─ //
 │  │  ├─ ^\s*#
@@ -453,6 +478,12 @@ repo = "your-repo"
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="scanning-for-todos"><a class="header" href="#scanning-for-todos">Scanning for TODOs</a></h1>
 <p>The <code>towl scan</code> command walks a directory tree, reads each matching file, and extracts TODO-style comments using compiled regex patterns.</p>
+<h2 id="config-override"><a class="header" href="#config-override">Config Override</a></h2>
+<p>By default, towl reads <code>.towl.toml</code> from the project root. Use <code>--config</code> / <code>-c</code> to load from a different path:</p>
+<pre><code class="language-bash">towl scan -c .config/.towl.toml
+towl scan -c .config/.towl.toml src/
+</code></pre>
+<p>You can also set the <code>TOWL_CONFIG</code> environment variable. The <code>--config</code> flag takes precedence over the env var.</p>
 <h2 id="interactive-mode-default"><a class="header" href="#interactive-mode-default">Interactive Mode (Default)</a></h2>
 <p>By default, <code>towl scan</code> opens an interactive TUI:</p>
 <pre><code class="language-bash">towl scan
@@ -524,6 +555,9 @@ towl scan -N -t todo -g
 
 # AI-validated FIXMEs as JSON
 towl scan -N --ai -t fixme -f json -o fixmes.json
+
+# Use a custom config for everything
+towl scan -c .config/.towl.toml -N src/ -t fixme -f json -o fixmes.json
 </code></pre>
 <h2 id="resource-limits"><a class="header" href="#resource-limits">Resource Limits</a></h2>
 <p>towl enforces hard limits to prevent runaway scans:</p>
@@ -587,7 +621,7 @@ towl scan src/
 </tbody></table>
 </div>
 <h3 id="peek"><a class="header" href="#peek">Peek</a></h3>
-<p>Shows the source code surrounding the selected TODO with syntax context. The TODO line is highlighted. When <code>--ai</code> is active, the LLM's reasoning is displayed below the source code.</p>
+<p>Shows the source code surrounding the selected TODO with syntax context. The TODO line is highlighted. When <code>--ai</code> is active, the AI Analysis section is displayed below the source code with the validity, confidence score, and reasoning. The reasoning text word-wraps to fit the popup width.</p>
 <div class="table-wrapper"><table><thead><tr><th>Key</th><th>Action</th></tr></thead><tbody>
 <tr><td><code>j</code> / <code>Down</code></td><td>Scroll down</td></tr>
 <tr><td><code>k</code> / <code>Up</code></td><td>Scroll up</td></tr>
@@ -616,7 +650,7 @@ towl scan src/
 <p>Only TODOs marked as Invalid by the AI are eligible for deletion.</p>
 <h2 id="workflow"><a class="header" href="#workflow">Workflow</a></h2>
 <ol>
-<li>Run <code>towl scan</code> to open the TUI</li>
+<li>Run <code>towl scan</code> to open the TUI (with <code>--ai</code>, a progress bar shows during analysis)</li>
 <li>Browse the TODO list -- use <code>f</code> to filter by type, <code>s</code>/<code>r</code> to sort</li>
 <li>Press <code>p</code> to peek at source code around a TODO</li>
 <li>Select TODOs with <code>Space</code> (or <code>a</code> to select all visible)</li>
@@ -670,11 +704,14 @@ towl scan -N --ai -g
 # GitHub issues created only for valid TODOs, enriched with AI reasoning
 </code></pre>
 <h2 id="interactive-mode-tui"><a class="header" href="#interactive-mode-tui">Interactive Mode (TUI)</a></h2>
-<p>With <code>--ai</code> (no <code>-N</code>), the TUI shows analysis results:</p>
+<p>With <code>--ai</code> (no <code>-N</code>), a progress bar is displayed while TODOs are being analysed:</p>
+<pre><code class="language-text">  Analysing TODOs [████████████░░░░░░░░░░░░░░░░░░] 12/30
+</code></pre>
+<p>Once analysis completes, the TUI launches with results:</p>
 <ul>
 <li><strong>Validity column</strong> -- Each TODO shows <code>V</code> (Valid), <code>I</code> (Invalid), or <code>?</code> (Uncertain)</li>
 <li><strong>Colour coding</strong> -- Green for valid, red for invalid, yellow for uncertain</li>
-<li><strong>Peek view</strong> -- Press <code>p</code> to see the LLM's reasoning below the source code</li>
+<li><strong>Peek view</strong> -- Press <code>p</code> to see the LLM's reasoning below the source code (text wraps to fit the popup width)</li>
 <li><strong>Delete invalid TODOs</strong> -- Select invalid TODOs and press <code>d</code> to remove them from source files (with confirmation)</li>
 </ul>
 <h3 id="delete-workflow"><a class="header" href="#delete-workflow">Delete Workflow</a></h3>
@@ -957,6 +994,14 @@ todo_patterns = [
 ├── processor    TODO replacement with issue links
 │   ├── types    Processor, ProcessorResult
 │   └── error    TowlProcessorError
+├── llm          LLM-powered TODO validation
+│   ├── analyse  analyse_todos, gather_expanded_context
+│   ├── claude   ClaudeProvider (Anthropic API)
+│   ├── openai   OpenAiProvider (OpenAI-compatible API)
+│   ├── cli      ClaudeCodeProvider, CodexProvider (CLI agents)
+│   ├── prompt   System prompt and user content construction
+│   ├── types    AnalysisResult, AnalysisSummary, Validity, LlmUsage
+│   └── error    TowlLlmError
 ├── tui          Interactive terminal UI
 │   ├── app      App, AppMode, SortField, PeekState
 │   ├── input    Action, handle_input
@@ -974,7 +1019,9 @@ todo_patterns = [
    │              │
    │              └─ ScanResult { todos, files_scanned, ... }
    │
-   └─ ParsingConfig + GitHubConfig
+   ├─ ParsingConfig + GitHubConfig + LlmConfig
+   │
+   └─ LlmConfig ──► LlmProvider ──► analyse_todos ──► AnalysisSummary
 </code></pre>
 <h2 id="key-types"><a class="header" href="#key-types">Key Types</a></h2>
 <div class="table-wrapper"><table><thead><tr><th>Type</th><th>Module</th><th>Purpose</th></tr></thead><tbody>
@@ -991,6 +1038,10 @@ todo_patterns = [
 <tr><td><code>CreatedIssue</code></td><td><code>github</code></td><td>Metadata for a created GitHub issue</td></tr>
 <tr><td><code>Processor</code></td><td><code>processor</code></td><td>Replaces TODOs with issue links in source files</td></tr>
 <tr><td><code>ProcessorResult</code></td><td><code>processor</code></td><td>Summary of a batch replacement operation</td></tr>
+<tr><td><code>LlmProvider</code></td><td><code>llm</code></td><td>Enum-dispatched LLM provider (Claude, OpenAI, CLI agents)</td></tr>
+<tr><td><code>AnalysisResult</code></td><td><code>llm</code></td><td>LLM validation result for a single TODO</td></tr>
+<tr><td><code>AnalysisSummary</code></td><td><code>llm</code></td><td>Aggregate counts from a batch analysis run</td></tr>
+<tr><td><code>Validity</code></td><td><code>llm</code></td><td>TODO validity classification (Valid, Invalid, Uncertain)</td></tr>
 <tr><td><code>App</code></td><td><code>tui</code></td><td>TUI application state and mode management</td></tr>
 <tr><td><code>AppMode</code></td><td><code>tui</code></td><td>Current UI mode (Browse, Peek, Confirm, etc.)</td></tr>
 <tr><td><code>TowlError</code></td><td><code>error</code></td><td>Top-level error aggregating all sub-errors</td></tr>
@@ -1006,7 +1057,8 @@ todo_patterns = [
 │   └── WriterError      I/O, path traversal
 ├── TowlGitHubError      API errors, auth, rate limiting
 ├── TowlProcessorError   File replacement errors
-└── TowlTuiError         Terminal I/O errors
+├── TowlTuiError         Terminal I/O errors
+└── TowlLlmError         LLM API, auth, parsing, I/O
 </code></pre>
 <p>All error types use <code>thiserror</code> for <code>Display</code> and <code>Error</code> trait implementations. Conversion between levels uses <code>#[from]</code> attributes for ergonomic <code>?</code> propagation.</p>
 <h2 id="constants"><a class="header" href="#constants">Constants</a></h2>
@@ -1225,6 +1277,7 @@ if result.all_files_failed() {
 </span>pub struct TowlConfig {
     pub parsing: ParsingConfig,
     pub github: GitHubConfig,
+    pub llm: LlmConfig,
 }
 <span class="boring">}</span></code></pre></pre>
 <h3 id="towlconfigload"><a class="header" href="#towlconfigload"><code>TowlConfig::load</code></a></h3>
@@ -1237,8 +1290,9 @@ if result.all_files_failed() {
 <p>Loads configuration with this precedence:</p>
 <ol>
 <li>Built-in defaults</li>
-<li><code>.towl.toml</code> file (or custom path via <code>--path</code>)</li>
-<li>Environment variable overrides</li>
+<li>Config file resolved as: explicit <code>path</code> argument &gt; <code>TOWL_CONFIG</code> env var &gt; <code>.towl.toml</code></li>
+<li>Git remote auto-detection for owner/repo</li>
+<li>Environment variable overrides (<code>TOWL_GITHUB_*</code>, <code>TOWL_LLM_*</code>)</li>
 </ol>
 <p>If no config file exists, defaults are used without error.</p>
 <h3 id="init"><a class="header" href="#init"><code>init</code></a></h3>
@@ -1246,11 +1300,11 @@ if result.all_files_failed() {
 </span><span class="boring">fn main() {
 </span>pub async fn init(path: &amp;Path, force: bool) -&gt; Result&lt;(), TowlConfigError&gt;
 <span class="boring">}</span></code></pre></pre>
-<p>Creates a <code>.towl.toml</code> file at the given path. Auto-detects GitHub owner and repo from <code>git remote get-url origin</code>.</p>
+<p>Creates a <code>.towl.toml</code> file at the given path. Validates that a GitHub git remote exists but does not write owner/repo to the file (they are always detected at runtime).</p>
 <ul>
 <li>Fails if the file already exists (unless <code>force</code> is <code>true</code>)</li>
 <li>Validates the path for traversal attacks</li>
-<li>Serializes <code>ParsingConfig</code> defaults to TOML</li>
+<li>Serializes <code>ParsingConfig</code> and <code>LlmConfig</code> defaults to TOML</li>
 </ul>
 <h2 id="parsingconfig"><a class="header" href="#parsingconfig"><code>ParsingConfig</code></a></h2>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -1268,7 +1322,7 @@ if result.all_files_failed() {
 <div class="table-wrapper"><table><thead><tr><th>Field</th><th>Default</th></tr></thead><tbody>
 <tr><td><code>file_extensions</code></td><td><code>rs</code>, <code>toml</code>, <code>json</code>, <code>yaml</code>, <code>yml</code>, <code>sh</code>, <code>bash</code></td></tr>
 <tr><td><code>exclude_patterns</code></td><td><code>target/*</code>, <code>.git/*</code></td></tr>
-<tr><td><code>include_context_lines</code></td><td><code>3</code></td></tr>
+<tr><td><code>include_context_lines</code></td><td><code>10</code></td></tr>
 <tr><td><code>comment_prefixes</code></td><td><code>//</code>, <code>^\s*#</code>, <code>/\*</code>, <code>^\s*\*</code></td></tr>
 <tr><td><code>todo_patterns</code></td><td><code>TODO:</code>, <code>FIXME:</code>, <code>HACK:</code>, <code>NOTE:</code>, <code>BUG:</code> (case-insensitive)</td></tr>
 <tr><td><code>function_patterns</code></td><td>Rust, Python, JS, Java/C#, Go patterns</td></tr>
@@ -1287,14 +1341,15 @@ if result.all_files_failed() {
 <span class="boring">}</span></code></pre></pre>
 <ul>
 <li><code>token</code> is stored as <code>secrecy::SecretString</code> and masked in debug/display output</li>
-<li><code>owner</code> and <code>repo</code> are validated newtype wrappers over <code>String</code></li>
-<li><code>rate_limit_delay_ms</code> adds a delay between GitHub API calls (default: 100ms)</li>
+<li><code>owner</code> and <code>repo</code> are auto-detected from <code>git remote get-url origin</code> at runtime (not serialised to config)</li>
+<li><code>rate_limit_delay_ms</code> adds a delay between GitHub API calls (default: 1000ms)</li>
 </ul>
 <h3 id="environment-variable-overrides"><a class="header" href="#environment-variable-overrides">Environment Variable Overrides</a></h3>
 <div class="table-wrapper"><table><thead><tr><th>Variable</th><th>Overrides</th></tr></thead><tbody>
-<tr><td><code>TOWL_GITHUB_TOKEN</code></td><td><code>github.token</code></td></tr>
-<tr><td><code>TOWL_GITHUB_OWNER</code></td><td><code>github.owner</code></td></tr>
-<tr><td><code>TOWL_GITHUB_REPO</code></td><td><code>github.repo</code></td></tr>
+<tr><td><code>TOWL_CONFIG</code></td><td><code>DEFAULT_CONFIG_PATH</code> (overridden by explicit <code>path</code> argument)</td></tr>
+<tr><td><code>TOWL_GITHUB_TOKEN</code></td><td>-- (env-only)</td></tr>
+<tr><td><code>TOWL_GITHUB_OWNER</code></td><td>git remote detection</td></tr>
+<tr><td><code>TOWL_GITHUB_REPO</code></td><td>git remote detection</td></tr>
 </tbody></table>
 </div>
 <h2 id="owner--repo"><a class="header" href="#owner--repo"><code>Owner</code> / <code>Repo</code></a></h2>
@@ -1319,6 +1374,45 @@ pub struct Repo(String);
 <li><code>Display</code>, <code>Default</code>, <code>Debug</code>, <code>Clone</code>, <code>PartialEq</code>, <code>Eq</code></li>
 <li><code>Serialize</code>, <code>Deserialize</code></li>
 </ul>
+<h2 id="llmconfig"><a class="header" href="#llmconfig"><code>LlmConfig</code></a></h2>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub struct LlmConfig {
+    pub provider: String,
+    pub model: String,
+    pub base_url: Option&lt;String&gt;,
+    pub api_key: SecretString,
+    pub max_concurrent_analyses: usize,
+    pub max_analyse_count: usize,
+    pub max_tokens: u32,
+    pub max_retries: usize,
+    pub command: Option&lt;String&gt;,
+    pub args: Option&lt;Vec&lt;String&gt;&gt;,
+}
+<span class="boring">}</span></code></pre></pre>
+<ul>
+<li><code>api_key</code> is stored as <code>secrecy::SecretString</code> and masked in debug output (env-only via <code>TOWL_LLM_API_KEY</code>)</li>
+<li><code>provider</code> selects the LLM backend: <code>"claude"</code>, <code>"openai"</code>, <code>"claude-code"</code>, or <code>"codex"</code></li>
+<li><code>command</code> and <code>args</code> allow overriding the CLI binary path and arguments for CLI providers</li>
+</ul>
+<div class="table-wrapper"><table><thead><tr><th>Field</th><th>Default</th></tr></thead><tbody>
+<tr><td><code>provider</code></td><td><code>"claude"</code></td></tr>
+<tr><td><code>model</code></td><td><code>"claude-opus-4-6"</code></td></tr>
+<tr><td><code>base_url</code></td><td><code>None</code> (provider default)</td></tr>
+<tr><td><code>max_concurrent_analyses</code></td><td><code>5</code></td></tr>
+<tr><td><code>max_analyse_count</code></td><td><code>50</code></td></tr>
+<tr><td><code>max_tokens</code></td><td><code>4096</code></td></tr>
+<tr><td><code>max_retries</code></td><td><code>3</code></td></tr>
+</tbody></table>
+</div>
+<h3 id="environment-variable-overrides-1"><a class="header" href="#environment-variable-overrides-1">Environment Variable Overrides</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>Variable</th><th>Overrides</th></tr></thead><tbody>
+<tr><td><code>TOWL_LLM_API_KEY</code></td><td>-- (env-only)</td></tr>
+<tr><td><code>TOWL_LLM_PROVIDER</code></td><td><code>llm.provider</code></td></tr>
+<tr><td><code>TOWL_LLM_MODEL</code></td><td><code>llm.model</code></td></tr>
+<tr><td><code>TOWL_LLM_BASE_URL</code></td><td><code>llm.base_url</code></td></tr>
+</tbody></table>
+</div>
 <h2 id="gitrepoinfo-internal"><a class="header" href="#gitrepoinfo-internal"><code>GitRepoInfo</code> (internal)</a></h2>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
@@ -1617,6 +1711,8 @@ if !client.issue_exists(&amp;todo) {
 </span>pub enum LlmProvider {
     Claude(ClaudeProvider),
     OpenAi(OpenAiProvider),
+    ClaudeCode(ClaudeCodeProvider),
+    Codex(CodexProvider),
 }
 <span class="boring">}</span></code></pre></pre>
 <p>Dispatches LLM calls to the configured provider. Follows towl's existing enum dispatch pattern (<code>FormatterImpl</code>, <code>WriterImpl</code>).</p>
@@ -1643,17 +1739,19 @@ if !client.issue_exists(&amp;todo) {
 </span>pub async fn analyse_todos(
     todos: &amp;mut [TodoComment],
     config: &amp;LlmConfig,
+    on_progress: impl FnMut(usize, usize),
 ) -&gt; Result&lt;AnalysisSummary, TowlLlmError&gt;
 <span class="boring">}</span></code></pre></pre>
-<p>Main entry point for TODO analysis. For each TODO (up to <code>max_analyse_count</code>):</p>
+<p>Main entry point for TODO analysis. Calls <code>on_progress(completed, total)</code> after each TODO is analysed, allowing callers to render progress feedback (e.g. a progress bar).</p>
+<p>For each TODO (up to <code>max_analyse_count</code>):</p>
 <ol>
 <li>Reads expanded context (~30 lines around the TODO + full function body)</li>
 <li>Constructs a prompt with the TODO description, file path, and code context</li>
 <li>Calls the LLM to determine validity</li>
 <li>Parses the structured JSON response into an <code>AnalysisResult</code></li>
 <li>Attaches the result to <code>TodoComment.analysis</code></li>
+<li>Calls <code>on_progress</code> with the current count</li>
 </ol>
-<p>Concurrency is bounded by <code>max_concurrent_analyses</code> via a tokio <code>Semaphore</code>.</p>
 <p><strong>Errors:</strong></p>
 <ul>
 <li><code>NotConfigured</code> -- <code>TOWL_LLM_API_KEY</code> not set</li>
@@ -1742,14 +1840,13 @@ Default base URL: <code>https://api.openai.com/v1</code>. Configurable for Ollam
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>pub enum TowlLlmError {
-    ApiError { message, status },
+    ApiError { message: String, status: Option&lt;u16&gt; },
     AuthError,
-    RateLimited { retry_after_secs },
-    ParseError { message },
+    RateLimited { retry_after_secs: u64 },
+    ParseError { message: String },
     NotConfigured,
-    UnsupportedProvider { provider },
-    AnalysisLimitExceeded { count, max },
-    HttpError(String),
+    UnsupportedProvider { provider: String },
+    IoError { message: String },
 }
 <span class="boring">}</span></code></pre></pre>
 <div class="table-wrapper"><table><thead><tr><th>Variant</th><th>Cause</th></tr></thead><tbody>
@@ -1758,11 +1855,18 @@ Default base URL: <code>https://api.openai.com/v1</code>. Configurable for Ollam
 <tr><td><code>RateLimited</code></td><td>429 -- too many requests</td></tr>
 <tr><td><code>ParseError</code></td><td>LLM response could not be parsed as valid JSON</td></tr>
 <tr><td><code>NotConfigured</code></td><td><code>TOWL_LLM_API_KEY</code> environment variable not set</td></tr>
-<tr><td><code>UnsupportedProvider</code></td><td>Provider is not "claude" or "openai"</td></tr>
-<tr><td><code>AnalysisLimitExceeded</code></td><td>TODO count exceeds <code>max_analyse_count</code></td></tr>
-<tr><td><code>HttpError</code></td><td>HTTP client or file I/O error</td></tr>
+<tr><td><code>UnsupportedProvider</code></td><td>Provider is not "claude", "openai", "claude-code", or "codex"</td></tr>
+<tr><td><code>IoError</code></td><td>File I/O error during context gathering</td></tr>
 </tbody></table>
-</div><div style="break-before: page; page-break-before: always;"></div><h1 id="processor"><a class="header" href="#processor">Processor</a></h1>
+</div>
+<h3 id="retryable-errors"><a class="header" href="#retryable-errors">Retryable Errors</a></h3>
+<p><code>TowlLlmError</code> implements <code>is_retryable()</code> which returns <code>true</code> for:</p>
+<ul>
+<li><code>RateLimited</code> -- always retryable</li>
+<li><code>ApiError</code> with status &gt;= 500 -- server errors</li>
+<li><code>ApiError</code> with no status -- network failures</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="processor"><a class="header" href="#processor">Processor</a></h1>
 <p>The processor replaces TODO comments in source files with GitHub issue links after issues are created.</p>
 <h2 id="processor-1"><a class="header" href="#processor-1"><code>Processor</code></a></h2>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
@@ -1778,7 +1882,7 @@ Default base URL: <code>https://api.openai.com/v1</code>. Configurable for Ollam
     replacements: &amp;[(TodoComment, CreatedIssue)],
 ) -&gt; ProcessorResult
 <span class="boring">}</span></code></pre></pre>
-<p>Replaces TODO comments in source files with <code>See: &lt;issue_url&gt;</code> links.</p>
+<p>Replaces TODO comments in source files with <code>GH_ISSUE: &lt;issue_url&gt;</code> links.</p>
 <p><strong>Behaviour:</strong></p>
 <ol>
 <li>Groups replacements by file path for efficient batch processing</li>
@@ -1794,8 +1898,8 @@ Default base URL: <code>https://api.openai.com/v1</code>. Configurable for Ollam
 </ul>
 <p><strong>Replacement format:</strong></p>
 <p>The comment prefix (e.g., <code>// </code>, <code># </code>, <code>/* </code>) is preserved. The TODO text after the prefix is replaced:</p>
-<pre><code class="language-text">// TODO: Implement caching    --&gt;    // See: https://github.com/owner/repo/issues/42
-# FIXME: Handle timeout        --&gt;    # See: https://github.com/owner/repo/issues/43
+<pre><code class="language-text">// TODO: Implement caching    --&gt;    // GH_ISSUE: https://github.com/owner/repo/issues/42
+# FIXME: Handle timeout        --&gt;    # GH_ISSUE: https://github.com/owner/repo/issues/43
 </code></pre>
 <p><strong>Atomic writes:</strong></p>
 <p>Files are written via a tempfile in the same directory, then atomically persisted. This prevents partial writes if the process is interrupted.</p>
@@ -1929,6 +2033,7 @@ for (path, err) in &amp;result.errors {
     Confirm,
     Creating(CreatingState),
     Done(DoneState),
+    DeleteConfirm(Vec&lt;TodoComment&gt;),
 }
 <span class="boring">}</span></code></pre></pre>
 <p>The current UI mode determines which view is rendered and which keys are active.</p>
@@ -1938,6 +2043,7 @@ for (path, err) in &amp;result.errors {
 <tr><td><code>Confirm</code></td><td>Summary of selected TODOs</td><td>Confirm or cancel</td></tr>
 <tr><td><code>Creating</code></td><td>Progress indicator during issue creation</td><td>None (Ctrl+C to abort)</td></tr>
 <tr><td><code>Done</code></td><td>Results summary (issues created, errors)</td><td>Dismiss to exit</td></tr>
+<tr><td><code>DeleteConfirm</code></td><td>Confirmation dialog for deleting invalid TODOs</td><td>Confirm or cancel</td></tr>
 </tbody></table>
 </div>
 <h2 id="sortfield"><a class="header" href="#sortfield"><code>SortField</code></a></h2>
@@ -1966,9 +2072,10 @@ for (path, err) in &amp;result.errors {
     pub file: String,
     pub todo_line: usize,
     pub scroll: usize,
+    pub analysis: Option&lt;AnalysisResult&gt;,
 }
 <span class="boring">}</span></code></pre></pre>
-<p>State for the source-code peek overlay. Contains numbered source lines around the TODO, with scroll position.</p>
+<p>State for the source-code peek overlay. Contains numbered source lines around the TODO, with scroll position. When <code>--ai</code> is active, <code>analysis</code> holds the LLM result -- the reasoning text is word-wrapped to the popup width during rendering.</p>
 <h3 id="creatingstate"><a class="header" href="#creatingstate"><code>CreatingState</code></a></h3>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
@@ -2074,6 +2181,7 @@ for (path, err) in &amp;result.errors {
     pub description: String,
     pub context_lines: Vec&lt;String&gt;,
     pub function_context: Option&lt;String&gt;,
+    pub analysis: Option&lt;AnalysisResult&gt;,
 }
 <span class="boring">}</span></code></pre></pre>
 <p>A single TODO comment extracted from a source file.</p>
@@ -2088,10 +2196,11 @@ for (path, err) in &amp;result.errors {
 <tr><td><code>description</code></td><td>Extracted description text after the marker</td></tr>
 <tr><td><code>context_lines</code></td><td>Surrounding source lines (configurable window)</td></tr>
 <tr><td><code>function_context</code></td><td>Enclosing function name, if detected</td></tr>
+<tr><td><code>analysis</code></td><td>LLM validation result, populated when <code>--ai</code> is used (skipped during serialisation if <code>None</code>)</td></tr>
 </tbody></table>
 </div>
 <h3 id="trait-implementations-1"><a class="header" href="#trait-implementations-1">Trait Implementations</a></h3>
-<p><code>Debug</code>, <code>Clone</code>, <code>PartialEq</code>, <code>Eq</code>, <code>Serialize</code>, <code>Deserialize</code></p>
+<p><code>Debug</code>, <code>Clone</code>, <code>PartialEq</code>, <code>Serialize</code>, <code>Deserialize</code></p>
 <h2 id="scanresult-1"><a class="header" href="#scanresult-1"><code>ScanResult</code></a></h2>
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
@@ -2138,7 +2247,8 @@ pub struct Repo(String);
 │   └── WriterError
 ├── TowlGitHubError
 ├── TowlProcessorError
-└── TowlTuiError
+├── TowlTuiError
+└── TowlLlmError
 </code></pre>
 <h2 id="towlerror"><a class="header" href="#towlerror"><code>TowlError</code></a></h2>
 <p>Top-level error type used by the CLI binary. All sub-error types convert automatically via <code>#[from]</code>.</p>
@@ -2151,6 +2261,7 @@ pub struct Repo(String);
     GitHub(TowlGitHubError),
     Processor(TowlProcessorError),
     Tui(TowlTuiError),
+    Llm(TowlLlmError),
 }
 <span class="boring">}</span></code></pre></pre>
 <h2 id="towlconfigerror"><a class="header" href="#towlconfigerror"><code>TowlConfigError</code></a></h2>
@@ -2241,6 +2352,19 @@ pub struct Repo(String);
 <tr><td><code>InvalidIssueUrl { url }</code></td><td>URL does not start with <code>https://github.com/</code></td></tr>
 </tbody></table>
 </div>
+<h2 id="towlllmerror"><a class="header" href="#towlllmerror"><code>TowlLlmError</code></a></h2>
+<p>Errors from LLM API interactions and analysis.</p>
+<div class="table-wrapper"><table><thead><tr><th>Variant</th><th>Cause</th></tr></thead><tbody>
+<tr><td><code>ApiError { message, status }</code></td><td>LLM API returned a non-200 status</td></tr>
+<tr><td><code>AuthError</code></td><td>401 -- invalid or missing API key</td></tr>
+<tr><td><code>RateLimited { retry_after_secs }</code></td><td>429 -- too many requests</td></tr>
+<tr><td><code>ParseError { message }</code></td><td>LLM response could not be parsed as valid JSON</td></tr>
+<tr><td><code>NotConfigured</code></td><td><code>TOWL_LLM_API_KEY</code> environment variable not set</td></tr>
+<tr><td><code>UnsupportedProvider { provider }</code></td><td>Provider is not "claude", "openai", "claude-code", or "codex"</td></tr>
+<tr><td><code>IoError { message }</code></td><td>File I/O error during context gathering</td></tr>
+</tbody></table>
+</div>
+<p><code>is_retryable()</code> returns <code>true</code> for <code>RateLimited</code>, <code>ApiError</code> with status &gt;= 500, and <code>ApiError</code> with no status (network failures).</p>
 <h2 id="towltuierror"><a class="header" href="#towltuierror"><code>TowlTuiError</code></a></h2>
 <p>Errors from the interactive terminal UI.</p>
 <div class="table-wrapper"><table><thead><tr><th>Variant</th><th>Cause</th></tr></thead><tbody>
@@ -2255,13 +2379,14 @@ WriterError       --&gt;  TowlOutputError     --&gt;  TowlError
 TowlGitHubError   ----------------------------&gt;  TowlError
 TowlProcessorError ---------------------------&gt;  TowlError
 TowlTuiError      ----------------------------&gt;  TowlError
+TowlLlmError      ----------------------------&gt;  TowlError
 </code></pre>
 <p>All errors implement <code>std::fmt::Display</code> with human-readable messages and <code>std::error::Error</code> for standard error handling.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="architecture"><a class="header" href="#architecture">Architecture</a></h1>
 <p>towl follows a pipeline architecture: Config -&gt; Scanner -&gt; Parser -&gt; TUI / Output. Each stage is a separate module with clear boundaries and typed errors.</p>
 <h2 id="pipeline"><a class="header" href="#pipeline">Pipeline</a></h2>
 <pre><code class="language-text">                ┌──────────┐
-                │  Config   │  .towl.toml + env vars + git remote
+                │  Config   │  --config / TOWL_CONFIG / .towl.toml + env vars
                 └────┬─────┘
                      │
                 ┌────▼─────┐
@@ -2272,25 +2397,29 @@ TowlTuiError      ----------------------------&gt;  TowlError
                 │  Parser   │  Matches comment prefixes + TODO patterns
                 └────┬─────┘
                      │
-              ┌──────┴──────┐
-              │             │
-        ┌─────▼────┐  ┌────▼─────┐
-        │   TUI     │  │  Output   │  Non-interactive: formats + writes
-        │ (default) │  │  (-N)     │
-        └─────┬────┘  └──────────┘
-              │
-        ┌─────▼─────┐
-        │ Processor  │  Replaces TODOs with GitHub issue links
-        └───────────┘
+              ┌──────┼──────┐
+              │      │      │
+        ┌─────▼────┐ │ ┌────▼─────┐
+        │   TUI    │ │ │  Output   │  Non-interactive: formats + writes
+        │ (default)│ │ │  (-N)     │
+        └─────┬────┘ │ └──────────┘
+              │      │
+        ┌─────▼─────┐│
+        │ Processor  ││  Replaces TODOs with GitHub issue links
+        └───────────┘│
+                ┌────▼─────┐
+                │   LLM     │  --ai: validates TODOs with AI
+                └──────────┘
 </code></pre>
 <h2 id="module-boundaries"><a class="header" href="#module-boundaries">Module Boundaries</a></h2>
 <h3 id="config-srclibconfig"><a class="header" href="#config-srclibconfig">Config (<code>src/lib/config/</code>)</a></h3>
 <ul>
-<li>Loads <code>.towl.toml</code> using the <code>config</code> crate</li>
-<li>Merges environment variable overrides (<code>TOWL_GITHUB_*</code>)</li>
+<li>Resolves config file path: <code>--config</code> flag &gt; <code>TOWL_CONFIG</code> env var &gt; <code>.towl.toml</code></li>
+<li>Loads config using the <code>config</code> crate</li>
+<li>Merges environment variable overrides (<code>TOWL_GITHUB_*</code>, <code>TOWL_LLM_*</code>)</li>
 <li>Discovers GitHub owner/repo from <code>git remote get-url origin</code></li>
 <li>Validates pattern array sizes</li>
-<li>Produces <code>TowlConfig</code> containing <code>ParsingConfig</code> + <code>GitHubConfig</code></li>
+<li>Produces <code>TowlConfig</code> containing <code>ParsingConfig</code> + <code>GitHubConfig</code> + <code>LlmConfig</code></li>
 </ul>
 <p>Submodules:</p>
 <ul>
@@ -2350,6 +2479,25 @@ TowlTuiError      ----------------------------&gt;  TowlError
 <li><code>render.rs</code> -- UI rendering (list, peek popup, confirm dialog, progress view)</li>
 <li><code>error.rs</code> -- <code>TowlTuiError</code></li>
 </ul>
+<h3 id="llm-srclibllm"><a class="header" href="#llm-srclibllm">LLM (<code>src/lib/llm/</code>)</a></h3>
+<ul>
+<li>AI-powered TODO validation using Claude, OpenAI, or local CLI agents</li>
+<li>Enum-dispatched providers following the same pattern as <code>FormatterImpl</code>/<code>WriterImpl</code></li>
+<li>Gathers expanded context (~30 lines) and full function bodies for each TODO</li>
+<li>Constructs structured prompts and parses JSON responses</li>
+<li>Retry logic with exponential backoff via <code>backon</code></li>
+<li>CLI providers (<code>claude-code</code>, <code>codex</code>) auto-fall back to API providers if the binary is not on PATH</li>
+</ul>
+<p>Submodules:</p>
+<ul>
+<li><code>analyse.rs</code> -- <code>analyse_todos()</code>, <code>gather_expanded_context()</code>, retry logic</li>
+<li><code>claude.rs</code> -- <code>ClaudeProvider</code> (Anthropic Messages API)</li>
+<li><code>openai.rs</code> -- <code>OpenAiProvider</code> (OpenAI Chat Completions API)</li>
+<li><code>cli.rs</code> -- <code>ClaudeCodeProvider</code>, <code>CodexProvider</code> (subprocess-based)</li>
+<li><code>prompt.rs</code> -- System prompt and user content construction</li>
+<li><code>types.rs</code> -- <code>AnalysisResult</code>, <code>AnalysisSummary</code>, <code>Validity</code>, <code>LlmUsage</code>, JSON extraction</li>
+<li><code>error.rs</code> -- <code>TowlLlmError</code></li>
+</ul>
 <h3 id="processor-srclibprocessor"><a class="header" href="#processor-srclibprocessor">Processor (<code>src/lib/processor/</code>)</a></h3>
 <ul>
 <li>Replaces TODO comments in source files with GitHub issue links</li>
@@ -2408,6 +2556,7 @@ FormatterError → TowlOutputError → TowlError
 WriterError → TowlOutputError → TowlError
 TowlProcessorError → TowlError
 TowlTuiError → TowlError
+TowlLlmError → TowlError
 </code></pre>
 <h3 id="newtype-pattern"><a class="header" href="#newtype-pattern">Newtype Pattern</a></h3>
 <p><code>Owner</code> and <code>Repo</code> are newtype wrappers over <code>String</code>, preventing accidental misuse (e.g., passing an owner where a repo is expected).</p>
@@ -2456,6 +2605,15 @@ TowlTuiError → TowlError
     │   ├── client.rs         GitHubClient
     │   ├── types.rs          CreatedIssue
     │   └── error.rs          TowlGitHubError
+    ├── llm/
+    │   ├── mod.rs             LlmProvider enum dispatch
+    │   ├── analyse.rs         analyse_todos, gather_expanded_context
+    │   ├── claude.rs          ClaudeProvider
+    │   ├── openai.rs          OpenAiProvider
+    │   ├── cli.rs             ClaudeCodeProvider, CodexProvider
+    │   ├── prompt.rs          System prompt construction
+    │   ├── types.rs           AnalysisResult, Validity, JSON extraction
+    │   └── error.rs           TowlLlmError
     ├── processor/
     │   ├── mod.rs
     │   ├── types.rs          Processor, ProcessorResult
@@ -2507,6 +2665,9 @@ tests/
 <tr><td><code>ratatui</code></td><td>Terminal UI framework</td></tr>
 <tr><td><code>crossterm</code></td><td>Terminal input/output</td></tr>
 <tr><td><code>futures</code></td><td>Async stream utilities</td></tr>
+<tr><td><code>reqwest</code></td><td>HTTP client (rustls TLS)</td></tr>
+<tr><td><code>backon</code></td><td>Retry logic with exponential backoff</td></tr>
+<tr><td><code>which</code></td><td>CLI binary PATH detection</td></tr>
 <tr><td><code>proptest</code></td><td>Property-based testing</td></tr>
 <tr><td><code>rstest</code></td><td>Parameterised testing</td></tr>
 <tr><td><code>insta</code></td><td>Snapshot testing</td></tr>
@@ -2545,14 +2706,19 @@ tests/
 <li><strong>Zeroed on drop</strong> -- Memory is cleared when the config is dropped</li>
 </ul>
 <h2 id="environment-variable-restriction"><a class="header" href="#environment-variable-restriction">Environment Variable Restriction</a></h2>
-<p>Only three environment variables are read:</p>
+<p>Eight environment variables are read:</p>
 <div class="table-wrapper"><table><thead><tr><th>Variable</th><th>Purpose</th></tr></thead><tbody>
+<tr><td><code>TOWL_CONFIG</code></td><td>Config file path override</td></tr>
 <tr><td><code>TOWL_GITHUB_TOKEN</code></td><td>GitHub authentication</td></tr>
 <tr><td><code>TOWL_GITHUB_OWNER</code></td><td>Repository owner override</td></tr>
 <tr><td><code>TOWL_GITHUB_REPO</code></td><td>Repository name override</td></tr>
+<tr><td><code>TOWL_LLM_API_KEY</code></td><td>LLM API authentication</td></tr>
+<tr><td><code>TOWL_LLM_PROVIDER</code></td><td>LLM provider override</td></tr>
+<tr><td><code>TOWL_LLM_MODEL</code></td><td>LLM model override</td></tr>
+<tr><td><code>TOWL_LLM_BASE_URL</code></td><td>Custom LLM endpoint URL</td></tr>
 </tbody></table>
 </div>
-<p>No other environment variables influence behaviour.</p>
+<p>Secrets (<code>TOWL_GITHUB_TOKEN</code>, <code>TOWL_LLM_API_KEY</code>) are stored as <code>SecretString</code> and never written to config files or logs. No other environment variables influence behaviour.</p>
 <h2 id="config-file-safety"><a class="header" href="#config-file-safety">Config File Safety</a></h2>
 <ul>
 <li><strong><code>--force</code> required</strong> for overwriting existing config files</li>
@@ -2565,6 +2731,14 @@ tests/
 <li>Git operations use <code>tokio::process::Command</code> to run <code>git</code> as a subprocess</li>
 <li>Only read-only git commands are executed (<code>git remote get-url origin</code>)</li>
 <li>No git credentials are accessed or stored</li>
+</ul>
+<h2 id="llm-cli-subprocess-safety"><a class="header" href="#llm-cli-subprocess-safety">LLM CLI Subprocess Safety</a></h2>
+<p>When using <code>claude-code</code> or <code>codex</code> providers, towl spawns CLI subprocesses:</p>
+<ul>
+<li><strong>Command validation</strong> -- Relative paths containing <code>..</code> or non-absolute <code>/</code> are rejected</li>
+<li><strong>Timeout</strong> -- CLI processes are killed after 120 seconds</li>
+<li><strong>Input via stdin</strong> -- Prompts are piped through stdin, not shell arguments (prevents injection)</li>
+<li><strong>Stderr capture</strong> -- CLI error output is captured and included in error messages</li>
 </ul>
 <h2 id="gitignore-respect"><a class="header" href="#gitignore-respect">.gitignore Respect</a></h2>
 <p>The <code>ignore</code> crate automatically respects <code>.gitignore</code> rules during directory walking, preventing scanning of files the user has excluded from version control.</p>
@@ -2579,8 +2753,38 @@ tests/
 <tr><td>Config file overwrite</td><td><code>--force</code> flag required</td></tr>
 <tr><td>Arbitrary file write via symlinks</td><td><code>canonicalize()</code> on output paths</td></tr>
 <tr><td>Scanning outside intended directory</td><td><code>.gitignore</code> respect, extension filtering</td></tr>
+<tr><td>CLI command injection via LLM providers</td><td>Relative path rejection, stdin piping (not shell args), 120s timeout</td></tr>
 </tbody></table>
-</div><div style="break-before: page; page-break-before: always;"></div><h1 id="contributing"><a class="header" href="#contributing">Contributing</a></h1>
+</div><div style="break-before: page; page-break-before: always;"></div><h1 id="cicd"><a class="header" href="#cicd">CI/CD</a></h1>
+<p>towl uses GitHub Actions for continuous integration and documentation deployment.</p>
+<h2 id="documentation-deployment"><a class="header" href="#documentation-deployment">Documentation Deployment</a></h2>
+<p>The <code>docs.yml</code> workflow builds and deploys the mdBook documentation to GitHub Pages.</p>
+<p><strong>Trigger:</strong> Pushes to <code>main</code> that modify files in <code>docs/</code> or the workflow file itself. Can also be triggered manually via <code>workflow_dispatch</code>.</p>
+<p><strong>Pipeline:</strong></p>
+<ol>
+<li><strong>Build</strong> -- Installs mdBook, runs <code>mdbook build docs</code>, uploads the <code>docs/book/</code> directory as a Pages artifact</li>
+<li><strong>Deploy</strong> -- Deploys the artifact to GitHub Pages</li>
+</ol>
+<p><strong>Permissions required:</strong></p>
+<ul>
+<li><code>contents: read</code> -- Read repository files</li>
+<li><code>pages: write</code> -- Deploy to GitHub Pages</li>
+<li><code>id-token: write</code> -- Authenticate with Pages</li>
+</ul>
+<p>The workflow uses concurrency control (<code>group: pages</code>, <code>cancel-in-progress: true</code>) to prevent overlapping deployments.</p>
+<h2 id="running-locally"><a class="header" href="#running-locally">Running Locally</a></h2>
+<p>Build and preview the documentation locally:</p>
+<pre><code class="language-bash"># Install mdBook
+cargo install mdbook
+
+# Build docs
+mdbook build docs
+
+# Serve with live reload
+mdbook serve docs
+</code></pre>
+<p>The built documentation is output to <code>docs/book/</code>.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="contributing"><a class="header" href="#contributing">Contributing</a></h1>
 <h2 id="getting-started"><a class="header" href="#getting-started">Getting Started</a></h2>
 <pre><code class="language-bash">git clone https://github.com/glottologist/towl.git
 cd towl

@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Types - towl Documentation</title>
+        <title>CI/CD - towl Documentation</title>
 
 
         <!-- Custom HTML head -->
@@ -147,7 +147,7 @@
                         <a href="https://github.com/glottologist/towl" title="Git repository" aria-label="Git repository">
                             <i id="git-repository-button" class="fa fa-github"></i>
                         </a>
-                        <a href="https://github.com/glottologist/towl/edit/main/docs/src/src/api/types.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                        <a href="https://github.com/glottologist/towl/edit/main/docs/src/src/reference/ci-cd.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
                             <i id="git-edit-button" class="fa fa-edit"></i>
                         </a>
 
@@ -181,127 +181,45 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1 id="types"><a class="header" href="#types">Types</a></h1>
-<p>Core data types used across the towl library.</p>
-<h2 id="todotype"><a class="header" href="#todotype"><code>TodoType</code></a></h2>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>pub enum TodoType {
-    Todo,
-    Fixme,
-    Hack,
-    Note,
-    Bug,
-}
-<span class="boring">}</span></code></pre></pre>
-<p>Represents the category of a TODO comment.</p>
-<h3 id="display"><a class="header" href="#display">Display</a></h3>
-<div class="table-wrapper"><table><thead><tr><th>Variant</th><th>Display</th></tr></thead><tbody>
-<tr><td><code>Todo</code></td><td><code>TODO</code></td></tr>
-<tr><td><code>Fixme</code></td><td><code>FIXME</code></td></tr>
-<tr><td><code>Hack</code></td><td><code>HACK</code></td></tr>
-<tr><td><code>Note</code></td><td><code>NOTE</code></td></tr>
-<tr><td><code>Bug</code></td><td><code>BUG</code></td></tr>
-</tbody></table>
-</div>
-<h3 id="as_filter_str"><a class="header" href="#as_filter_str"><code>as_filter_str</code></a></h3>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>pub const fn as_filter_str(&amp;self) -&gt; &amp;'static str
-<span class="boring">}</span></code></pre></pre>
-<p>Returns the lowercase filter string used for CLI filtering:</p>
-<div class="table-wrapper"><table><thead><tr><th>Variant</th><th>Filter string</th></tr></thead><tbody>
-<tr><td><code>Todo</code></td><td><code>"todo"</code></td></tr>
-<tr><td><code>Fixme</code></td><td><code>"fixme"</code></td></tr>
-<tr><td><code>Hack</code></td><td><code>"hack"</code></td></tr>
-<tr><td><code>Note</code></td><td><code>"note"</code></td></tr>
-<tr><td><code>Bug</code></td><td><code>"bug"</code></td></tr>
-</tbody></table>
-</div>
-<h3 id="conversions"><a class="header" href="#conversions">Conversions</a></h3>
+                        <h1 id="cicd"><a class="header" href="#cicd">CI/CD</a></h1>
+<p>towl uses GitHub Actions for continuous integration and documentation deployment.</p>
+<h2 id="documentation-deployment"><a class="header" href="#documentation-deployment">Documentation Deployment</a></h2>
+<p>The <code>docs.yml</code> workflow builds and deploys the mdBook documentation to GitHub Pages.</p>
+<p><strong>Trigger:</strong> Pushes to <code>main</code> that modify files in <code>docs/</code> or the workflow file itself. Can also be triggered manually via <code>workflow_dispatch</code>.</p>
+<p><strong>Pipeline:</strong></p>
+<ol>
+<li><strong>Build</strong> -- Installs mdBook, runs <code>mdbook build docs</code>, uploads the <code>docs/book/</code> directory as a Pages artifact</li>
+<li><strong>Deploy</strong> -- Deploys the artifact to GitHub Pages</li>
+</ol>
+<p><strong>Permissions required:</strong></p>
 <ul>
-<li><code>TryFrom&lt;&amp;str&gt;</code> -- Case-insensitive conversion from string</li>
-<li><code>clap::ValueEnum</code> -- CLI argument parsing</li>
+<li><code>contents: read</code> -- Read repository files</li>
+<li><code>pages: write</code> -- Deploy to GitHub Pages</li>
+<li><code>id-token: write</code> -- Authenticate with Pages</li>
 </ul>
-<h3 id="trait-implementations"><a class="header" href="#trait-implementations">Trait Implementations</a></h3>
-<p><code>Debug</code>, <code>Clone</code>, <code>Copy</code>, <code>PartialEq</code>, <code>Eq</code>, <code>Hash</code>, <code>Serialize</code>, <code>Deserialize</code>, <code>ValueEnum</code></p>
-<h2 id="todocomment"><a class="header" href="#todocomment"><code>TodoComment</code></a></h2>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>pub struct TodoComment {
-    pub id: String,
-    pub file_path: PathBuf,
-    pub line_number: usize,
-    pub column_start: usize,
-    pub column_end: usize,
-    pub todo_type: TodoType,
-    pub original_text: String,
-    pub description: String,
-    pub context_lines: Vec&lt;String&gt;,
-    pub function_context: Option&lt;String&gt;,
-    pub analysis: Option&lt;AnalysisResult&gt;,
-}
-<span class="boring">}</span></code></pre></pre>
-<p>A single TODO comment extracted from a source file.</p>
-<div class="table-wrapper"><table><thead><tr><th>Field</th><th>Description</th></tr></thead><tbody>
-<tr><td><code>id</code></td><td>Unique identifier (generated per extraction)</td></tr>
-<tr><td><code>file_path</code></td><td>Path to the source file</td></tr>
-<tr><td><code>line_number</code></td><td>1-based line number</td></tr>
-<tr><td><code>column_start</code></td><td>0-based start column of the TODO marker</td></tr>
-<tr><td><code>column_end</code></td><td>0-based end column of the TODO marker</td></tr>
-<tr><td><code>todo_type</code></td><td>Category (<code>Todo</code>, <code>Fixme</code>, etc.)</td></tr>
-<tr><td><code>original_text</code></td><td>The full original comment line</td></tr>
-<tr><td><code>description</code></td><td>Extracted description text after the marker</td></tr>
-<tr><td><code>context_lines</code></td><td>Surrounding source lines (configurable window)</td></tr>
-<tr><td><code>function_context</code></td><td>Enclosing function name, if detected</td></tr>
-<tr><td><code>analysis</code></td><td>LLM validation result, populated when <code>--ai</code> is used (skipped during serialisation if <code>None</code>)</td></tr>
-</tbody></table>
-</div>
-<h3 id="trait-implementations-1"><a class="header" href="#trait-implementations-1">Trait Implementations</a></h3>
-<p><code>Debug</code>, <code>Clone</code>, <code>PartialEq</code>, <code>Serialize</code>, <code>Deserialize</code></p>
-<h2 id="scanresult"><a class="header" href="#scanresult"><code>ScanResult</code></a></h2>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>pub struct ScanResult {
-    pub todos: Vec&lt;TodoComment&gt;,
-    pub files_scanned: usize,
-    pub files_skipped: usize,
-    pub files_errored: usize,
-    pub duration: std::time::Duration,
-}
-<span class="boring">}</span></code></pre></pre>
-<p>Returned by <code>Scanner::scan()</code>. See <a href="./scanner.html">Scanner</a> for details.</p>
-<h2 id="owner--repo"><a class="header" href="#owner--repo"><code>Owner</code> / <code>Repo</code></a></h2>
-<p>Newtype wrappers for GitHub owner and repository names:</p>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>pub struct Owner(String);
-pub struct Repo(String);
-<span class="boring">}</span></code></pre></pre>
-<p>Both provide <code>try_new(impl Into&lt;String&gt;) -&gt; Result&lt;Self, TowlConfigError&gt;</code> (validates length) and <code>Display</code>. See <a href="./config.html">Config</a> for details.</p>
-<h2 id="outputformat"><a class="header" href="#outputformat"><code>OutputFormat</code></a></h2>
-<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
-</span><span class="boring">fn main() {
-</span>pub enum OutputFormat {
-    Table,
-    Json,
-    Csv,
-    Toml,
-    Markdown,
-    Terminal,
-}
-<span class="boring">}</span></code></pre></pre>
-<p>CLI-facing enum for selecting output format. <code>Table</code> and <code>Terminal</code> produce identical output. See <a href="./output.html">Output</a> for details.</p>
+<p>The workflow uses concurrency control (<code>group: pages</code>, <code>cancel-in-progress: true</code>) to prevent overlapping deployments.</p>
+<h2 id="running-locally"><a class="header" href="#running-locally">Running Locally</a></h2>
+<p>Build and preview the documentation locally:</p>
+<pre><code class="language-bash"># Install mdBook
+cargo install mdbook
+
+# Build docs
+mdbook build docs
+
+# Serve with live reload
+mdbook serve docs
+</code></pre>
+<p>The built documentation is output to <code>docs/book/</code>.</p>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="../api/tui.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="../reference/security.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <i class="fa fa-angle-left"></i>
                             </a>
 
-                            <a rel="next prefetch" href="../api/errors.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="../reference/contributing.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
 
@@ -311,11 +229,11 @@ pub struct Repo(String);
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="../api/tui.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="../reference/security.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <i class="fa fa-angle-left"></i>
                     </a>
 
-                    <a rel="next prefetch" href="../api/errors.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="../reference/contributing.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
             </nav>

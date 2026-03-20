@@ -61,11 +61,17 @@ towl scan -N --ai -g
 
 ## Interactive Mode (TUI)
 
-With `--ai` (no `-N`), the TUI shows analysis results:
+With `--ai` (no `-N`), a progress bar is displayed while TODOs are being analysed:
+
+```text
+  Analysing TODOs [████████████░░░░░░░░░░░░░░░░░░] 12/30
+```
+
+Once analysis completes, the TUI launches with results:
 
 - **Validity column** -- Each TODO shows `V` (Valid), `I` (Invalid), or `?` (Uncertain)
 - **Colour coding** -- Green for valid, red for invalid, yellow for uncertain
-- **Peek view** -- Press `p` to see the LLM's reasoning below the source code
+- **Peek view** -- Press `p` to see the LLM's reasoning below the source code (text wraps to fit the popup width)
 - **Delete invalid TODOs** -- Select invalid TODOs and press `d` to remove them from source files (with confirmation)
 
 ### Delete Workflow
