@@ -6,7 +6,7 @@ use std::os::unix::fs::PermissionsExt;
 use tempfile::TempDir;
 
 #[rstest]
-fn test_init_existing_config_without_force() {
+fn test_init_existing_config_without_force_merges() {
     let temp_dir = TempDir::new().expect("Failed to create temp directory");
     let config_path = temp_dir.path().join("towl.toml");
 
@@ -17,8 +17,18 @@ fn test_init_existing_config_without_force() {
     cmd.arg("init").arg("--path").arg(&config_path);
 
     cmd.assert()
-        .failure()
-        .stderr(predicates::str::contains("already exists"));
+        .success()
+        .stderr(predicates::str::contains("Initialized config file"));
+
+    let content = fs::read_to_string(&config_path).unwrap();
+    assert!(
+        content.contains("file_extensions"),
+        "Should preserve existing file_extensions"
+    );
+    assert!(
+        content.contains("rate_limit_delay_ms"),
+        "Should add missing fields from defaults"
+    );
 }
 
 #[rstest]

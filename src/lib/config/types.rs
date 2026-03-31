@@ -40,37 +40,26 @@ impl TowlConfig {
         Self::validate_path(path)?;
 
         GitRepoInfo::from_path(".").await?;
-        let config = Self::default();
+
+        let config = if !force && path.exists() {
+            let existing = tokio::fs::read_to_string(path)
+                .await
+                .map_err(|e| TowlConfigError::WriteToFileError(path.to_path_buf(), e))?; // clone: error owns PathBuf
+            toml::from_str::<Self>(&existing).map_err(|e| {
+                TowlConfigError::CouldNotCreateConfig(config::ConfigError::Foreign(Box::new(e)))
+            })?
+        } else {
+            Self::default()
+        };
 
         let toml_string =
             toml::to_string_pretty(&config).map_err(TowlConfigError::UnableToParseToml)?;
 
-        if force {
-            crate::atomic_write(path, toml_string.as_bytes())
-                .await
-                .map_err(|e| {
-                    TowlConfigError::WriteToFileError(path.to_path_buf(), e) // clone: error owns PathBuf
-                })?;
-        } else {
-            use tokio::io::AsyncWriteExt;
-            let mut file = tokio::fs::OpenOptions::new()
-                .write(true)
-                .create_new(true)
-                .open(path)
-                .await
-                .map_err(|e| {
-                    if e.kind() == std::io::ErrorKind::AlreadyExists {
-                        TowlConfigError::ConfigAlreadyExists(path.to_path_buf())
-                    // clone: error owns PathBuf
-                    } else {
-                        TowlConfigError::WriteToFileError(path.to_path_buf(), e)
-                        // clone: error owns PathBuf
-                    }
-                })?;
-            file.write_all(toml_string.as_bytes()).await.map_err(|e| {
+        crate::atomic_write(path, toml_string.as_bytes())
+            .await
+            .map_err(|e| {
                 TowlConfigError::WriteToFileError(path.to_path_buf(), e) // clone: error owns PathBuf
             })?;
-        }
 
         Ok(())
     }
@@ -472,17 +461,26 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_init_force_false_rejects_existing() {
+    async fn test_init_force_false_merges_existing() {
         let temp_dir = tempfile::TempDir::new().unwrap();
         let config_path = temp_dir.path().join("existing.toml");
 
-        std::fs::write(&config_path, "[parsing]").unwrap();
+        std::fs::write(&config_path, "[parsing]\ninclude_context_lines = 42\n").unwrap();
 
         let result = TowlConfig::init(&config_path, false).await;
-        assert!(matches!(
-            result,
-            Err(TowlConfigError::ConfigAlreadyExists(_))
-        ));
+        if result.is_ok() {
+            let loaded = TowlConfig::load(Some(&config_path)).unwrap();
+            assert_eq!(loaded.parsing.include_context_lines, 42);
+            let defaults = TowlConfig::default();
+            assert_eq!(
+                loaded.parsing.file_extensions,
+                defaults.parsing.file_extensions,
+            );
+            assert_eq!(
+                loaded.github.rate_limit_delay_ms,
+                defaults.github.rate_limit_delay_ms,
+            );
+        }
     }
 
     #[test]

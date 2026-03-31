@@ -1,6 +1,6 @@
 [package]
 name = "towl"
-version = "0.3.6"
+version = "0.3.7"
 authors = ["Jason Ridgway-Taylor <jason@glottologist.co.uk>"]
 description = "A fast CLI tool to scan codebases for TODO comments and output them in multiple formats"
 license = "MIT"
@@ -42,6 +42,7 @@ crossterm = "0.28"
 futures = "0.3"
 which = "8"
 backon = "1.5.2"
+url = "2"
 
 [dev-dependencies]
 rstest = "0.18"

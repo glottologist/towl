@@ -123,7 +123,12 @@ impl Processor {
                     line: todo.line_number,
                 }
             })?;
-            lines[line_idx] = format!("{prefix}GH_ISSUE: {}", issue.html_url);
+            let desc = todo.description.trim();
+            if desc.is_empty() {
+                lines[line_idx] = format!("{prefix}GH_ISSUE: {}", issue.html_url);
+            } else {
+                lines[line_idx] = format!("{prefix}GH_ISSUE: {} : {desc}", issue.html_url);
+            }
             replaced += 1;
         }
 
@@ -154,6 +159,7 @@ mod tests {
         line_number: usize,
         column_start: usize,
         original_text: &str,
+        description: &str,
     ) -> TodoComment {
         TestTodoBuilder::new()
             .file_path(path)
@@ -161,6 +167,7 @@ mod tests {
             .column_start(column_start)
             .column_end(original_text.len())
             .original_text(original_text)
+            .description(description)
             .build()
     }
 
@@ -187,7 +194,7 @@ mod tests {
             let file_path = temp_dir.path().join("test.rs");
             std::fs::write(&file_path, &line).unwrap();
 
-            let todo = make_todo(&file_path, 1, column_start, &line);
+            let todo = make_todo(&file_path, 1, column_start, &line, &desc);
             let issue = make_issue(issue_num);
 
             let rt = tokio::runtime::Runtime::new().unwrap();
@@ -211,6 +218,14 @@ mod tests {
                 "URL missing. Got: {:?}",
                 content
             );
+            let trimmed = desc.trim();
+            if !trimmed.is_empty() {
+                prop_assert!(
+                    content.contains(trimmed),
+                    "Description missing. Got: {:?}",
+                    content
+                );
+            }
         }
 
         #[test]
@@ -224,7 +239,7 @@ mod tests {
             let file_path = temp_dir.path().join("test.rs");
             std::fs::write(&file_path, &line).unwrap();
 
-            let todo = make_todo(&file_path, 1, 3, &line);
+            let todo = make_todo(&file_path, 1, 3, &line, &desc);
             let issue = make_issue(issue_num);
             let url = format!("https://github.com/owner/repo/issues/{issue_num}");
 
@@ -234,27 +249,33 @@ mod tests {
             prop_assert_eq!(result.errors.len(), 0);
 
             let content = std::fs::read_to_string(&file_path).unwrap();
-            let expected = format!("// GH_ISSUE: {url}");
+            let trimmed = desc.trim();
+            let expected = if trimmed.is_empty() {
+                format!("// GH_ISSUE: {url}")
+            } else {
+                format!("// GH_ISSUE: {url} : {trimmed}")
+            };
             prop_assert_eq!(content, expected);
         }
     }
 
     #[rstest]
-    #[case("// TODO: fix", 3, "// GH_ISSUE:")]
-    #[case("# TODO: fix", 2, "# GH_ISSUE:")]
-    #[case("/* TODO: fix", 3, "/* GH_ISSUE:")]
-    #[case("* TODO: fix", 2, "* GH_ISSUE:")]
+    #[case("// TODO: fix", 3, "// GH_ISSUE:", "fix")]
+    #[case("# TODO: fix", 2, "# GH_ISSUE:", "fix")]
+    #[case("/* TODO: fix", 3, "/* GH_ISSUE:", "fix")]
+    #[case("* TODO: fix", 2, "* GH_ISSUE:", "fix")]
     #[tokio::test]
     async fn test_comment_prefix_preserved(
         #[case] original: &str,
         #[case] column_start: usize,
         #[case] expected_start: &str,
+        #[case] desc: &str,
     ) {
         let temp_dir = tempfile::TempDir::new().unwrap();
         let file_path = temp_dir.path().join("test.rs");
         std::fs::write(&file_path, original).unwrap();
 
-        let todo = make_todo(&file_path, 1, column_start, original);
+        let todo = make_todo(&file_path, 1, column_start, original, desc);
         let issue = make_issue(42);
 
         let result = Processor::replace_todos(temp_dir.path(), &[(todo, issue)]).await;
@@ -268,6 +289,10 @@ mod tests {
             "Expected start: {expected_start}, got: {content}"
         );
         assert!(content.contains("github.com/owner/repo/issues/42"));
+        assert!(
+            content.ends_with(&format!(" : {desc}")),
+            "Description missing. Got: {content}"
+        );
     }
 
     #[rstest]
@@ -283,8 +308,9 @@ mod tests {
         let mut pairs = Vec::with_capacity(count);
 
         for i in 0..count {
-            let line = format!("// TODO: fix item {i}");
-            let todo = make_todo(&file_path, i + 1, 3, &line);
+            let desc = format!("fix item {i}");
+            let line = format!("// TODO: {desc}");
+            let todo = make_todo(&file_path, i + 1, 3, &line, &desc);
             let issue_num = u64::try_from(i + 1).unwrap();
             let issue = make_issue(issue_num);
             lines.push(line);
@@ -324,7 +350,7 @@ mod tests {
         let file_path = temp_dir.path().join("test.rs");
         std::fs::write(&file_path, "// single line").unwrap();
 
-        let todo = make_todo(&file_path, 99, 3, "// TODO: fix");
+        let todo = make_todo(&file_path, 99, 3, "// TODO: fix", "fix");
         let issue = make_issue(1);
 
         let result = Processor::replace_todos(temp_dir.path(), &[(todo, issue)]).await;
@@ -341,6 +367,7 @@ mod tests {
             1,
             3,
             "// TODO: fix",
+            "fix",
         );
         let issue = make_issue(1);
 
@@ -356,7 +383,7 @@ mod tests {
         let file_path = temp_dir.path().join("test.rs");
         std::fs::write(&file_path, "short").unwrap();
 
-        let todo = make_todo(&file_path, 1, 100, "// TODO: fix");
+        let todo = make_todo(&file_path, 1, 100, "// TODO: fix", "fix");
         let issue = make_issue(1);
 
         let result = Processor::replace_todos(temp_dir.path(), &[(todo, issue)]).await;
@@ -372,7 +399,7 @@ mod tests {
         let file_path = other_dir.path().join("test.rs");
         std::fs::write(&file_path, "// TODO: fix").unwrap();
 
-        let todo = make_todo(&file_path, 1, 3, "// TODO: fix");
+        let todo = make_todo(&file_path, 1, 3, "// TODO: fix", "fix");
         let issue = make_issue(1);
 
         let result = Processor::replace_todos(root_dir.path(), &[(todo, issue)]).await;
@@ -390,8 +417,8 @@ mod tests {
         std::fs::write(&file_a, "// TODO: fix a").unwrap();
         std::fs::write(&file_b, "# TODO: fix b").unwrap();
 
-        let todo_a = make_todo(&file_a, 1, 3, "// TODO: fix a");
-        let todo_b = make_todo(&file_b, 1, 2, "# TODO: fix b");
+        let todo_a = make_todo(&file_a, 1, 3, "// TODO: fix a", "fix a");
+        let todo_b = make_todo(&file_b, 1, 2, "# TODO: fix b", "fix b");
         let issue_a = make_issue(1);
         let issue_b = make_issue(2);
 

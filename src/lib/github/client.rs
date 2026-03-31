@@ -1,8 +1,10 @@
 use std::collections::HashSet;
+use std::path::Path;
 
 use octocrab::Octocrab;
 use secrecy::ExposeSecret;
 use tracing::{debug, info, warn};
+use url::Url;
 
 use crate::comment::todo::TodoComment;
 use crate::config::GitHubConfig;
@@ -22,6 +24,7 @@ pub struct GitHubClient {
     client: Octocrab,
     owner: String,
     repo: String,
+    default_branch: String,
     existing_issue_titles: HashSet<String>,
     existing_todo_ids: HashSet<String>,
     rate_limit_delay_ms: u64,
@@ -52,6 +55,7 @@ impl GitHubClient {
             client,
             owner: config.owner.to_string(), // clone: owned String for struct field
             repo: config.repo.to_string(),   // clone: owned String for struct field
+            default_branch: "main".to_string(), // clone: default until fetched from API
             existing_issue_titles: HashSet::new(),
             existing_todo_ids: HashSet::new(),
             rate_limit_delay_ms: config.rate_limit_delay_ms,
@@ -63,6 +67,8 @@ impl GitHubClient {
     /// # Errors
     /// Returns `TowlGitHubError` if the API call fails.
     pub async fn load_existing_issues(&mut self) -> Result<(), TowlGitHubError> {
+        self.fetch_default_branch().await;
+
         for page in 1..=MAX_PAGES {
             let has_more = self.load_issues_page(page).await?;
             if !has_more {
@@ -71,12 +77,30 @@ impl GitHubClient {
         }
 
         info!(
-            "Loaded {} existing titles, {} TODO IDs",
+            "Loaded {} existing titles, {} TODO IDs (default branch: {})",
             self.existing_issue_titles.len(),
-            self.existing_todo_ids.len()
+            self.existing_todo_ids.len(),
+            self.default_branch,
         );
 
         Ok(())
+    }
+
+    async fn fetch_default_branch(&mut self) {
+        match self.client.repos(&self.owner, &self.repo).get().await {
+            Ok(repo) => {
+                if let Some(branch) = repo.default_branch {
+                    debug!("Detected default branch: {branch}");
+                    self.default_branch = branch;
+                }
+            }
+            Err(e) => {
+                warn!(
+                    "Could not fetch default branch, using '{}': {e}",
+                    self.default_branch
+                );
+            }
+        }
     }
 
     async fn load_issues_page(&mut self, page: u32) -> Result<bool, TowlGitHubError> {
@@ -151,7 +175,8 @@ impl GitHubClient {
             return Err(TowlGitHubError::IssueAlreadyExists { title });
         }
 
-        let body = Self::generate_issue_body(todo).map_err(|e| TowlGitHubError::ApiError {
+        let body = Self::generate_issue_body(todo, &self.owner, &self.repo, &self.default_branch)
+            .map_err(|e| TowlGitHubError::ApiError {
             message: format!("Failed to format issue body: {e}"),
             source: None,
         })?;
@@ -187,25 +212,47 @@ impl GitHubClient {
         }
     }
 
-    fn generate_issue_body(todo: &TodoComment) -> Result<String, std::fmt::Error> {
+    fn generate_issue_body(
+        todo: &TodoComment,
+        owner: &str,
+        repo: &str,
+        default_branch: &str,
+    ) -> Result<String, std::fmt::Error> {
         use std::fmt::Write;
         let mut body = String::new();
         let file_display = todo.file_path.display().to_string(); // clone: owned String for format! interpolation
+
+        let location_line = if let Some(url) = build_file_url(
+            owner,
+            repo,
+            default_branch,
+            &todo.file_path,
+            todo.line_number,
+        ) {
+            format!(
+                "**Location:** [`{file_display}:{line}`]({url}) (columns {col_start}-{col_end})",
+                line = todo.line_number,
+                col_start = todo.column_start,
+                col_end = todo.column_end,
+            )
+        } else {
+            format!(
+                "**File:** {file}\n**Line:** {line}\n**Column:** {col_start}-{col_end}",
+                file = sanitize_for_inline_code(&file_display),
+                line = todo.line_number,
+                col_start = todo.column_start,
+                col_end = todo.column_end,
+            )
+        };
 
         write!(
             body,
             "## TODO Details\n\n\
              **Type:** {}\n\
-             **File:** {}\n\
-             **Line:** {}\n\
-             **Column:** {}-{}\n\n\
+             {location_line}\n\n\
              ## Description\n\n\
              {}\n",
             todo.todo_type,
-            sanitize_for_inline_code(&file_display),
-            todo.line_number,
-            todo.column_start,
-            todo.column_end,
             escape_markdown(todo.description.trim()),
         )?;
 
@@ -316,6 +363,34 @@ impl GitHubClient {
     }
 }
 
+fn build_file_url(
+    owner: &str,
+    repo: &str,
+    default_branch: &str,
+    file_path: &Path,
+    line_number: usize,
+) -> Option<Url> {
+    let path_str = file_path.display().to_string();
+    let normalized = path_str.strip_prefix("./").unwrap_or(&path_str);
+
+    let mut url = Url::parse("https://github.com").ok()?;
+    {
+        let mut segments = url.path_segments_mut().ok()?;
+        segments.push(owner);
+        segments.push(repo);
+        segments.push("blob");
+        segments.push(default_branch);
+        for segment in normalized.split('/') {
+            if !segment.is_empty() {
+                segments.push(segment);
+            }
+        }
+    }
+    let fragment = format!("L{line_number}");
+    url.set_fragment(Some(&fragment));
+    Some(url)
+}
+
 fn max_backtick_run(s: &str) -> usize {
     s.bytes()
         .fold((0_usize, 0_usize), |(max, cur), b| {
@@ -381,6 +456,10 @@ mod tests {
     use proptest::prelude::*;
     use rstest::rstest;
 
+    const TEST_OWNER: &str = "testowner";
+    const TEST_REPO: &str = "testrepo";
+    const TEST_BRANCH: &str = "main";
+
     fn make_todo(desc: &str, todo_type: TodoType) -> TodoComment {
         TestTodoBuilder::new()
             .description(desc)
@@ -394,14 +473,21 @@ mod tests {
             .build()
     }
 
+    fn body_for(todo: &TodoComment) -> String {
+        GitHubClient::generate_issue_body(todo, TEST_OWNER, TEST_REPO, TEST_BRANCH).unwrap()
+    }
+
     #[test]
     fn test_generate_body_contains_all_sections() {
         let todo = make_todo("Fix the cache", TodoType::Todo);
-        let body = GitHubClient::generate_issue_body(&todo).unwrap();
+        let body = body_for(&todo);
 
         assert!(body.contains("## TODO Details"));
         assert!(body.contains("**Type:** TODO"));
-        assert!(body.contains("**File:** `src/main.rs`"), "body: {body}");
+        assert!(
+            body.contains("**Location:** [`src/main.rs:10`](https://github.com/testowner/testrepo/blob/main/src/main.rs#L10)"),
+            "body: {body}"
+        );
         assert!(body.contains("## Function Context"));
         assert!(body.contains("*TODO ID: src/main.rs_L10*"));
     }
@@ -418,7 +504,7 @@ mod tests {
             "analysis" => {} // analysis is already None by default
             _ => return,
         }
-        let body = GitHubClient::generate_issue_body(&todo).unwrap();
+        let body = body_for(&todo);
         assert!(!body.contains(marker));
     }
 
@@ -436,7 +522,7 @@ mod tests {
             confidence: 0.9,
             enrichment: "The caching layer needs to be added".to_string(),
         });
-        let body = GitHubClient::generate_issue_body(&todo).unwrap();
+        let body = body_for(&todo);
         assert!(body.contains("## AI Analysis"));
         assert!(body.contains("Cache implementation is missing"));
         assert!(body.contains("Valid"));
@@ -481,7 +567,7 @@ mod tests {
         ) {
             let mut todo = make_todo(&desc, TodoType::Todo);
             todo.id = id.clone(); // clone: proptest needs owned for assertion
-            let body = GitHubClient::generate_issue_body(&todo).unwrap();
+            let body = body_for(&todo);
             let expected = ["*TODO ID: ", &id, "*"].join("");
             prop_assert!(body.contains(&expected));
         }
@@ -597,5 +683,97 @@ mod tests {
     #[case("has ``` triple", "````\nhas ``` triple\n````")]
     fn test_code_block_fence_length(#[case] input: &str, #[case] expected: &str) {
         assert_eq!(code_block(input), expected);
+    }
+
+    #[test]
+    fn test_build_file_url_basic() {
+        let url = build_file_url("owner", "repo", "main", Path::new("src/lib.rs"), 42).unwrap();
+        assert_eq!(
+            url.as_str(),
+            "https://github.com/owner/repo/blob/main/src/lib.rs#L42"
+        );
+    }
+
+    #[test]
+    fn test_build_file_url_strips_dot_slash() {
+        let url = build_file_url("owner", "repo", "main", Path::new("./src/lib.rs"), 1).unwrap();
+        assert_eq!(
+            url.as_str(),
+            "https://github.com/owner/repo/blob/main/src/lib.rs#L1"
+        );
+    }
+
+    #[test]
+    fn test_build_file_url_nested_path() {
+        let url = build_file_url(
+            "org",
+            "project",
+            "develop",
+            Path::new("crates/core/src/parser.rs"),
+            100,
+        )
+        .unwrap();
+        assert_eq!(
+            url.as_str(),
+            "https://github.com/org/project/blob/develop/crates/core/src/parser.rs#L100"
+        );
+    }
+
+    proptest! {
+        #[test]
+        fn prop_build_file_url_always_produces_valid_url(
+            owner in "[a-zA-Z0-9_-]{1,30}",
+            repo in "[a-zA-Z0-9_-]{1,30}",
+            branch in "[a-zA-Z0-9_.-]{1,30}",
+            path_segments in prop::collection::vec("[a-zA-Z0-9_-]{1,20}", 1..5),
+            line in 1usize..10000
+        ) {
+            let file_path = path_segments.join("/");
+            let url = build_file_url(&owner, &repo, &branch, Path::new(&file_path), line);
+            prop_assert!(url.is_some());
+            let url = url.unwrap();
+            prop_assert!(url.as_str().starts_with("https://github.com/"));
+            prop_assert!(url.fragment().is_some());
+            let fragment = url.fragment().unwrap();
+            prop_assert!(fragment.starts_with('L'));
+        }
+
+        #[test]
+        fn prop_build_file_url_contains_all_components(
+            owner in "[a-zA-Z0-9]{1,20}",
+            repo in "[a-zA-Z0-9]{1,20}",
+            branch in "[a-zA-Z0-9]{1,20}",
+            filename in "[a-zA-Z0-9]{1,20}\\.rs",
+            line in 1usize..10000
+        ) {
+            let url = build_file_url(&owner, &repo, &branch, Path::new(&filename), line).unwrap();
+            let url_str = url.as_str();
+            let expected_fragment = format!("#L{line}");
+            prop_assert!(url_str.contains(&owner));
+            prop_assert!(url_str.contains(&repo));
+            prop_assert!(url_str.contains(&branch));
+            prop_assert!(url_str.contains(&filename));
+            prop_assert!(url_str.contains(&expected_fragment));
+        }
+
+        #[test]
+        fn prop_body_location_contains_clickable_link(
+            desc in "[a-zA-Z0-9 ]{1,50}",
+            todo_type in prop::sample::select(vec![
+                TodoType::Todo, TodoType::Fixme, TodoType::Hack,
+                TodoType::Note, TodoType::Bug
+            ])
+        ) {
+            let todo = make_todo(&desc, todo_type);
+            let body = body_for(&todo);
+            prop_assert!(
+                body.contains("**Location:**"),
+                "Body should contain Location field: {body}"
+            );
+            prop_assert!(
+                body.contains("https://github.com/testowner/testrepo/blob/main/src/main.rs#L10"),
+                "Body should contain GitHub blob URL: {body}"
+            );
+        }
     }
 }
