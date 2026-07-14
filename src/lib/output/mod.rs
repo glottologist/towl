@@ -22,10 +22,13 @@ use writer::{
     WriterImpl,
 };
 
-use crate::{cli::OutputFormat, comment::todo::TodoComment};
+use crate::{
+    cli::OutputFormat,
+    comment::todo::{TodoComment, TodoType},
+};
 use std::{collections::HashMap, path::PathBuf};
 
-const TERMINAL_FORMAT_FILE_ERROR: &str = "Terminal/Table format cannot write to file";
+const TERMINAL_FORMAT_FILE_ERROR: &str = "Terminal format cannot write to file";
 
 /// Handles formatting and writing TODO comments to various output destinations.
 ///
@@ -70,10 +73,10 @@ impl Output {
         output_path: Option<PathBuf>,
     ) -> Result<Self, TowlOutputError> {
         let (formatter, writer) = match output_format {
-            OutputFormat::Terminal | OutputFormat::Table => {
+            OutputFormat::Terminal => {
                 if output_path.is_some() {
                     return Err(TowlOutputError::InvalidOutputPath(
-                        TERMINAL_FORMAT_FILE_ERROR.to_string(), // clone: &str → owned String for error
+                        TERMINAL_FORMAT_FILE_ERROR.to_string(),
                     ));
                 }
                 (
@@ -141,15 +144,24 @@ impl Output {
         )
     }
 
-    pub(crate) fn group_todos_by_type(
-        todos: &[TodoComment],
-    ) -> HashMap<&crate::comment::todo::TodoType, Vec<&TodoComment>> {
-        let mut todo_map: HashMap<&crate::comment::todo::TodoType, Vec<&TodoComment>> =
-            HashMap::new();
+    pub(crate) fn group_todos_by_type(todos: &[TodoComment]) -> Vec<(TodoType, Vec<&TodoComment>)> {
+        let mut todo_map: HashMap<TodoType, Vec<&TodoComment>> = HashMap::new();
         for todo in todos {
-            todo_map.entry(&todo.todo_type).or_default().push(todo);
+            todo_map.entry(todo.todo_type).or_default().push(todo);
         }
-        todo_map
+
+        // HashMap grouping and concurrent-scan arrival order are both
+        // unordered; sort so identical scans produce identical output bytes
+        let mut groups: Vec<_> = todo_map.into_iter().collect();
+        groups.sort_by_key(|&(todo_type, _)| todo_type.priority());
+        for (_, group) in &mut groups {
+            group.sort_by(|a, b| {
+                a.file_path
+                    .cmp(&b.file_path)
+                    .then(a.line_number.cmp(&b.line_number))
+            });
+        }
+        groups
     }
 
     /// Saves TODO comments using the configured formatter and writer.
@@ -174,11 +186,11 @@ impl Output {
     /// # }
     /// ```
     pub async fn save(&self, todos: &[TodoComment]) -> Result<(), TowlOutputError> {
-        let grouped_todos = Self::group_todos_by_type(todos);
+        let groups = Self::group_todos_by_type(todos);
         let total_count = todos.len();
         let formatted = self
             .formatter
-            .format(&grouped_todos, total_count)
+            .format(&groups, total_count)
             .map_err(TowlOutputError::UnableToFormatTodos)?;
         self.writer
             .write(formatted)
@@ -197,13 +209,11 @@ mod tests {
 
     #[rstest]
     #[case(OutputFormat::Terminal, None, true)]
-    #[case(OutputFormat::Table, None, true)]
     #[case(OutputFormat::Json, Some("todos.json"), true)]
     #[case(OutputFormat::Csv, Some("todos.csv"), true)]
     #[case(OutputFormat::Toml, Some("todos.toml"), true)]
     #[case(OutputFormat::Markdown, Some("todos.md"), true)]
     #[case(OutputFormat::Terminal, Some("file.txt"), false)]
-    #[case(OutputFormat::Table, Some("file.txt"), false)]
     #[case(OutputFormat::Json, None, false)]
     #[case(OutputFormat::Csv, None, false)]
     #[case(OutputFormat::Toml, None, false)]
@@ -269,6 +279,51 @@ mod tests {
             .collect();
         let grouped = Output::group_todos_by_type(&todos);
         assert_eq!(grouped.len(), expected_groups);
+    }
+
+    #[test]
+    fn test_grouping_sorted_by_priority_then_location() {
+        use crate::comment::todo::test_support::TestTodoBuilder;
+        use crate::output::formatter::formatters::json::JsonFormatter;
+        use crate::output::formatter::Formatter;
+
+        let make = |todo_type, file: &str, line| {
+            TestTodoBuilder::new()
+                .todo_type(todo_type)
+                .file_path(file)
+                .line_number(line)
+                .column_start(0)
+                .column_end(1)
+                .build()
+        };
+        let todos = vec![
+            make(TodoType::Note, "b.rs", 5),
+            make(TodoType::Bug, "z.rs", 9),
+            make(TodoType::Note, "a.rs", 7),
+            make(TodoType::Bug, "z.rs", 2),
+        ];
+
+        let groups = Output::group_todos_by_type(&todos);
+
+        let order: Vec<TodoType> = groups.iter().map(|&(t, _)| t).collect();
+        assert_eq!(order, vec![TodoType::Bug, TodoType::Note]);
+        let bug_lines: Vec<usize> = groups[0].1.iter().map(|t| t.line_number).collect();
+        assert_eq!(bug_lines, vec![2, 9]);
+        let note_files: Vec<String> = groups[1]
+            .1
+            .iter()
+            .map(|t| t.file_path.display().to_string())
+            .collect();
+        assert_eq!(note_files, vec!["a.rs", "b.rs"]);
+
+        // identical bytes regardless of input order
+        let reversed: Vec<TodoComment> = todos.iter().rev().cloned().collect();
+        let regrouped = Output::group_todos_by_type(&reversed);
+        let formatter = JsonFormatter;
+        assert_eq!(
+            formatter.format(&groups, todos.len()).unwrap(),
+            formatter.format(&regrouped, todos.len()).unwrap()
+        );
     }
 
     #[tokio::test]

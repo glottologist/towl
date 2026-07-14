@@ -117,6 +117,12 @@ impl Processor {
             }
 
             let line = &lines[line_idx];
+            if line != &todo.original_text {
+                return Err(TowlProcessorError::LineContentChanged {
+                    path: path.to_path_buf(), // clone: owned path for error variant
+                    line: todo.line_number,
+                });
+            }
             let prefix = line.get(..todo.column_start).ok_or_else(|| {
                 TowlProcessorError::CommentPrefixNotFound {
                     path: path.to_path_buf(), // clone: owned path for error variant
@@ -132,9 +138,16 @@ impl Processor {
             replaced += 1;
         }
 
-        let mut new_content = lines.join("\n");
+        // str::lines strips \r; join with the file's own ending so CRLF files
+        // are not silently converted to LF
+        let line_ending = if content.contains("\r\n") {
+            "\r\n"
+        } else {
+            "\n"
+        };
+        let mut new_content = lines.join(line_ending);
         if content.ends_with('\n') {
-            new_content.push('\n');
+            new_content.push_str(line_ending);
         }
 
         crate::atomic_write(&canonical, new_content.as_bytes())
@@ -381,7 +394,7 @@ mod tests {
     async fn test_comment_prefix_not_found() {
         let temp_dir = tempfile::TempDir::new().unwrap();
         let file_path = temp_dir.path().join("test.rs");
-        std::fs::write(&file_path, "short").unwrap();
+        std::fs::write(&file_path, "// TODO: fix").unwrap();
 
         let todo = make_todo(&file_path, 1, 100, "// TODO: fix", "fix");
         let issue = make_issue(1);
@@ -389,7 +402,52 @@ mod tests {
         let result = Processor::replace_todos(temp_dir.path(), &[(todo, issue)]).await;
 
         assert_eq!(result.errors.len(), 1);
+        assert!(matches!(
+            result.errors[0].1,
+            TowlProcessorError::CommentPrefixNotFound { .. }
+        ));
         assert_eq!(result.todos_replaced, 0);
+    }
+
+    #[tokio::test]
+    async fn test_replacement_refuses_changed_line() {
+        let temp_dir = tempfile::TempDir::new().unwrap();
+        let file_path = temp_dir.path().join("test.rs");
+        std::fs::write(&file_path, "// something else entirely").unwrap();
+
+        let todo = make_todo(&file_path, 1, 3, "// TODO: fix", "fix");
+        let issue = make_issue(1);
+
+        let result = Processor::replace_todos(temp_dir.path(), &[(todo, issue)]).await;
+
+        assert_eq!(result.errors.len(), 1);
+        assert!(matches!(
+            result.errors[0].1,
+            TowlProcessorError::LineContentChanged { line: 1, .. }
+        ));
+        assert_eq!(result.todos_replaced, 0);
+        let content = std::fs::read_to_string(&file_path).unwrap();
+        assert_eq!(content, "// something else entirely");
+    }
+
+    #[tokio::test]
+    async fn test_replacement_preserves_crlf() {
+        let temp_dir = tempfile::TempDir::new().unwrap();
+        let file_path = temp_dir.path().join("test.rs");
+        std::fs::write(&file_path, "// TODO: fix\r\nfn main() {}\r\n").unwrap();
+
+        let todo = make_todo(&file_path, 1, 3, "// TODO: fix", "fix");
+        let issue = make_issue(7);
+
+        let result = Processor::replace_todos(temp_dir.path(), &[(todo, issue)]).await;
+
+        assert_eq!(result.errors.len(), 0);
+        assert_eq!(result.todos_replaced, 1);
+        let content = std::fs::read_to_string(&file_path).unwrap();
+        assert_eq!(
+            content,
+            "// GH_ISSUE: https://github.com/owner/repo/issues/7 : fix\r\nfn main() {}\r\n"
+        );
     }
 
     #[tokio::test]

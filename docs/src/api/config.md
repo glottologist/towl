@@ -140,7 +140,7 @@ pub struct LlmConfig {
 | Field | Default |
 |-------|---------|
 | `provider` | `"claude"` |
-| `model` | `"claude-opus-4-6"` |
+| `model` | `"claude-opus-4-8"` |
 | `base_url` | `None` (provider default) |
 | `max_concurrent_analyses` | `5` |
 | `max_analyse_count` | `50` |

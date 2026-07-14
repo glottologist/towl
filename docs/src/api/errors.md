@@ -53,6 +53,7 @@ Errors during configuration loading, initialisation, and validation.
 | `ConfigValueTooLong { field, length, max_length }` | Config string exceeds 512 characters |
 | `ContextLinesOutOfRange { value, min, max }` | Context lines outside 1..=50 |
 | `RateLimitDelayTooHigh { value, max }` | Rate limit delay exceeds maximum |
+| `ConcurrentAnalysesOutOfRange { value, min, max }` | `max_concurrent_analyses` outside 1..=20 |
 
 ## `TowlScannerError`
 
@@ -138,6 +139,7 @@ Errors from replacing TODO comments with issue links in source files.
 | `FileWriteError(PathBuf, io::Error)` | Failed to write modified file |
 | `LineOutOfBounds { path, line, total_lines }` | TODO line number exceeds file length |
 | `CommentPrefixNotFound { path, line }` | Column offset points past end of line |
+| `LineContentChanged { path, line }` | Line no longer matches the scanned TODO text |
 | `PathOutsideRoot { path, root }` | File is outside the repository root |
 | `InvalidIssueUrl { url }` | URL does not start with `https://github.com/` |
 

@@ -22,24 +22,34 @@ fn build_cli_prompt(user_content: &str, system_prompt: &str) -> String {
     format!("{system_prompt}\n\n---\n\n{user_content}")
 }
 
+/// Rejects relative CLI command paths; bare names and absolute paths are allowed.
+fn validate_cli_command(command: &str) -> Result<(), TowlLlmError> {
+    let path = std::path::Path::new(command);
+    let has_separators = path.components().count() > 1;
+    if command.contains("..") || (has_separators && !path.is_absolute()) {
+        return Err(TowlLlmError::ApiError {
+            message: format!("Rejecting relative path in CLI command: {command}"),
+            status: None,
+        });
+    }
+    Ok(())
+}
+
 /// Spawns a CLI agent, pipes the prompt via stdin, and captures stdout.
 ///
 /// # Errors
 /// Returns `TowlLlmError::ApiError` if the process fails to spawn, exits non-zero,
 /// or times out after 120 seconds.
 async fn invoke_cli(command: &str, args: &[String], prompt: &str) -> Result<String, TowlLlmError> {
-    if command.contains("..") || command.contains('/') && !command.starts_with('/') {
-        return Err(TowlLlmError::ApiError {
-            message: format!("Rejecting relative path in CLI command: {command}"),
-            status: None,
-        });
-    }
+    validate_cli_command(command)?;
 
     let mut child = Command::new(command)
         .args(args)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
+        // reap the child if the timeout below drops the wait future
+        .kill_on_drop(true)
         .spawn()
         .map_err(|e| TowlLlmError::ApiError {
             message: format!("Failed to run {command}: {e}"),
@@ -102,7 +112,7 @@ impl ClaudeCodeProvider {
                 || {
                     CLAUDE_CODE_DEFAULT_ARGS
                         .iter()
-                        .map(|s| (*s).to_string()) // clone: &str -> owned String for Vec
+                        .map(|s| (*s).to_string())
                         .collect()
                 },
                 <[String]>::to_vec,
@@ -137,10 +147,10 @@ fn extract_claude_code_result(output: &str) -> String {
     let trimmed = output.trim();
     if let Ok(json) = serde_json::from_str::<serde_json::Value>(trimmed) {
         if let Some(result) = json.get("result").and_then(|r| r.as_str()) {
-            return result.to_string(); // clone: &str -> owned String for return
+            return result.to_string();
         }
     }
-    trimmed.to_string() // clone: &str -> owned String for return
+    trimmed.to_string()
 }
 
 const CODEX_COMMAND: &str = "codex";
@@ -161,7 +171,7 @@ impl CodexProvider {
                 || {
                     CODEX_DEFAULT_ARGS
                         .iter()
-                        .map(|s| (*s).to_string()) // clone: &str -> owned String for Vec
+                        .map(|s| (*s).to_string())
                         .collect()
                 },
                 <[String]>::to_vec,
@@ -184,10 +194,7 @@ impl CodexProvider {
         debug!(command = %self.command, "Invoking Codex CLI");
         let text = invoke_cli(&self.command, &self.args, &prompt).await?;
 
-        Ok((
-            text.trim().to_string(), // clone: &str -> owned String for return
-            LlmUsage::default(),
-        ))
+        Ok((text.trim().to_string(), LlmUsage::default()))
     }
 }
 
@@ -236,6 +243,17 @@ mod tests {
     #[case("definitely_not_a_real_command_12345", false)]
     fn test_command_exists(#[case] command: &str, #[case] expected: bool) {
         assert_eq!(command_exists(command), expected);
+    }
+
+    #[rstest]
+    #[case("claude", true)]
+    #[case("/usr/local/bin/claude", true)]
+    #[case("../evil", false)]
+    #[case("dir/evil", false)]
+    #[case("./evil", false)]
+    #[case("/abs/../evil", false)]
+    fn test_validate_cli_command(#[case] command: &str, #[case] accepted: bool) {
+        assert_eq!(validate_cli_command(command).is_ok(), accepted);
     }
 
     #[rstest]

@@ -113,7 +113,7 @@ Add a `[llm]` section to `.towl.toml`:
 ```toml
 [llm]
 provider = "claude"                      # "claude" or "openai"
-model = "claude-opus-4-6"             # model identifier
+model = "claude-opus-4-8"             # model identifier
 # base_url = "http://localhost:11434/v1"  # for Ollama/vLLM
 max_concurrent_analyses = 5              # concurrent LLM requests
 max_analyse_count = 50                   # max TODOs to analyse per scan
@@ -126,7 +126,7 @@ max_tokens = 4096                        # LLM response token limit
 |----------|---------|-------------|
 | `TOWL_LLM_API_KEY` | -- | API key (required for `--ai`) |
 | `TOWL_LLM_PROVIDER` | `claude` | `"claude"`, `"openai"`, `"claude-code"`, or `"codex"` |
-| `TOWL_LLM_MODEL` | `claude-opus-4-6` | Model identifier |
+| `TOWL_LLM_MODEL` | `claude-opus-4-8` | Model identifier |
 | `TOWL_LLM_BASE_URL` | Provider default | Custom endpoint URL |
 
 ### Using Claude Code or Codex CLI

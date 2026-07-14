@@ -286,7 +286,7 @@ impl App {
 
     pub fn start_creating(&mut self) {
         self.mode = AppMode::Creating(CreatingState {
-            phase: "Starting...".to_string(), // clone: &str → owned String for struct field
+            phase: "Starting...".to_string(),
             progress: 0,
             total: self.selected.len(),
             errors: Vec::new(),
@@ -309,7 +309,7 @@ impl App {
             return;
         };
         let todo = &self.todos[todo_idx];
-        let file = todo.file_path.display().to_string(); // clone: Display → owned String
+        let file = todo.file_path.display().to_string();
         let todo_line = todo.line_number;
 
         let start = todo.line_number.saturating_sub(PEEK_CONTEXT + 1);
@@ -321,7 +321,7 @@ impl App {
                     .lines()
                     .enumerate()
                     .filter(|&(i, _)| i >= start && i < end)
-                    .map(|(i, line)| (i + 1, line.to_string())) // clone: &str → owned String
+                    .map(|(i, line)| (i + 1, line.to_string()))
                     .collect(),
                 Err(e) => vec![(0, format!("Could not read file: {e}"))],
             },

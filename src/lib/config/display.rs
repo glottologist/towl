@@ -61,22 +61,52 @@ impl fmt::Display for TowlConfig {
             &self.parsing.function_patterns,
             true,
         )?;
-        writeln!(f, "└─ GitHub")?;
-        writeln!(f, "   ├─ Owner: {}", self.github.owner)?;
-        writeln!(f, "   ├─ Repo: {}", self.github.repo)?;
+        writeln!(f, "├─ GitHub")?;
+        writeln!(f, "│  ├─ Owner: {}", self.github.owner)?;
+        writeln!(f, "│  ├─ Repo: {}", self.github.repo)?;
         writeln!(
             f,
-            "   ├─ Token: {}",
+            "│  ├─ Token: {}",
             if self.github.token.expose_secret().is_empty() {
                 "not set"
             } else {
                 "configured"
             }
         )?;
+        writeln!(
+            f,
+            "│  └─ Rate Limit Delay: {}ms",
+            self.github.rate_limit_delay_ms
+        )?;
+        writeln!(f, "└─ LLM")?;
+        writeln!(f, "   ├─ Provider: {}", self.llm.provider)?;
+        writeln!(f, "   ├─ Model: {}", self.llm.model)?;
+        writeln!(
+            f,
+            "   ├─ Base URL: {}",
+            self.llm.base_url.as_deref().unwrap_or("provider default")
+        )?;
+        writeln!(
+            f,
+            "   ├─ API Key: {}",
+            if self.llm.api_key.expose_secret().is_empty() {
+                "not set"
+            } else {
+                "configured"
+            }
+        )?;
+        writeln!(
+            f,
+            "   ├─ Max Concurrent Analyses: {}",
+            self.llm.max_concurrent_analyses
+        )?;
+        writeln!(f, "   ├─ Max Analyse Count: {}", self.llm.max_analyse_count)?;
+        writeln!(f, "   ├─ Max Tokens: {}", self.llm.max_tokens)?;
+        writeln!(f, "   ├─ Max Retries: {}", self.llm.max_retries)?;
         write!(
             f,
-            "   └─ Rate Limit Delay: {}ms",
-            self.github.rate_limit_delay_ms
+            "   └─ Command: {}",
+            self.llm.command.as_deref().unwrap_or("none")
         )
     }
 }

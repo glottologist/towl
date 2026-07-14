@@ -2,6 +2,7 @@ use std::path::Path;
 use std::time::Duration;
 
 use backon::{ExponentialBuilder, Retryable};
+use futures::stream::{self, StreamExt};
 use secrecy::{ExposeSecret, SecretString};
 use tracing::{debug, error, info, warn};
 
@@ -22,10 +23,11 @@ const BRACE_DELIMITED_EXTENSIONS: &[&str] = &[
 
 /// Reads expanded context from a source file for LLM analysis.
 ///
-/// Returns (surrounding_lines, optional_function_body).
+/// Returns `(surrounding_lines, optional_function_body)`.
 /// Reads ~30 lines around `line_number` (15 above, 15 below).
-/// If `function_name` is provided and the file uses brace-delimited blocks,
-/// searches for the function definition and extracts its full body.
+/// If `function_name` is provided — either a bare name or the parser's
+/// `name:line` form — and the file uses brace-delimited blocks, searches for
+/// the function definition and extracts its full body.
 ///
 /// # Errors
 /// Returns `TowlLlmError::IoError` if the file cannot be read.
@@ -34,6 +36,9 @@ pub async fn gather_expanded_context(
     line_number: usize,
     function_name: Option<&str>,
 ) -> Result<(Vec<String>, Option<String>), TowlLlmError> {
+    // function_context arrives as "name:line[ (below)]"; body search needs the bare name
+    let function_name = function_name.and_then(|name| name.split(':').next());
+
     let content = tokio::fs::read_to_string(path)
         .await
         .map_err(|e| TowlLlmError::IoError {
@@ -45,10 +50,9 @@ pub async fn gather_expanded_context(
 
     let start = line_number.saturating_sub(EXPANDED_CONTEXT_RADIUS + 1);
     let end = (line_number + EXPANDED_CONTEXT_RADIUS).min(total);
-    let expanded: Vec<String> = lines[start..end]
-        .iter()
-        .map(|l| (*l).to_string()) // clone: &str -> owned String for Vec
-        .collect();
+    // the file may have shrunk since the scan; clamp so the slice cannot invert
+    let start = start.min(end);
+    let expanded: Vec<String> = lines[start..end].iter().map(|l| (*l).to_string()).collect();
 
     let is_brace_lang = path
         .extension()
@@ -172,10 +176,24 @@ async fn analyse_single_todo(
     Ok(validity)
 }
 
+fn tally_result(summary: &mut AnalysisSummary, file: &str, result: Result<Validity, TowlLlmError>) {
+    match result {
+        Ok(Validity::Valid) => summary.valid_count += 1,
+        Ok(Validity::Invalid) => summary.invalid_count += 1,
+        Ok(Validity::Uncertain) => summary.uncertain_count += 1,
+        Err(e) => {
+            error!(file = %file, "LLM analysis failed: {e}");
+            summary.error_count += 1;
+        }
+    }
+}
+
 /// Analyses TODOs using an LLM, attaching results to each `TodoComment`.
 ///
 /// Respects `config.max_analyse_count` (hard cap). TODOs beyond the cap are skipped.
-/// Calls `on_progress(completed, total)` after each TODO is analysed.
+/// Analyses run concurrently, bounded by `config.max_concurrent_analyses`.
+/// Calls `on_progress(completed, total)` after each TODO is analysed; completion
+/// order is not the input order.
 ///
 /// # Errors
 /// Returns `TowlLlmError::NotConfigured` if the API key is empty for API providers.
@@ -190,7 +208,6 @@ pub async fn analyse_todos(
     if !provider.is_cli_provider() && config.api_key.expose_secret().is_empty() {
         return Err(TowlLlmError::NotConfigured);
     }
-    let api_key = config.api_key.clone(); // clone: SecretString for analysis calls
 
     let count = todos.len().min(config.max_analyse_count);
     if todos.len() > config.max_analyse_count {
@@ -208,23 +225,24 @@ pub async fn analyse_todos(
     );
 
     let mut summary = AnalysisSummary::default();
+    let provider = &provider;
+    let api_key = &config.api_key;
+    let max_retries = config.max_retries;
 
-    for (i, todo) in todos.iter_mut().take(count).enumerate() {
-        match analyse_single_todo(todo, &provider, &api_key, config.max_retries).await {
-            Ok(validity) => match validity {
-                Validity::Valid => summary.valid_count += 1,
-                Validity::Invalid => summary.invalid_count += 1,
-                Validity::Uncertain => summary.uncertain_count += 1,
-            },
-            Err(e) => {
-                error!(
-                    file = %todo.file_path.display(),
-                    "LLM analysis failed: {e}"
-                );
-                summary.error_count += 1;
-            }
-        }
-        on_progress(i + 1, count);
+    let mut results = stream::iter(todos.iter_mut().take(count))
+        .map(|todo| async move {
+            let file = todo.file_path.display().to_string(); // clone: owned for reporting after the mutable borrow ends
+            let result = analyse_single_todo(todo, provider, api_key, max_retries).await;
+            (file, result)
+        })
+        // guard against 0 from a hand-built LlmConfig; buffer_unordered(0) never polls
+        .buffer_unordered(config.max_concurrent_analyses.max(1));
+
+    let mut completed = 0usize;
+    while let Some((file, result)) = results.next().await {
+        completed += 1;
+        tally_result(&mut summary, &file, result);
+        on_progress(completed, count);
     }
 
     info!(
@@ -238,13 +256,18 @@ pub async fn analyse_todos(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use proptest::prelude::*;
     use tempfile::TempDir;
 
     #[tokio::test]
     async fn test_gather_expanded_context_window() {
         let temp = TempDir::new().unwrap();
         let file = temp.path().join("test.rs");
-        let content: String = (0..50).map(|i| format!("line {i}\n")).collect();
+        let content = (0..50).fold(String::new(), |mut s, i| {
+            use std::fmt::Write;
+            let _ = writeln!(s, "line {i}");
+            s
+        });
         std::fs::write(&file, &content).unwrap();
 
         let (lines, func_body) = gather_expanded_context(&file, 25, None).await.unwrap();
@@ -265,6 +288,23 @@ mod tests {
             .await
             .unwrap();
         let body = func_body.expect("should find function body");
+        assert!(body.contains("fn target()"));
+        assert!(body.contains("let y = 2;"));
+    }
+
+    #[tokio::test]
+    async fn test_gather_expanded_context_accepts_parser_function_context_format() {
+        let temp = TempDir::new().unwrap();
+        let file = temp.path().join("test.rs");
+        let content =
+            "fn before() {}\n\nfn target() {\n    let x = 1;\n    // TODO: fix\n    let y = 2;\n}\n\nfn after() {}\n";
+        std::fs::write(&file, content).unwrap();
+
+        let (_, func_body) = gather_expanded_context(&file, 5, Some("target:3"))
+            .await
+            .unwrap();
+        let body =
+            func_body.expect("parser-format \"name:line\" context should still find the body");
         assert!(body.contains("fn target()"));
         assert!(body.contains("let y = 2;"));
     }
@@ -329,6 +369,30 @@ mod tests {
             matches!(result, Err(TowlLlmError::NotConfigured)),
             "CLI fallback to API with no key should fail as NotConfigured"
         );
+    }
+
+    proptest! {
+        #[test]
+        fn prop_gather_expanded_context_never_panics(
+            line_number in 1usize..200,
+            file_lines in 0usize..40,
+        ) {
+            let rt = tokio::runtime::Runtime::new().unwrap();
+            rt.block_on(async {
+                let temp = TempDir::new().unwrap();
+                let file = temp.path().join("shrunk.rs");
+                let content = (0..file_lines).fold(String::new(), |mut s, i| {
+                    use std::fmt::Write;
+                    let _ = writeln!(s, "line {i}");
+                    s
+                });
+                std::fs::write(&file, content).unwrap();
+
+                let result = gather_expanded_context(&file, line_number, None).await;
+                prop_assert!(result.is_ok(), "shrunken file must not panic or error");
+                Ok(())
+            })?;
+        }
     }
 
     #[tokio::test]

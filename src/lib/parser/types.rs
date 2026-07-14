@@ -368,11 +368,11 @@ mod tests {
     #[test]
     fn test_pattern_too_long_rejected() {
         let mut config = crate::config::test_parsing_config();
-        config.todo_patterns = vec!["a".repeat(257)];
+        config.todo_patterns = vec!["a".repeat(513)];
         let result = Parser::new(&config);
         assert!(matches!(
             result,
-            Err(TowlParserError::PatternTooLong(257, 256))
+            Err(TowlParserError::PatternTooLong(513, 512))
         ));
     }
 
@@ -557,35 +557,6 @@ mod tests {
                     "TODO without comment prefix should not be detected"
                 );
             }
-        }
-
-        #[test]
-        fn prop_todo_comment_json_roundtrip(
-            id in "[a-z]{10}",
-            line in 1usize..10000,
-            col_start in 0usize..100,
-            col_end in 101usize..200,
-            desc in "[a-zA-Z ]{1,100}"
-        ) {
-            use crate::comment::todo::{TodoComment, TodoType};
-
-            let todo = TodoComment {
-                id,
-                file_path: PathBuf::from("test.rs"),
-                line_number: line,
-                column_start: col_start,
-                column_end: col_end,
-                todo_type: TodoType::Todo,
-                original_text: format!("// TODO: {desc}"),
-                description: desc,
-                context_lines: vec!["context".to_string()],
-                function_context: Some("main".to_string()),
-                analysis: None,
-            };
-
-            let json = serde_json::to_string(&todo).unwrap();
-            let decoded: TodoComment = serde_json::from_str(&json).unwrap();
-            prop_assert_eq!(todo, decoded);
         }
 
         #[test]

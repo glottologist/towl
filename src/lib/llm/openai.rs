@@ -89,24 +89,8 @@ impl OpenAiProvider {
                 status: e.status().map(|s| s.as_u16()),
             })?;
 
-        let status = response.status().as_u16();
-        if status != 200 {
-            let retry_after = response
-                .headers()
-                .get("retry-after")
-                .and_then(|v| v.to_str().ok())
-                .and_then(|v| v.parse::<u64>().ok());
-
-            let body_text = response
-                .text()
-                .await
-                .unwrap_or_else(|_| "unable to read body".to_string());
-
-            return Err(TowlLlmError::classify_http_error(
-                status,
-                &body_text,
-                retry_after,
-            ));
+        if response.status().as_u16() != 200 {
+            return Err(TowlLlmError::from_response(response).await);
         }
 
         let json: serde_json::Value =
@@ -124,7 +108,7 @@ impl OpenAiProvider {
             .ok_or_else(|| TowlLlmError::ParseError {
                 message: "Missing choices[0].message.content in response".to_string(),
             })?
-            .to_string(); // clone: &str -> owned String for return
+            .to_string();
 
         let usage = LlmUsage {
             input_tokens: json["usage"]["prompt_tokens"].as_u64().unwrap_or(0),

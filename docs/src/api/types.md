@@ -118,7 +118,6 @@ Both provide `try_new(impl Into<String>) -> Result<Self, TowlConfigError>` (vali
 
 ```rust
 pub enum OutputFormat {
-    Table,
     Json,
     Csv,
     Toml,
@@ -127,4 +126,4 @@ pub enum OutputFormat {
 }
 ```
 
-CLI-facing enum for selecting output format. `Table` and `Terminal` produce identical output. See [Output](./output.md) for details.
+CLI-facing enum for selecting output format. `Terminal` also accepts the value `table` as an alias. See [Output](./output.md) for details.

@@ -95,6 +95,29 @@ pub(crate) fn escape_markdown(s: &str) -> String {
     out
 }
 
+pub(crate) fn max_backtick_run(s: &str) -> usize {
+    s.bytes()
+        .fold((0_usize, 0_usize), |(max, cur), b| {
+            if b == b'`' {
+                let next = cur.saturating_add(1);
+                (max.max(next), next)
+            } else {
+                (max, 0)
+            }
+        })
+        .0
+}
+
+pub(crate) fn sanitize_for_inline_code(s: &str) -> String {
+    let max_run = max_backtick_run(s);
+    if max_run == 0 {
+        return format!("`{s}`");
+    }
+    let fence_len = max_run.saturating_add(1);
+    let fence: String = "`".repeat(fence_len);
+    format!("{fence} {s} {fence}")
+}
+
 pub(crate) fn contains_path_traversal(path: &Path) -> bool {
     path.components()
         .any(|c| matches!(c, std::path::Component::ParentDir))

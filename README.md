@@ -125,7 +125,7 @@ include_context_lines = 10
 
 [llm]
 provider = "claude"           # "claude", "openai", "claude-code", or "codex"
-model = "claude-opus-4-6"
+model = "claude-opus-4-8"
 ```
 
 GitHub owner and repo are always auto-detected from `git remote get-url origin` at runtime. Set secrets via environment variables (never stored in the config file):

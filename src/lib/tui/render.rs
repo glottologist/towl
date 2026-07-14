@@ -48,10 +48,9 @@ fn draw_header(frame: &mut Frame, area: Rect, app: &App) {
 }
 
 fn draw_filter_bar(frame: &mut Frame, area: Rect, app: &App) {
-    let filter_text = app.filter_type().map_or_else(
-        || " Filter: All".to_string(), // clone: &str → owned String for widget
-        |t| format!(" Filter: {t}"),
-    );
+    let filter_text = app
+        .filter_type()
+        .map_or_else(|| " Filter: All".to_string(), |t| format!(" Filter: {t}"));
 
     let sort_text = match app.sort_field() {
         SortField::File => "File",
@@ -96,13 +95,16 @@ fn build_todo_list_item(todo: &TodoComment, is_selected: bool) -> ListItem {
         todo.todo_type, file_display, todo.line_number, todo.description,
     );
 
-    let style = if let Some(colour) = validity_colour {
-        Style::default().fg(colour)
-    } else if is_selected {
-        Style::default().fg(Color::Green)
-    } else {
-        Style::default()
-    };
+    let style = validity_colour.map_or_else(
+        || {
+            if is_selected {
+                Style::default().fg(Color::Green)
+            } else {
+                Style::default()
+            }
+        },
+        |colour| Style::default().fg(colour),
+    );
 
     ListItem::new(text).style(style)
 }

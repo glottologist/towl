@@ -26,7 +26,7 @@ Creates an output handler by selecting the appropriate formatter and writer.
 
 | Format | Writer | Output path |
 |--------|--------|-------------|
-| `Table` / `Terminal` | `StdoutWriter` | Must be `None` |
+| `Terminal` (alias `table`) | `StdoutWriter` | Must be `None` |
 | `Json` | `FileWriter` | Required, must end in `.json` |
 | `Csv` | `FileWriter` | Required, must end in `.csv` |
 | `Toml` | `FileWriter` | Required, must end in `.toml` |
@@ -38,13 +38,14 @@ Creates an output handler by selecting the appropriate formatter and writer.
 pub async fn save(&self, todos: &[TodoComment]) -> Result<(), TowlOutputError>
 ```
 
-Formats the TODOs and writes them to the destination. TODOs are grouped by type before formatting.
+Formats the TODOs and writes them to the destination. TODOs are grouped by
+type and sorted (by type priority, then file path and line number) before
+formatting, so identical scans produce byte-identical output.
 
 ## `OutputFormat`
 
 ```rust
 pub enum OutputFormat {
-    Table,
     Json,
     Csv,
     Toml,
@@ -53,7 +54,8 @@ pub enum OutputFormat {
 }
 ```
 
-Used as a CLI argument via `clap::ValueEnum`. `Table` and `Terminal` are treated identically.
+Used as a CLI argument via `clap::ValueEnum`. `Terminal` also accepts the
+value `table` as an alias.
 
 ## Formatter Dispatch
 

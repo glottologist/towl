@@ -2,13 +2,35 @@ use std::path::Path;
 
 use super::error::TowlConfigError;
 use super::newtypes::MAX_CONFIG_STRING_LENGTH;
-use super::types::{GitHubConfig, ParsingConfig, TowlConfig};
+use super::types::{GitHubConfig, LlmConfig, ParsingConfig, TowlConfig};
 use crate::{MAX_CONTEXT_LINES, MIN_CONTEXT_LINES};
 
 const MAX_CONFIG_PATTERNS: usize = 100;
 pub(super) const MAX_RATE_LIMIT_DELAY_MS: u64 = 60_000;
+const MIN_CONCURRENT_ANALYSES: usize = 1;
+const MAX_CONCURRENT_ANALYSES: usize = 20;
 
 impl TowlConfig {
+    pub(crate) fn validate(config: &Self) -> Result<(), TowlConfigError> {
+        Self::validate_pattern_counts(&config.parsing)?;
+        Self::validate_string_lengths(&config.parsing)?;
+        Self::validate_context_lines(&config.parsing)?;
+        Self::validate_rate_limit_delay(&config.github)?;
+        Self::validate_llm(&config.llm)
+    }
+
+    pub(crate) const fn validate_llm(llm: &LlmConfig) -> Result<(), TowlConfigError> {
+        if llm.max_concurrent_analyses < MIN_CONCURRENT_ANALYSES
+            || llm.max_concurrent_analyses > MAX_CONCURRENT_ANALYSES
+        {
+            return Err(TowlConfigError::ConcurrentAnalysesOutOfRange {
+                value: llm.max_concurrent_analyses,
+                min: MIN_CONCURRENT_ANALYSES,
+                max: MAX_CONCURRENT_ANALYSES,
+            });
+        }
+        Ok(())
+    }
     pub(crate) fn validate_path(path: &Path) -> Result<(), TowlConfigError> {
         if crate::contains_path_traversal(path) {
             let owned = path.to_path_buf(); // clone: error owns PathBuf
@@ -20,7 +42,7 @@ impl TowlConfig {
     pub(crate) fn check_string_length(field: &str, value: &str) -> Result<(), TowlConfigError> {
         if value.len() > MAX_CONFIG_STRING_LENGTH {
             return Err(TowlConfigError::ConfigValueTooLong {
-                field: field.to_string(), // clone: error owns field name
+                field: field.to_string(),
                 length: value.len(),
                 max_length: MAX_CONFIG_STRING_LENGTH,
             });
@@ -84,7 +106,7 @@ impl TowlConfig {
         for &(field, count) in checks {
             if count > MAX_CONFIG_PATTERNS {
                 return Err(TowlConfigError::TooManyConfigPatterns {
-                    field: field.to_string(), // clone: error owns field name
+                    field: field.to_string(),
                     count,
                     max_allowed: MAX_CONFIG_PATTERNS,
                 });

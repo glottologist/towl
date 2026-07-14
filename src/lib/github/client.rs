@@ -8,6 +8,7 @@ use url::Url;
 
 use crate::comment::todo::TodoComment;
 use crate::config::GitHubConfig;
+use crate::{escape_markdown, max_backtick_run, sanitize_for_inline_code};
 
 use super::error::TowlGitHubError;
 use super::types::CreatedIssue;
@@ -44,18 +45,18 @@ impl GitHubClient {
 
         let client = Octocrab::builder()
             // SECURITY: Single exposure point for GitHub token from SecretString
-            .personal_token(token.to_string()) // clone: SecretString expose for API auth
+            .personal_token(token.to_string())
             .build()
             .map_err(|e| TowlGitHubError::ApiError {
-                message: e.to_string(), // clone: owned String for error variant
+                message: e.to_string(),
                 source: Some(e),
             })?;
 
         Ok(Self {
             client,
-            owner: config.owner.to_string(), // clone: owned String for struct field
-            repo: config.repo.to_string(),   // clone: owned String for struct field
-            default_branch: "main".to_string(), // clone: default until fetched from API
+            owner: config.owner.to_string(),
+            repo: config.repo.to_string(),
+            default_branch: "main".to_string(),
             existing_issue_titles: HashSet::new(),
             existing_todo_ids: HashSet::new(),
             rate_limit_delay_ms: config.rate_limit_delay_ms,
@@ -143,6 +144,11 @@ impl GitHubClient {
     }
 
     fn record_existing_issue(&mut self, issue: &octocrab::models::issues::Issue) {
+        // the /issues endpoint also returns pull requests; a PR title must not
+        // suppress issue creation
+        if issue.pull_request.is_some() {
+            return;
+        }
         self.existing_issue_titles.insert(issue.title.clone()); // clone: HashSet needs owned String
         if let Some(ref body) = issue.body {
             if let Some(todo_id) = Self::extract_todo_id(body) {
@@ -184,7 +190,7 @@ impl GitHubClient {
 
         let issue = self.create_issue_with_retry(&title, &body, label).await?;
 
-        let html_url = issue.html_url.to_string(); // clone: Url → owned String for CreatedIssue
+        let html_url = issue.html_url.to_string();
 
         self.existing_issue_titles.insert(title.clone()); // clone: insert needs owned, title reused below
         self.existing_todo_ids.insert(todo.id.clone()); // clone: insert needs owned String
@@ -220,30 +226,34 @@ impl GitHubClient {
     ) -> Result<String, std::fmt::Error> {
         use std::fmt::Write;
         let mut body = String::new();
-        let file_display = todo.file_path.display().to_string(); // clone: owned String for format! interpolation
+        let file_display = todo.file_path.display().to_string();
 
-        let location_line = if let Some(url) = build_file_url(
+        let location_line = build_file_url(
             owner,
             repo,
             default_branch,
             &todo.file_path,
             todo.line_number,
-        ) {
-            format!(
-                "**Location:** [`{file_display}:{line}`]({url}) (columns {col_start}-{col_end})",
-                line = todo.line_number,
-                col_start = todo.column_start,
-                col_end = todo.column_end,
-            )
-        } else {
-            format!(
-                "**File:** {file}\n**Line:** {line}\n**Column:** {col_start}-{col_end}",
-                file = sanitize_for_inline_code(&file_display),
-                line = todo.line_number,
-                col_start = todo.column_start,
-                col_end = todo.column_end,
-            )
-        };
+        )
+        .map_or_else(
+            || {
+                format!(
+                    "**File:** {file}\n**Line:** {line}\n**Column:** {col_start}-{col_end}",
+                    file = sanitize_for_inline_code(&file_display),
+                    line = todo.line_number,
+                    col_start = todo.column_start,
+                    col_end = todo.column_end,
+                )
+            },
+            |url| {
+                format!(
+                    "**Location:** [`{file_display}:{line}`]({url}) (columns {col_start}-{col_end})",
+                    line = todo.line_number,
+                    col_start = todo.column_start,
+                    col_end = todo.column_end,
+                )
+            },
+        );
 
         write!(
             body,
@@ -313,7 +323,7 @@ impl GitHubClient {
         if id.is_empty() {
             None
         } else {
-            Some(id.to_string()) // clone: owned String from borrowed slice
+            Some(id.to_string())
         }
     }
 
@@ -331,7 +341,7 @@ impl GitHubClient {
                 .issues(&self.owner, &self.repo)
                 .create(title)
                 .body(body)
-                .labels(vec![label.to_string()]) // clone: API requires owned String
+                .labels(vec![label.to_string()])
                 .send()
                 .await
             {
@@ -370,9 +380,6 @@ fn build_file_url(
     file_path: &Path,
     line_number: usize,
 ) -> Option<Url> {
-    let path_str = file_path.display().to_string();
-    let normalized = path_str.strip_prefix("./").unwrap_or(&path_str);
-
     let mut url = Url::parse("https://github.com").ok()?;
     {
         let mut segments = url.path_segments_mut().ok()?;
@@ -380,40 +387,17 @@ fn build_file_url(
         segments.push(repo);
         segments.push("blob");
         segments.push(default_branch);
-        for segment in normalized.split('/') {
-            if !segment.is_empty() {
-                segments.push(segment);
+        // Path::components is separator-agnostic, so Windows paths do not end
+        // up as one percent-encoded backslash segment; "." and ".." drop out
+        for component in file_path.components() {
+            if let std::path::Component::Normal(segment) = component {
+                segments.push(&segment.to_string_lossy());
             }
         }
     }
     let fragment = format!("L{line_number}");
     url.set_fragment(Some(&fragment));
     Some(url)
-}
-
-fn max_backtick_run(s: &str) -> usize {
-    s.bytes()
-        .fold((0_usize, 0_usize), |(max, cur), b| {
-            if b == b'`' {
-                let next = cur.saturating_add(1);
-                (max.max(next), next)
-            } else {
-                (max, 0)
-            }
-        })
-        .0
-}
-
-use crate::escape_markdown;
-
-fn sanitize_for_inline_code(s: &str) -> String {
-    let max_run = max_backtick_run(s);
-    if max_run == 0 {
-        return format!("`{s}`");
-    }
-    let fence_len = max_run.saturating_add(1);
-    let fence: String = "`".repeat(fence_len);
-    format!("{fence} {s} {fence}")
 }
 
 fn code_block(content: &str) -> String {
@@ -424,10 +408,10 @@ fn code_block(content: &str) -> String {
 
 fn truncate_at_word_boundary(s: &str, max_len: usize) -> String {
     if s.len() <= max_len {
-        return s.to_string(); // clone: &str → owned String for return
+        return s.to_string();
     }
     if max_len <= 3 {
-        return "...".to_string(); // clone: &str → owned String for return
+        return "...".to_string();
     }
 
     let target = max_len.saturating_sub(3);

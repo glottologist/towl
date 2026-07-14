@@ -1,32 +1,30 @@
-use std::collections::HashMap;
-
 use crate::{
     comment::todo::{TodoComment, TodoType},
+    escape_markdown,
     output::formatter::{error::FormatterError, formatters::pluralize, Formatter},
+    sanitize_for_inline_code,
 };
 
 const INDENTED_CODE_FENCE: &str = "  ```";
-
-use crate::escape_markdown;
 
 pub struct MarkdownFormatter;
 
 impl Formatter for MarkdownFormatter {
     fn format(
         &self,
-        todos_map: &HashMap<&TodoType, Vec<&TodoComment>>,
+        groups: &[(TodoType, Vec<&TodoComment>)],
         total_count: usize,
     ) -> Result<Vec<String>, FormatterError> {
-        let capacity = 2 + todos_map.len() + total_count.saturating_mul(2);
+        let capacity = 2 + groups.len() + total_count.saturating_mul(2);
         let mut output: Vec<String> = Vec::with_capacity(capacity);
 
-        output.push("# TODO Comments\n\n".to_string()); // clone: owned String for output Vec
+        output.push("# TODO Comments\n\n".to_string());
         output.push(format!(
             "Found {total_count} TODO comment{}:\n\n",
             pluralize(total_count)
         ));
 
-        for (todo_type, todos_of_type) in todos_map {
+        for (todo_type, todos_of_type) in groups {
             output.push(format!(
                 "## {todo_type} ({} item{})\n\n",
                 todos_of_type.len(),
@@ -35,22 +33,26 @@ impl Formatter for MarkdownFormatter {
 
             for todo in todos_of_type {
                 let location = format!("{}:{}", todo.file_path.display(), todo.line_number);
+                // paths and function names go through sanitize_for_inline_code
+                // so a backtick in a filename cannot break the span
+                let location_span = sanitize_for_inline_code(&location);
 
                 let escaped_desc = escape_markdown(todo.description.trim());
                 if let Some(ref func_context) = todo.function_context {
                     output.push(format!(
-                        "- **{escaped_desc}** @ `{location}` (in `{func_context}`)"
+                        "- **{escaped_desc}** @ {location_span} (in {})",
+                        sanitize_for_inline_code(func_context)
                     ));
                 } else {
-                    output.push(format!("- **{escaped_desc}** @ `{location}`"));
+                    output.push(format!("- **{escaped_desc}** @ {location_span}"));
                 }
 
                 if !todo.context_lines.is_empty() {
-                    output.push(INDENTED_CODE_FENCE.to_string()); // clone: owned String for output Vec
+                    output.push(INDENTED_CODE_FENCE.to_string());
                     for context_line in &todo.context_lines {
                         output.push(format!("  {context_line}"));
                     }
-                    output.push(INDENTED_CODE_FENCE.to_string()); // clone: owned String for output Vec
+                    output.push(INDENTED_CODE_FENCE.to_string());
                 }
                 output.push(String::new());
             }
@@ -73,9 +75,9 @@ mod tests {
     #[case(10, "Found 10 TODO comments")]
     fn test_markdown_summary_count(#[case] count: usize, #[case] expected: &str) {
         let formatter = MarkdownFormatter;
-        let todos_map = HashMap::new();
+        let groups = Vec::new();
 
-        let result = formatter.format(&todos_map, count).unwrap();
+        let result = formatter.format(&groups, count).unwrap();
         assert!(result[1].contains(expected));
     }
 
@@ -88,10 +90,9 @@ mod tests {
     ) {
         let formatter = MarkdownFormatter;
         let todo = create_test_todo("Test", TodoType::Todo, function, false);
-        let mut todos_map = HashMap::new();
-        todos_map.insert(&todo.todo_type, vec![&todo]);
+        let groups = vec![(todo.todo_type, vec![&todo])];
 
-        let result = formatter.format(&todos_map, 1).unwrap();
+        let result = formatter.format(&groups, 1).unwrap();
         let output = result.join("\n");
 
         assert_eq!(output.contains("(in `"), should_contain);
@@ -99,13 +100,29 @@ mod tests {
     }
 
     #[test]
+    fn test_markdown_sanitizes_backticks_in_location() {
+        use crate::comment::todo::test_support::TestTodoBuilder;
+        let formatter = MarkdownFormatter;
+        let todo = TestTodoBuilder::new()
+            .todo_type(TodoType::Todo)
+            .file_path("we`ird.rs")
+            .line_number(3)
+            .description("desc")
+            .build();
+        let groups = vec![(todo.todo_type, vec![&todo])];
+
+        let output = formatter.format(&groups, 1).unwrap().join("\n");
+
+        assert!(output.contains("`` we`ird.rs:3 ``"), "{output}");
+    }
+
+    #[test]
     fn test_markdown_with_context_lines() {
         let formatter = MarkdownFormatter;
         let todo = create_test_todo("Test", TodoType::Hack, None, true);
-        let mut todos_map = HashMap::new();
-        todos_map.insert(&todo.todo_type, vec![&todo]);
+        let groups = vec![(todo.todo_type, vec![&todo])];
 
-        let result = formatter.format(&todos_map, 1).unwrap();
+        let result = formatter.format(&groups, 1).unwrap();
         let output = result.join("\n");
 
         assert!(output.contains("```"));
@@ -122,10 +139,9 @@ mod tests {
     fn test_markdown_section_headers(#[case] todo_type: TodoType, #[case] expected_header: &str) {
         let formatter = MarkdownFormatter;
         let todo = create_test_todo("Test", todo_type, None, false);
-        let mut todos_map = HashMap::new();
-        todos_map.insert(&todo.todo_type, vec![&todo]);
+        let groups = vec![(todo.todo_type, vec![&todo])];
 
-        let result = formatter.format(&todos_map, 1).unwrap();
+        let result = formatter.format(&groups, 1).unwrap();
         let output = result.join("\n");
 
         assert!(output.contains(expected_header));
@@ -139,11 +155,12 @@ mod tests {
         let todo2 = create_test_todo("Second", TodoType::Todo, None, false);
         let todo3 = create_test_todo("Third", TodoType::Bug, Some("func3"), false);
 
-        let mut todos_map = HashMap::new();
-        todos_map.insert(&TodoType::Todo, vec![&todo1, &todo2]);
-        todos_map.insert(&TodoType::Bug, vec![&todo3]);
+        let groups = vec![
+            (TodoType::Todo, vec![&todo1, &todo2]),
+            (TodoType::Bug, vec![&todo3]),
+        ];
 
-        let result = formatter.format(&todos_map, 3).unwrap();
+        let result = formatter.format(&groups, 3).unwrap();
         let output = result.join("\n");
 
         assert!(output.contains("## TODO (2 items)"));
@@ -168,10 +185,9 @@ mod tests {
                 .map(|_| create_test_todo(&desc, TodoType::Todo, None, false))
                 .collect();
             let refs: Vec<&TodoComment> = todos.iter().collect();
-            let mut todos_map = HashMap::new();
-            todos_map.insert(&TodoType::Todo, refs);
+            let groups = vec![(TodoType::Todo, refs)];
 
-            let result = formatter.format(&todos_map, count).unwrap();
+            let result = formatter.format(&groups, count).unwrap();
             let output = result.join("\n");
 
             let expected_count = format!("Found {count} TODO comment");

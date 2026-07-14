@@ -36,7 +36,7 @@ impl TowlGitHubError {
             }
         }
 
-        let msg = err.to_string(); // clone: Display → owned String for error field
+        let msg = err.to_string();
         Self::ApiError {
             message: msg,
             source: Some(err),

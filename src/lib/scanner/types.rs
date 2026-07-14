@@ -224,7 +224,7 @@ impl Scanner {
     /// concurrently with bounded parallelism.
     ///
     /// # Resource Limits
-    /// - Skips files larger than 10 MB
+    /// - Rejects files larger than 10 MB (counted as errored)
     /// - Rejects files with more than 10,000 TODOs
     ///
     /// # Error Handling
@@ -377,9 +377,7 @@ def main():
             let should_scan = scanner.should_file_be_scanned(&file_path);
             let extension = file_path.extension().and_then(|e| e.to_str()).unwrap_or("");
 
-            if ["rs", "py", "txt"].iter().any(|e| extension.eq_ignore_ascii_case(e)) && !std::path::Path::new(&filename)
-                .extension()
-                .is_some_and(|ext| ext.eq_ignore_ascii_case("log")) {
+            if ["rs", "py", "txt"].iter().any(|e| extension.eq_ignore_ascii_case(e)) {
                 prop_assert!(should_scan, "Should scan file with valid extension: {}", filename);
             } else {
                 prop_assert!(!should_scan, "Should not scan file with invalid extension: {}", filename);
@@ -436,6 +434,46 @@ def main():
             // Generated paths don't exist on disk, so is_file() returns false
             prop_assert!(!result, "Non-existent paths should not be scanned: {:?}", path);
         }
+    }
+
+    #[tokio::test]
+    async fn test_gitignore_respected_in_git_repos() {
+        let temp_dir = TempDir::new().unwrap();
+        fs::create_dir(temp_dir.path().join(".git")).unwrap();
+        fs::write(temp_dir.path().join(".gitignore"), "ignored.rs\n").unwrap();
+        fs::write(
+            temp_dir.path().join("ignored.rs"),
+            "// TODO: from ignored file",
+        )
+        .unwrap();
+        fs::write(temp_dir.path().join("kept.rs"), "// TODO: from kept file").unwrap();
+
+        // test config has non-empty exclude_patterns, so this also proves the
+        // exclude mechanism no longer overrides gitignore handling
+        let config = crate::config::test_parsing_config();
+        let scanner = Scanner::new(config).unwrap();
+
+        let result = scanner.scan(temp_dir.path().to_path_buf()).await.unwrap();
+
+        assert_eq!(result.todos.len(), 1);
+        assert!(result.todos[0].description.contains("kept file"));
+    }
+
+    #[tokio::test]
+    async fn test_exclude_patterns_still_prune() {
+        let temp_dir = TempDir::new().unwrap();
+        let target = temp_dir.path().join("target");
+        fs::create_dir(&target).unwrap();
+        fs::write(target.join("built.rs"), "// TODO: from build output").unwrap();
+        fs::write(temp_dir.path().join("src.rs"), "// TODO: from source").unwrap();
+
+        let config = crate::config::test_parsing_config();
+        let scanner = Scanner::new(config).unwrap();
+
+        let result = scanner.scan(temp_dir.path().to_path_buf()).await.unwrap();
+
+        assert_eq!(result.todos.len(), 1);
+        assert!(result.todos[0].description.contains("from source"));
     }
 
     #[tokio::test]

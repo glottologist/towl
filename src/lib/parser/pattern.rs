@@ -4,7 +4,9 @@ use crate::comment::todo::TodoType;
 
 use super::error::TowlParserError;
 
-pub(super) const MAX_PATTERN_LENGTH: usize = 256;
+// aligned with config-level string validation so a pattern accepted at load
+// time cannot be rejected later at scanner construction
+pub(super) const MAX_PATTERN_LENGTH: usize = crate::config::MAX_CONFIG_STRING_LENGTH;
 pub(super) const REGEX_SIZE_LIMIT: usize = 262_144;
 pub(super) const MAX_TOTAL_PATTERNS: usize = 50;
 

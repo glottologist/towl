@@ -1,5 +1,4 @@
 use serde_json::json;
-use std::collections::HashMap;
 
 use crate::{
     comment::todo::{TodoComment, TodoType},
@@ -11,18 +10,18 @@ pub struct JsonFormatter;
 impl Formatter for JsonFormatter {
     fn format(
         &self,
-        todos_map: &HashMap<&TodoType, Vec<&TodoComment>>,
+        groups: &[(TodoType, Vec<&TodoComment>)],
         total_count: usize,
     ) -> Result<Vec<String>, FormatterError> {
-        let mut groups = Vec::with_capacity(todos_map.len());
+        let mut group_values = Vec::with_capacity(groups.len());
 
-        for (todo_type, todos_of_type) in todos_map {
+        for (todo_type, todos_of_type) in groups {
             let mut group_todos = Vec::with_capacity(todos_of_type.len());
 
             for todo in todos_of_type {
                 let mut todo_json = json!({
                     "description": todo.description.trim(),
-                    "file": todo.file_path.display().to_string(), // clone: Display → owned String
+                    "file": todo.file_path.display().to_string(),
                     "line": todo.line_number,
                     "column_start": todo.column_start,
                     "column_end": todo.column_end,
@@ -37,8 +36,8 @@ impl Formatter for JsonFormatter {
                 group_todos.push(todo_json);
             }
 
-            groups.push(json!({
-                "type": todo_type.to_string(), // clone: Display → owned String
+            group_values.push(json!({
+                "type": todo_type.to_string(),
                 "count": todos_of_type.len(),
                 "items": group_todos
             }));
@@ -47,13 +46,13 @@ impl Formatter for JsonFormatter {
         let result = json!({
             "summary": {
                 "total_todos": total_count,
-                "total_groups": groups.len()
+                "total_groups": group_values.len()
             },
-            "groups": groups
+            "groups": group_values
         });
 
         let json_string = serde_json::to_string_pretty(&result)
-            .map_err(|e| FormatterError::SerializationError(e.to_string()))?; // clone: error to string
+            .map_err(|e| FormatterError::SerializationError(e.to_string()))?;
 
         Ok(vec![json_string])
     }
@@ -77,8 +76,8 @@ mod tests {
     ], 3)]
     fn test_json_formatting_counts(#[case] todos: Vec<TodoComment>, #[case] expected_count: usize) {
         let formatter = JsonFormatter;
-        let todos_map = crate::output::Output::group_todos_by_type(&todos);
-        let result = formatter.format(&todos_map, expected_count).unwrap();
+        let groups = crate::output::Output::group_todos_by_type(&todos);
+        let result = formatter.format(&groups, expected_count).unwrap();
 
         assert_eq!(result.len(), 1);
         let parsed: serde_json::Value = serde_json::from_str(&result[0]).unwrap();
@@ -103,9 +102,9 @@ mod tests {
             },
             true,
         )];
-        let todos_map = crate::output::Output::group_todos_by_type(&todos);
+        let groups = crate::output::Output::group_todos_by_type(&todos);
 
-        let result = formatter.format(&todos_map, 1).unwrap();
+        let result = formatter.format(&groups, 1).unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&result[0]).unwrap();
 
         let has_function = parsed["groups"][0]["items"][0].get("function").is_some();
@@ -119,9 +118,9 @@ mod tests {
             create_test_todo("First", TodoType::Todo, Some("test_function"), true),
             create_test_todo("Second", TodoType::Fixme, None, true),
         ];
-        let todos_map = crate::output::Output::group_todos_by_type(&todos);
+        let groups = crate::output::Output::group_todos_by_type(&todos);
 
-        let result = formatter.format(&todos_map, 2).unwrap();
+        let result = formatter.format(&groups, 2).unwrap();
         let parsed: serde_json::Value = serde_json::from_str(&result[0]).unwrap();
 
         assert!(parsed["summary"].is_object());
@@ -153,10 +152,9 @@ mod tests {
         ) {
             let formatter = JsonFormatter;
             let todo = create_test_todo(&desc, todo_type, Some("test_func"), true);
-            let mut todos_map = HashMap::new();
-            todos_map.insert(&todo.todo_type, vec![&todo]);
+            let groups = vec![(todo.todo_type, vec![&todo])];
 
-            let result = formatter.format(&todos_map, 1).unwrap();
+            let result = formatter.format(&groups, 1).unwrap();
             prop_assert_eq!(result.len(), 1);
 
             let parsed: Result<serde_json::Value, _> = serde_json::from_str(&result[0]);

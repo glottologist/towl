@@ -83,10 +83,10 @@ impl TryFrom<&str> for TodoType {
 ///
 /// Contains the comment text, its position within the file, surrounding context,
 /// and the enclosing function name (if detected). The `id` field
-/// (`{file_path}_L{line_number}`) is used for GitHub issue deduplication.
+/// (`{file_path}_L{line}_C{column}`) is used for GitHub issue deduplication.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TodoComment {
-    /// Unique identifier: `{file_path}_L{line_number}`.
+    /// Unique identifier: `{file_path}_L{line}_C{column}`.
     pub id: String,
     pub file_path: PathBuf,
     pub line_number: usize,
@@ -211,6 +211,33 @@ mod tests {
     use rstest::rstest;
 
     proptest! {
+        #[test]
+        fn prop_todo_comment_json_roundtrip(
+            id in "[a-z]{10}",
+            line in 1usize..10000,
+            col_start in 0usize..100,
+            col_end in 101usize..200,
+            desc in "[a-zA-Z ]{1,100}"
+        ) {
+            let todo = TodoComment {
+                id,
+                file_path: PathBuf::from("test.rs"),
+                line_number: line,
+                column_start: col_start,
+                column_end: col_end,
+                todo_type: TodoType::Todo,
+                original_text: format!("// TODO: {desc}"),
+                description: desc,
+                context_lines: vec!["context".to_string()],
+                function_context: Some("main".to_string()),
+                analysis: None,
+            };
+
+            let json = serde_json::to_string(&todo).unwrap();
+            let decoded: TodoComment = serde_json::from_str(&json).unwrap();
+            prop_assert_eq!(todo, decoded);
+        }
+
         #[test]
         fn prop_unicode_handling(
             keyword in prop::sample::select(vec!["TODO", "FIXME", "HACK", "NOTE", "BUG"]),

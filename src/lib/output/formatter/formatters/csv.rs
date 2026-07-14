@@ -1,5 +1,4 @@
 use std::borrow::Cow;
-use std::collections::HashMap;
 
 use crate::{
     comment::todo::{TodoComment, TodoType},
@@ -11,18 +10,18 @@ pub struct CsvFormatter;
 impl Formatter for CsvFormatter {
     fn format(
         &self,
-        todos_map: &HashMap<&TodoType, Vec<&TodoComment>>,
+        groups: &[(TodoType, Vec<&TodoComment>)],
         _total_count: usize,
     ) -> Result<Vec<String>, FormatterError> {
-        let total_rows = todos_map.values().map(Vec::len).sum::<usize>();
+        let total_rows = groups.iter().map(|(_, todos)| todos.len()).sum::<usize>();
         let mut output = Vec::with_capacity(total_rows.saturating_add(1));
 
         output.push(
-            "Type,Description,File,Line,Column Start,Column End,Function,Original Text,Context Lines".to_string(), // clone: owned String for output Vec
+            "Type,Description,File,Line,Column Start,Column End,Function,Original Text,Context Lines".to_string(),
         );
 
-        for (todo_type, todos_of_type) in todos_map {
-            let type_str = todo_type.to_string(); // clone: Display → owned String for CSV field
+        for (todo_type, todos_of_type) in groups {
+            let type_str = todo_type.to_string();
             for todo in todos_of_type {
                 let func_field = todo
                     .function_context
@@ -34,7 +33,7 @@ impl Formatter for CsvFormatter {
                     "{},{},{},{},{},{},{},{},{}",
                     escape_csv_field(&type_str),
                     escape_csv_field(todo.description.trim()),
-                    escape_csv_field(&todo.file_path.display().to_string()), // clone: Display → owned String for CSV field
+                    escape_csv_field(&todo.file_path.display().to_string()),
                     todo.line_number,
                     todo.column_start,
                     todo.column_end,
@@ -70,10 +69,9 @@ mod tests {
     fn test_csv_single_todo() {
         let formatter = CsvFormatter;
         let todo = create_test_todo("Test description", TodoType::Todo, Some("main"), true);
-        let mut todos_map = HashMap::new();
-        todos_map.insert(&todo.todo_type, vec![&todo]);
+        let groups = vec![(todo.todo_type, vec![&todo])];
 
-        let result = formatter.format(&todos_map, 1).unwrap();
+        let result = formatter.format(&groups, 1).unwrap();
         assert_eq!(result.len(), 2);
 
         let row = &result[1];
@@ -93,9 +91,9 @@ mod tests {
     ], 3)] // Two todos
     fn test_csv_row_count(#[case] todos: Vec<TodoComment>, #[case] expected_rows: usize) {
         let formatter = CsvFormatter;
-        let todos_map = crate::output::Output::group_todos_by_type(&todos);
+        let groups = crate::output::Output::group_todos_by_type(&todos);
 
-        let result = formatter.format(&todos_map, todos.len()).unwrap();
+        let result = formatter.format(&groups, todos.len()).unwrap();
         assert_eq!(result.len(), expected_rows);
     }
 

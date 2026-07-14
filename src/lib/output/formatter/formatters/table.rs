@@ -1,5 +1,4 @@
 use std::borrow::Cow;
-use std::collections::HashMap;
 
 use crate::{
     comment::todo::{TodoComment, TodoType},
@@ -10,7 +9,7 @@ pub struct TableFormatter;
 
 impl TableFormatter {
     fn calculate_column_widths(
-        todos_map: &HashMap<&TodoType, Vec<&TodoComment>>,
+        groups: &[(TodoType, Vec<&TodoComment>)],
     ) -> (usize, usize, usize, usize, usize) {
         let mut type_width = 4;
         let mut desc_width = 11;
@@ -18,14 +17,14 @@ impl TableFormatter {
         let mut line_width = 4;
         let mut func_width = 8;
 
-        for (todo_type, todos_of_type) in todos_map {
-            let type_str = todo_type.to_string(); // clone: Display → owned String for width calc
+        for (todo_type, todos_of_type) in groups {
+            let type_str = todo_type.to_string();
             type_width = type_width.max(type_str.len());
 
             for todo in todos_of_type {
                 desc_width = desc_width.max(todo.description.trim().len().min(50));
-                file_width = file_width.max(todo.file_path.display().to_string().len().min(40)); // clone: Display → owned String for width calc
-                line_width = line_width.max(todo.line_number.to_string().len()); // clone: Display → owned String for width calc
+                file_width = file_width.max(todo.file_path.display().to_string().len().min(40));
+                line_width = line_width.max(todo.line_number.to_string().len());
 
                 if let Some(ref func_context) = todo.function_context {
                     func_width = func_width.max(func_context.len().min(30));
@@ -109,13 +108,13 @@ impl TableFormatter {
 impl Formatter for TableFormatter {
     fn format(
         &self,
-        todos_map: &HashMap<&TodoType, Vec<&TodoComment>>,
+        groups: &[(TodoType, Vec<&TodoComment>)],
         total_count: usize,
     ) -> Result<Vec<String>, FormatterError> {
         let mut output = Vec::with_capacity(total_count.saturating_add(5));
 
         if total_count == 0 {
-            output.push("No TODO comments found.".to_string()); // clone: owned String for output Vec
+            output.push("No TODO comments found.".to_string());
             return Ok(output);
         }
 
@@ -123,12 +122,12 @@ impl Formatter for TableFormatter {
             "Found {} TODO comment{} in {} group{}",
             total_count,
             pluralize(total_count),
-            todos_map.len(),
-            pluralize(todos_map.len())
+            groups.len(),
+            pluralize(groups.len())
         ));
         output.push(String::new());
 
-        let widths = Self::calculate_column_widths(todos_map);
+        let widths = Self::calculate_column_widths(groups);
 
         output.push(Self::format_separator(widths, true));
         output.push(Self::format_row(
@@ -138,11 +137,11 @@ impl Formatter for TableFormatter {
         ));
         output.push(Self::format_separator(widths, false));
 
-        for (todo_type, todos_of_type) in todos_map {
-            let type_str = todo_type.to_string(); // clone: Display → owned String for table cell
+        for (todo_type, todos_of_type) in groups {
+            let type_str = todo_type.to_string();
             for todo in todos_of_type {
-                let file_str = todo.file_path.display().to_string(); // clone: Display → owned String for table cell
-                let line_str = todo.line_number.to_string(); // clone: Display → owned String for table cell
+                let file_str = todo.file_path.display().to_string();
+                let line_str = todo.line_number.to_string();
                 let func_str = todo.function_context.as_deref().unwrap_or("");
 
                 output.push(Self::format_row(
@@ -175,10 +174,9 @@ mod tests {
     fn test_single_todo_formatting() {
         let formatter = TableFormatter;
         let todo = create_test_todo("Test description", TodoType::Todo, Some("main"), false);
-        let mut todos_map = HashMap::new();
-        todos_map.insert(&todo.todo_type, vec![&todo]);
+        let groups = vec![(todo.todo_type, vec![&todo])];
 
-        let result = formatter.format(&todos_map, 1).unwrap();
+        let result = formatter.format(&groups, 1).unwrap();
         let output = result.join("\n");
 
         assert!(output.contains("Found 1 TODO comment in 1 group"));
@@ -200,11 +198,12 @@ mod tests {
         let todo1 = create_test_todo("Fix bug", TodoType::Todo, None, false);
         let todo2 = create_test_todo("Broken", TodoType::Bug, None, false);
 
-        let mut todos_map = HashMap::new();
-        todos_map.insert(&TodoType::Todo, vec![&todo1]);
-        todos_map.insert(&TodoType::Bug, vec![&todo2]);
+        let groups = vec![
+            (TodoType::Todo, vec![&todo1]),
+            (TodoType::Bug, vec![&todo2]),
+        ];
 
-        let result = formatter.format(&todos_map, 2).unwrap();
+        let result = formatter.format(&groups, 2).unwrap();
         let output = result.join("\n");
 
         assert!(output.contains("Found 2 TODO comments in 2 groups"));

@@ -6,7 +6,7 @@ use towl::{
     config::{GitHubConfig, TowlConfig},
     error::TowlError,
     github::{CreatedIssue, GitHubClient},
-    llm::types::Validity,
+    llm::{types::Validity, AnalysisSummary},
     output::Output,
     processor::{Processor, ProcessorResult},
     scanner::{ScanResult, Scanner},
@@ -14,7 +14,7 @@ use towl::{
 use tracing::{debug, info, warn};
 
 #[tokio::main]
-async fn main() -> Result<(), TowlError> {
+async fn main() {
     let cli = Cli::parse();
 
     let suppress_tracing = matches!(
@@ -35,8 +35,6 @@ async fn main() -> Result<(), TowlError> {
         eprintln!("Error: {e}");
         std::process::exit(1);
     }
-
-    Ok(())
 }
 
 async fn run_cli(cli: Cli) -> Result<(), TowlError> {
@@ -135,13 +133,7 @@ async fn scan_todos(opts: ScanOpts) -> Result<(), TowlError> {
         if removed > 0 {
             info!("Filtered out {removed} invalid TODOs");
         }
-        info!(
-            "AI analysis: {} valid, {} invalid, {} uncertain, {} errors",
-            summary.valid_count,
-            summary.invalid_count,
-            summary.uncertain_count,
-            summary.error_count
-        );
+        info!("{}", format_ai_summary(&summary));
     }
 
     if opts.verbose {
@@ -285,19 +277,20 @@ async fn run_interactive(
         .await?;
         eprint!("\r{}\r", " ".repeat(60));
         if summary.error_count > 0 {
-            eprintln!(
-                "  AI analysis: {} valid, {} invalid, {} uncertain, {} errors",
-                summary.valid_count,
-                summary.invalid_count,
-                summary.uncertain_count,
-                summary.error_count
-            );
+            eprintln!("  {}", format_ai_summary(&summary));
         }
     }
 
     towl::tui::run(scan_result.todos, &config.github, &path)?;
 
     Ok(())
+}
+
+fn format_ai_summary(summary: &AnalysisSummary) -> String {
+    format!(
+        "AI analysis: {} valid, {} invalid, {} uncertain, {} errors",
+        summary.valid_count, summary.invalid_count, summary.uncertain_count, summary.error_count
+    )
 }
 
 fn print_progress(done: usize, total: usize) {

@@ -22,6 +22,7 @@ Rules:
 - "enrichment" should be a 2-3 sentence description that adds context beyond the original TODO text, suitable for a GitHub issue body"#;
 
 /// Formats TODO metadata and code context into XML-tagged user content for the LLM.
+#[must_use]
 pub fn build_user_content(
     description: &str,
     file_path: &str,

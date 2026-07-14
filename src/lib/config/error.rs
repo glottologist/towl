@@ -6,7 +6,7 @@ const MAX_URL_DISPLAY_LEN: usize = 500;
 
 fn truncate_url(url: &str) -> String {
     if url.len() <= MAX_URL_DISPLAY_LEN {
-        url.to_string() // clone: &str → owned String for return
+        url.to_string()
     } else {
         let boundary = url
             .char_indices()
@@ -21,11 +21,11 @@ fn truncate_url(url: &str) -> String {
 /// Errors produced during configuration loading, validation, or initialisation.
 #[derive(Error, Debug)]
 pub enum TowlConfigError {
-    #[error("Config file should be under the repo root: {0} ")]
+    #[error("Config file should be under the repo root: {0}")]
     PathTraversalAttempt(PathBuf),
     #[error("Config file already exists at {0} (use --force to overwrite)")]
     ConfigAlreadyExists(PathBuf),
-    #[error("Config file could not be written to path {0}: {1} ")]
+    #[error("Config file could not be written to path {0}: {1}")]
     WriteToFileError(PathBuf, std::io::Error),
     #[error("Could not parse toml for config {0}")]
     UnableToParseToml(#[from] toml::ser::Error),
@@ -57,6 +57,12 @@ pub enum TowlConfigError {
     },
     #[error("Config rate_limit_delay_ms value {value} exceeds maximum ({max})")]
     RateLimitDelayTooHigh { value: u64, max: u64 },
+    #[error("Config max_concurrent_analyses value {value} is out of range ({min}..={max})")]
+    ConcurrentAnalysesOutOfRange {
+        value: usize,
+        min: usize,
+        max: usize,
+    },
 }
 
 #[cfg(test)]

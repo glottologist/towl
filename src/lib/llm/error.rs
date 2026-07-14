@@ -24,22 +24,43 @@ pub enum TowlLlmError {
 
 impl TowlLlmError {
     /// Whether this error is transient and the operation should be retried.
+    ///
+    /// `ParseError` is retryable because LLM output is nondeterministic; a
+    /// reprompt frequently yields well-formed JSON.
     #[must_use]
-    pub fn is_retryable(&self) -> bool {
+    pub const fn is_retryable(&self) -> bool {
         matches!(
             self,
             Self::RateLimited { .. }
+                | Self::ParseError { .. }
                 | Self::ApiError {
-                    status: Some(500..),
+                    status: Some(500..) | None,
                     ..
                 }
-                | Self::ApiError { status: None, .. }
         )
+    }
+
+    /// Builds an error from a non-success HTTP response, reading the
+    /// `retry-after` header and the body text.
+    pub(crate) async fn from_response(response: reqwest::Response) -> Self {
+        let status = response.status().as_u16();
+        let retry_after = response
+            .headers()
+            .get("retry-after")
+            .and_then(|v| v.to_str().ok())
+            .and_then(|v| v.parse::<u64>().ok());
+
+        let body_text = response
+            .text()
+            .await
+            .unwrap_or_else(|_| "unable to read body".to_string());
+
+        Self::classify_http_error(status, &body_text, retry_after)
     }
 
     /// Classifies an HTTP status code into the appropriate error variant.
     ///
-    /// Shared between Claude and OpenAI providers.
+    /// Shared between Claude and `OpenAI` providers.
     pub(crate) fn classify_http_error(
         status: u16,
         message: &str,

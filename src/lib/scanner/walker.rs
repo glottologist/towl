@@ -6,21 +6,33 @@ use super::error::TowlScannerError;
 use super::types::Scanner;
 
 impl Scanner {
-    /// See: <https://github.com/glottologist/towl/issues/7>
+    /// Builds a walker with gitignore semantics (`.gitignore`, `.ignore`, git
+    /// excludes — within git repositories) that also prunes entries matching
+    /// the configured `exclude_patterns`.
     ///
     /// # Errors
     /// Returns `TowlScannerError::UnableToWalkFile` if exclude patterns are invalid.
     pub(super) fn build_walker(&self, path: &Path) -> Result<ignore::Walk, TowlScannerError> {
         let mut builder = WalkBuilder::new(path);
-        builder.hidden(false).git_ignore(false).follow_links(false);
+        builder.hidden(false).follow_links(false);
 
         if !self.config.exclude_patterns.is_empty() {
-            let mut overrides = OverrideBuilder::new(path);
-            overrides.add("**")?;
+            // Excludes are applied via filter_entry rather than
+            // WalkBuilder::overrides: an override whitelist would take
+            // precedence over gitignore rules and silently disable them.
+            let mut excludes = OverrideBuilder::new(path);
             for pattern in &self.config.exclude_patterns {
-                overrides.add(&format!("!{pattern}"))?;
+                excludes.add(&format!("!{pattern}"))?;
             }
-            builder.overrides(overrides.build()?);
+            let excludes = excludes.build()?;
+
+            builder.filter_entry(move |entry| {
+                let is_dir = entry.file_type().is_some_and(|t| t.is_dir());
+                !matches!(
+                    excludes.matched(entry.path(), is_dir),
+                    ignore::Match::Ignore(_)
+                )
+            });
         }
 
         Ok(builder.build())

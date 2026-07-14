@@ -76,7 +76,7 @@ Owner and repo are **always** auto-detected from `git remote get-url origin` at 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `provider` | `string` | `claude` | LLM provider: `"claude"`, `"openai"`, `"claude-code"`, or `"codex"` |
-| `model` | `string` | `claude-opus-4-6` | Model identifier |
+| `model` | `string` | `claude-opus-4-8` | Model identifier |
 | `base_url` | `string` | Provider default | Custom endpoint URL (for Ollama, vLLM, etc.) |
 | `max_concurrent_analyses` | `integer` | `5` | Max concurrent LLM requests (1-20) |
 | `max_analyse_count` | `integer` | `50` | Max TODOs to analyse per scan (1-500) |

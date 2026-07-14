@@ -28,10 +28,13 @@ Replaces TODO comments in source files with `GH_ISSUE: <issue_url>` links.
 3. Reads file content, replaces each TODO line, writes back atomically
 4. Returns a `ProcessorResult` with counts and per-file errors
 
-**Path safety:**
+**Path and content safety:**
 
 - Both the file path and repo root are canonicalised before comparison
 - Files outside the repo root are rejected with `PathOutsideRoot`
+- Each target line must still match the scanned TODO's original text; if the
+  file changed since the scan, the file is skipped with `LineContentChanged`
+- The file's own line endings are preserved (CRLF files stay CRLF)
 - Issue URLs must start with `https://github.com/` or are rejected
 
 **Replacement format:**

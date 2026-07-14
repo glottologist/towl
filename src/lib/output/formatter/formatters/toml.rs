@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use toml::{Table, Value};
 
 use crate::{
@@ -16,27 +15,27 @@ impl TomlFormatter {
     fn build_todo_table(todo: &TodoComment) -> Result<Table, FormatterError> {
         let mut table = Table::new();
         table.insert(
-            "description".to_string(), // clone: toml API requires owned key
+            "description".to_string(),
             Value::String(todo.description.trim().to_string()), // clone: Value::String requires owned
         );
         table.insert(
-            "file".to_string(), // clone: toml API requires owned key
+            "file".to_string(),
             Value::String(todo.file_path.display().to_string()), // clone: Display → owned String for toml Value
         );
         table.insert(
-            "line".to_string(), // clone: toml API requires owned key
+            "line".to_string(),
             Value::Integer(Self::usize_to_i64(todo.line_number)?),
         );
         table.insert(
-            "column_start".to_string(), // clone: toml API requires owned key
+            "column_start".to_string(),
             Value::Integer(Self::usize_to_i64(todo.column_start)?),
         );
         table.insert(
-            "column_end".to_string(), // clone: toml API requires owned key
+            "column_end".to_string(),
             Value::Integer(Self::usize_to_i64(todo.column_end)?),
         );
         table.insert(
-            "original_text".to_string(), // clone: toml API requires owned key
+            "original_text".to_string(),
             Value::String(todo.original_text.trim().to_string()), // clone: Value::String requires owned
         );
         if !todo.context_lines.is_empty() {
@@ -45,12 +44,12 @@ impl TomlFormatter {
                 .iter()
                 .map(|line| Value::String(line.clone())) // clone: Value::String requires owned String
                 .collect();
-            let key = "context_lines".to_string(); // clone: toml owned key
+            let key = "context_lines".to_string();
             table.insert(key, Value::Array(context_values));
         }
         if let Some(ref func_context) = todo.function_context {
             let val = Value::String(func_context.clone()); // clone: Value::String needs owned
-            table.insert("function".to_string(), val); // clone: toml API requires owned key
+            table.insert("function".to_string(), val);
         }
         Ok(table)
     }
@@ -59,28 +58,28 @@ impl TomlFormatter {
 impl Formatter for TomlFormatter {
     fn format(
         &self,
-        todos_map: &HashMap<&TodoType, Vec<&TodoComment>>,
+        groups: &[(TodoType, Vec<&TodoComment>)],
         total_count: usize,
     ) -> Result<Vec<String>, FormatterError> {
         let mut root = Table::new();
 
         let mut summary = Table::new();
         summary.insert(
-            "total_todos".to_string(), // clone: toml API requires owned key
+            "total_todos".to_string(),
             Value::Integer(Self::usize_to_i64(total_count)?),
         );
         summary.insert(
-            "total_groups".to_string(), // clone: toml API requires owned key
-            Value::Integer(Self::usize_to_i64(todos_map.len())?),
+            "total_groups".to_string(),
+            Value::Integer(Self::usize_to_i64(groups.len())?),
         );
-        root.insert("summary".to_string(), Value::Table(summary)); // clone: toml owned key
+        root.insert("summary".to_string(), Value::Table(summary));
 
-        for (todo_type, todos_of_type) in todos_map {
-            let type_name = todo_type.as_filter_str().to_string(); // clone: &str → owned String for toml key
+        for (todo_type, todos_of_type) in groups {
+            let type_name = todo_type.as_filter_str().to_string();
             let mut group = Table::new();
 
             group.insert(
-                "count".to_string(), // clone: toml API requires owned key
+                "count".to_string(),
                 Value::Integer(Self::usize_to_i64(todos_of_type.len())?),
             );
 
@@ -89,12 +88,12 @@ impl Formatter for TomlFormatter {
                 .map(|todo| Self::build_todo_table(todo).map(Value::Table))
                 .collect::<Result<_, _>>()?;
 
-            group.insert("items".to_string(), Value::Array(items)); // clone: toml owned key
+            group.insert("items".to_string(), Value::Array(items));
             root.insert(type_name, Value::Table(group));
         }
 
         let toml_string = toml::to_string_pretty(&root)
-            .map_err(|e| FormatterError::SerializationError(e.to_string()))?; // clone: error to string
+            .map_err(|e| FormatterError::SerializationError(e.to_string()))?;
 
         Ok(vec![toml_string])
     }
@@ -116,9 +115,9 @@ mod tests {
     ], 2)]
     fn test_toml_counts(#[case] todos: Vec<TodoComment>, #[case] expected_count: usize) {
         let formatter = TomlFormatter;
-        let todos_map = crate::output::Output::group_todos_by_type(&todos);
+        let groups = crate::output::Output::group_todos_by_type(&todos);
 
-        let result = formatter.format(&todos_map, expected_count).unwrap();
+        let result = formatter.format(&groups, expected_count).unwrap();
         let parsed: toml::Table = toml::from_str(&result[0]).unwrap();
 
         assert_eq!(
@@ -131,10 +130,9 @@ mod tests {
     fn test_toml_structure_with_todo() {
         let formatter = TomlFormatter;
         let todo = create_test_todo("Test description", TodoType::Todo, None, true);
-        let mut todos_map = HashMap::new();
-        todos_map.insert(&todo.todo_type, vec![&todo]);
+        let groups = vec![(todo.todo_type, vec![&todo])];
 
-        let result = formatter.format(&todos_map, 1).unwrap();
+        let result = formatter.format(&groups, 1).unwrap();
         let parsed: toml::Table = toml::from_str(&result[0]).unwrap();
 
         assert_eq!(parsed["summary"]["total_todos"].as_integer(), Some(1));
@@ -167,10 +165,9 @@ mod tests {
     fn test_toml_type_keys(#[case] todo_type: TodoType, #[case] expected_key: &str) {
         let formatter = TomlFormatter;
         let todo = create_test_todo("Test", todo_type, None, false);
-        let mut todos_map = HashMap::new();
-        todos_map.insert(&todo.todo_type, vec![&todo]);
+        let groups = vec![(todo.todo_type, vec![&todo])];
 
-        let result = formatter.format(&todos_map, 1).unwrap();
+        let result = formatter.format(&groups, 1).unwrap();
         let parsed: toml::Table = toml::from_str(&result[0]).unwrap();
 
         assert!(parsed.contains_key(expected_key));
@@ -182,10 +179,9 @@ mod tests {
         let mut todo = create_test_todo("Test", TodoType::Note, None, false);
         todo.function_context = Some("main_function".to_string());
 
-        let mut todos_map = HashMap::new();
-        todos_map.insert(&todo.todo_type, vec![&todo]);
+        let groups = vec![(todo.todo_type, vec![&todo])];
 
-        let result = formatter.format(&todos_map, 1).unwrap();
+        let result = formatter.format(&groups, 1).unwrap();
         let parsed: toml::Table = toml::from_str(&result[0]).unwrap();
 
         let items = parsed["note"]["items"].as_array().unwrap();
@@ -212,10 +208,9 @@ mod tests {
         ) {
             let formatter = TomlFormatter;
             let todo = create_test_todo(&desc, todo_type, Some("test_func"), true);
-            let mut todos_map = HashMap::new();
-            todos_map.insert(&todo.todo_type, vec![&todo]);
+            let groups = vec![(todo.todo_type, vec![&todo])];
 
-            let result = formatter.format(&todos_map, 1).unwrap();
+            let result = formatter.format(&groups, 1).unwrap();
             prop_assert_eq!(result.len(), 1);
 
             let parsed: Result<toml::Table, _> = toml::from_str(&result[0]);

@@ -85,10 +85,11 @@ pub enum TowlCommands {
 /// Output format for non-interactive scan results.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 pub enum OutputFormat {
-    Table,
     Json,
     Csv,
     Toml,
     Markdown,
+    /// Formatted table on stdout (also accepted as `table`).
+    #[value(alias = "table")]
     Terminal,
 }

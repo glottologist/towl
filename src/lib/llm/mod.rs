@@ -29,6 +29,8 @@ pub enum LlmProvider {
 }
 
 impl LlmProvider {
+    /// # Errors
+    /// Propagates the underlying provider's `TowlLlmError`.
     pub async fn call_raw(
         &self,
         user_content: &str,
@@ -43,6 +45,7 @@ impl LlmProvider {
         }
     }
 
+    #[must_use]
     pub const fn is_cli_provider(&self) -> bool {
         matches!(self, Self::ClaudeCode(_) | Self::Codex(_))
     }
@@ -57,7 +60,7 @@ impl LlmProvider {
 /// Returns `TowlLlmError::UnsupportedProvider` if the provider name is unknown.
 /// Returns `TowlLlmError::ApiError` if the HTTP client fails to build (API providers).
 pub fn build_provider(config: &LlmConfig) -> Result<LlmProvider, error::TowlLlmError> {
-    match config.provider.as_str() {
+    match config.provider.to_lowercase().as_str() {
         "claude" => Ok(LlmProvider::Claude(claude::ClaudeProvider::new(
             &config.model,
             config.max_tokens,
@@ -111,8 +114,8 @@ pub fn build_provider(config: &LlmConfig) -> Result<LlmProvider, error::TowlLlmE
                 )?))
             }
         }
-        other => Err(error::TowlLlmError::UnsupportedProvider {
-            provider: other.to_string(), // clone: &str -> owned String for error
+        _ => Err(error::TowlLlmError::UnsupportedProvider {
+            provider: config.provider.clone(), // clone: error reports the user's original spelling
         }),
     }
 }
@@ -123,7 +126,8 @@ mod tests {
     use rstest::rstest;
 
     #[rstest]
-    #[case("claude", "claude-opus-4-6", None)]
+    #[case("claude", "claude-opus-4-8", None)]
+    #[case("CLAUDE", "claude-opus-4-8", None)]
     #[case("openai", "gpt-4o", None)]
     #[case("openai", "llama3", Some("http://localhost:11434/v1".to_string()))]
     fn test_build_provider(

@@ -88,6 +88,7 @@ fn find_matching_brace(text: &str, open_pos: usize) -> Option<usize> {
 /// 2. ` ``` ... ``` ` generic code block
 /// 3. Bare `{ ... }` JSON object
 /// 4. Fallback: trimmed input
+#[must_use]
 pub fn extract_json_block(text: &str) -> &str {
     if let Some(start) = text.find("```json") {
         let content_start = start + "```json".len();

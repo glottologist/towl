@@ -35,7 +35,8 @@ impl TowlConfig {
     ///
     /// # Errors
     /// Returns `TowlConfigError::ConfigAlreadyExists` if the file exists and `force` is false.
-    /// Returns `TowlConfigError` if the git repo cannot be found or the file cannot be written.
+    /// Returns `TowlConfigError` if the git repo cannot be found, the merged
+    /// config fails validation, or the file cannot be written.
     pub async fn init(path: &Path, force: bool) -> Result<(), TowlConfigError> {
         Self::validate_path(path)?;
 
@@ -51,6 +52,8 @@ impl TowlConfig {
         } else {
             Self::default()
         };
+
+        Self::validate(&config)?;
 
         let toml_string =
             toml::to_string_pretty(&config).map_err(TowlConfigError::UnableToParseToml)?;
@@ -96,16 +99,22 @@ impl TowlConfig {
             config.github.token = SecretString::from(token);
         }
 
-        if let Ok(owner) = std::env::var("TOWL_GITHUB_OWNER") {
+        let owner_env = std::env::var("TOWL_GITHUB_OWNER").ok();
+        let repo_env = std::env::var("TOWL_GITHUB_REPO").ok();
+        let git_info = if owner_env.is_none() || repo_env.is_none() {
+            GitRepoInfo::from_path_sync(".").ok()
+        } else {
+            None
+        };
+        if let Some(owner) = owner_env {
             config.github.owner = Owner::try_new(owner)?;
-        } else if let Ok(info) = GitRepoInfo::from_path_sync(".") {
-            config.github.owner = info.owner;
-            if std::env::var("TOWL_GITHUB_REPO").is_err() {
-                config.github.repo = info.repo;
-            }
+        } else if let Some(info) = &git_info {
+            config.github.owner = info.owner.clone(); // clone: repo fallback below still reads git_info
         }
-        if let Ok(repo) = std::env::var("TOWL_GITHUB_REPO") {
+        if let Some(repo) = repo_env {
             config.github.repo = Repo::try_new(repo)?;
+        } else if let Some(info) = git_info {
+            config.github.repo = info.repo;
         }
 
         if let Ok(key) = std::env::var("TOWL_LLM_API_KEY") {
@@ -122,10 +131,7 @@ impl TowlConfig {
             config.llm.base_url = Some(url);
         }
 
-        Self::validate_pattern_counts(&config.parsing)?;
-        Self::validate_string_lengths(&config.parsing)?;
-        Self::validate_context_lines(&config.parsing)?;
-        Self::validate_rate_limit_delay(&config.github)?;
+        Self::validate(&config)?;
 
         Ok(config)
     }
@@ -451,13 +457,12 @@ mod tests {
         let temp_dir = tempfile::TempDir::new().unwrap();
         let config_path = temp_dir.path().join("fresh.toml");
 
-        let result = TowlConfig::init(&config_path, false).await;
+        TowlConfig::init(&config_path, false)
+            .await
+            .expect("init should succeed when cwd is a git checkout");
 
-        if result.is_ok() {
-            assert!(config_path.exists());
-            let loaded = TowlConfig::load(Some(&config_path));
-            assert!(loaded.is_ok());
-        }
+        assert!(config_path.exists());
+        TowlConfig::load(Some(&config_path)).expect("generated config should load");
     }
 
     #[tokio::test]
@@ -467,20 +472,52 @@ mod tests {
 
         std::fs::write(&config_path, "[parsing]\ninclude_context_lines = 42\n").unwrap();
 
+        TowlConfig::init(&config_path, false)
+            .await
+            .expect("init should merge an existing config");
+
+        let loaded = TowlConfig::load(Some(&config_path)).unwrap();
+        assert_eq!(loaded.parsing.include_context_lines, 42);
+        let defaults = TowlConfig::default();
+        assert_eq!(
+            loaded.parsing.file_extensions,
+            defaults.parsing.file_extensions,
+        );
+        assert_eq!(
+            loaded.github.rate_limit_delay_ms,
+            defaults.github.rate_limit_delay_ms,
+        );
+    }
+
+    #[tokio::test]
+    async fn test_init_rejects_invalid_merged_config() {
+        let temp_dir = tempfile::TempDir::new().unwrap();
+        let config_path = temp_dir.path().join("invalid.toml");
+
+        let original = "[parsing]\ninclude_context_lines = 0\n";
+        std::fs::write(&config_path, original).unwrap();
+
         let result = TowlConfig::init(&config_path, false).await;
-        if result.is_ok() {
-            let loaded = TowlConfig::load(Some(&config_path)).unwrap();
-            assert_eq!(loaded.parsing.include_context_lines, 42);
-            let defaults = TowlConfig::default();
-            assert_eq!(
-                loaded.parsing.file_extensions,
-                defaults.parsing.file_extensions,
-            );
-            assert_eq!(
-                loaded.github.rate_limit_delay_ms,
-                defaults.github.rate_limit_delay_ms,
-            );
-        }
+
+        assert!(matches!(
+            result,
+            Err(TowlConfigError::ContextLinesOutOfRange { value: 0, .. })
+        ));
+        let untouched = std::fs::read_to_string(&config_path).unwrap();
+        assert_eq!(untouched, original, "invalid config must not be rewritten");
+    }
+
+    #[rstest]
+    #[case(0, true)]
+    #[case(1, false)]
+    #[case(20, false)]
+    #[case(21, true)]
+    fn test_validate_llm_concurrency(#[case] value: usize, #[case] should_err: bool) {
+        let llm = LlmConfig {
+            max_concurrent_analyses: value,
+            ..Default::default()
+        };
+        assert_eq!(TowlConfig::validate_llm(&llm).is_err(), should_err);
     }
 
     #[test]

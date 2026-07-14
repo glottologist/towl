@@ -93,8 +93,9 @@ fn event_loop(
             creation_rx = Some(rx);
 
             if let Some(delete_todos) = app.take_pending_delete() {
+                let root = repo_root.to_path_buf(); // clone: spawned task needs owned path
                 tokio::spawn(async move {
-                    delete_todos_task(delete_todos, tx).await;
+                    delete_todos_task(delete_todos, root, tx).await;
                 });
             } else {
                 let todos = app.selected_todos();
@@ -132,7 +133,7 @@ fn drain_creation_events(app: &mut App, rx: &mut mpsc::Receiver<CreationEvent>) 
             Err(mpsc::error::TryRecvError::Empty) => return false,
             Err(mpsc::error::TryRecvError::Disconnected) => {
                 if matches!(app.mode(), AppMode::Creating(_)) {
-                    app.push_creation_error("Background task disconnected".to_string()); // clone: owned String for error message
+                    app.push_creation_error("Background task disconnected".to_string());
                     app.finish_creating();
                 }
                 return true;
@@ -214,7 +215,7 @@ async fn create_issues_task(
                 replacements.push((todo, issue));
             }
             Err(e) => {
-                send_event(&tx, CreationEvent::Error(e.to_string())).await; // clone: owned String for channel send
+                send_event(&tx, CreationEvent::Error(e.to_string())).await;
             }
         }
     }
@@ -238,19 +239,26 @@ async fn create_issues_task(
     send_event(&tx, CreationEvent::Finished).await;
 }
 
-async fn delete_todos_task(todos: Vec<TodoComment>, tx: mpsc::Sender<CreationEvent>) {
+async fn delete_todos_task(
+    todos: Vec<TodoComment>,
+    repo_root: PathBuf,
+    tx: mpsc::Sender<CreationEvent>,
+) {
     send_event(
         &tx,
         CreationEvent::Phase("Deleting invalid TODOs...".into()),
     )
     .await;
 
-    let cwd = match std::env::current_dir() {
+    let canonical_root = match repo_root.canonicalize() {
         Ok(d) => d,
         Err(e) => {
             send_event(
                 &tx,
-                CreationEvent::Error(format!("Cannot resolve cwd: {e}")),
+                CreationEvent::Error(format!(
+                    "Cannot resolve repository root {}: {e}",
+                    repo_root.display()
+                )),
             )
             .await;
             send_event(&tx, CreationEvent::Finished).await;
@@ -258,17 +266,17 @@ async fn delete_todos_task(todos: Vec<TodoComment>, tx: mpsc::Sender<CreationEve
         }
     };
 
-    let mut by_file: std::collections::HashMap<&std::path::Path, Vec<usize>> =
+    let mut by_file: std::collections::HashMap<&std::path::Path, Vec<(usize, &str)>> =
         std::collections::HashMap::new();
     for todo in &todos {
         by_file
             .entry(todo.file_path.as_path())
             .or_default()
-            .push(todo.line_number);
+            .push((todo.line_number, todo.original_text.as_str()));
     }
 
     let total = by_file.len();
-    for (i, (path, mut line_numbers)) in by_file.into_iter().enumerate() {
+    for (i, (path, mut line_entries)) in by_file.into_iter().enumerate() {
         send_event(
             &tx,
             CreationEvent::Progress {
@@ -278,50 +286,178 @@ async fn delete_todos_task(todos: Vec<TodoComment>, tx: mpsc::Sender<CreationEve
         )
         .await;
 
-        line_numbers.sort_unstable();
-        line_numbers.dedup();
+        line_entries.sort_unstable_by_key(|&(line, _)| line);
+        line_entries.dedup_by_key(|&mut (line, _)| line);
 
-        if let Ok(canonical) = std::fs::canonicalize(path) {
-            if !canonical.starts_with(&cwd) {
-                send_event(
-                    &tx,
-                    CreationEvent::Error(format!("{}: outside working directory", path.display())),
-                )
-                .await;
-                continue;
-            }
-        }
-
-        match tokio::fs::read_to_string(path).await {
-            Ok(content) => {
-                let line_set: std::collections::HashSet<usize> = line_numbers.into_iter().collect();
-                let filtered: Vec<&str> = content
-                    .lines()
-                    .enumerate()
-                    .filter(|(i, _)| !line_set.contains(&(i + 1)))
-                    .map(|(_, line)| line)
-                    .collect();
-                let mut new_content = filtered.join("\n");
-                if content.ends_with('\n') {
-                    new_content.push('\n');
-                }
-                if let Err(e) = crate::atomic_write(path, new_content.as_bytes()).await {
-                    send_event(
-                        &tx,
-                        CreationEvent::Error(format!("{}: {e}", path.display())),
-                    )
-                    .await;
-                }
-            }
-            Err(e) => {
-                send_event(
-                    &tx,
-                    CreationEvent::Error(format!("{}: {e}", path.display())),
-                )
-                .await;
-            }
+        if let Err(msg) = delete_file_todos(path, &line_entries, &canonical_root).await {
+            send_event(&tx, CreationEvent::Error(msg)).await;
         }
     }
 
     send_event(&tx, CreationEvent::Finished).await;
+}
+
+/// Deletes the given `(line, original_text)` entries from one file, after
+/// validating the path against `canonical_root` and that the lines still
+/// match the scanned text.
+async fn delete_file_todos(
+    path: &std::path::Path,
+    line_entries: &[(usize, &str)],
+    canonical_root: &std::path::Path,
+) -> Result<(), String> {
+    let canonical = std::fs::canonicalize(path).map_err(|e| format!("{}: {e}", path.display()))?;
+    if !canonical.starts_with(canonical_root) {
+        return Err(format!("{}: outside repository root", path.display()));
+    }
+
+    let content = tokio::fs::read_to_string(&canonical)
+        .await
+        .map_err(|e| format!("{}: {e}", path.display()))?;
+    let lines: Vec<&str> = content.lines().collect();
+
+    let changed_line = line_entries.iter().find(|&&(line, original)| {
+        line.checked_sub(1)
+            .and_then(|idx| lines.get(idx))
+            .map_or(true, |current| *current != original)
+    });
+    if let Some(&(line, _)) = changed_line {
+        return Err(format!(
+            "{}:{line}: file changed since the scan, skipping",
+            path.display()
+        ));
+    }
+
+    let line_set: std::collections::HashSet<usize> =
+        line_entries.iter().map(|&(line, _)| line).collect();
+    let filtered: Vec<&str> = lines
+        .iter()
+        .enumerate()
+        .filter(|(i, _)| !line_set.contains(&(i + 1)))
+        .map(|(_, line)| *line)
+        .collect();
+    // str::lines strips \r; join with the file's own ending so CRLF files are
+    // not silently converted to LF
+    let line_ending = if content.contains("\r\n") {
+        "\r\n"
+    } else {
+        "\n"
+    };
+    let mut new_content = filtered.join(line_ending);
+    if content.ends_with('\n') {
+        new_content.push_str(line_ending);
+    }
+
+    crate::atomic_write(&canonical, new_content.as_bytes())
+        .await
+        .map_err(|e| format!("{}: {e}", path.display()))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::comment::todo::test_support::TestTodoBuilder;
+
+    async fn run_delete(todos: Vec<TodoComment>, repo_root: PathBuf) -> (Vec<String>, bool) {
+        let (tx, mut rx) = mpsc::channel(32);
+        delete_todos_task(todos, repo_root, tx).await;
+
+        let mut errors = Vec::new();
+        let mut finished = false;
+        while let Ok(event) = rx.try_recv() {
+            match event {
+                CreationEvent::Error(msg) => errors.push(msg),
+                CreationEvent::Finished => finished = true,
+                _ => {}
+            }
+        }
+        (errors, finished)
+    }
+
+    fn delete_target(file: &std::path::Path, line: usize, original: &str) -> TodoComment {
+        TestTodoBuilder::new()
+            .file_path(file)
+            .line_number(line)
+            .original_text(original)
+            .build()
+    }
+
+    #[tokio::test]
+    async fn test_delete_removes_line_within_repo_root() {
+        let temp = tempfile::TempDir::new().unwrap();
+        let file = temp.path().join("x.rs");
+        std::fs::write(&file, "fn main() {\n// TODO: gone\n}\n").unwrap();
+
+        let todo = delete_target(&file, 2, "// TODO: gone");
+        let (errors, finished) = run_delete(vec![todo], temp.path().to_path_buf()).await;
+
+        assert!(errors.is_empty(), "unexpected errors: {errors:?}");
+        assert!(finished);
+        let content = std::fs::read_to_string(&file).unwrap();
+        assert_eq!(content, "fn main() {\n}\n");
+    }
+
+    #[tokio::test]
+    async fn test_delete_works_when_repo_root_differs_from_cwd() {
+        // the scanned root, not the process cwd, is the validation boundary
+        let temp = tempfile::TempDir::new().unwrap();
+        assert_ne!(
+            std::env::current_dir().unwrap().canonicalize().unwrap(),
+            temp.path().canonicalize().unwrap()
+        );
+        let file = temp.path().join("x.rs");
+        std::fs::write(&file, "// TODO: gone\nkeep\n").unwrap();
+
+        let todo = delete_target(&file, 1, "// TODO: gone");
+        let (errors, _) = run_delete(vec![todo], temp.path().to_path_buf()).await;
+
+        assert!(errors.is_empty(), "unexpected errors: {errors:?}");
+        assert_eq!(std::fs::read_to_string(&file).unwrap(), "keep\n");
+    }
+
+    #[tokio::test]
+    async fn test_delete_rejects_file_outside_repo_root() {
+        let root = tempfile::TempDir::new().unwrap();
+        let other = tempfile::TempDir::new().unwrap();
+        let file = other.path().join("x.rs");
+        let original_content = "// TODO: gone\n";
+        std::fs::write(&file, original_content).unwrap();
+
+        let todo = delete_target(&file, 1, "// TODO: gone");
+        let (errors, _) = run_delete(vec![todo], root.path().to_path_buf()).await;
+
+        assert_eq!(errors.len(), 1);
+        assert!(errors[0].contains("outside repository root"), "{errors:?}");
+        assert_eq!(std::fs::read_to_string(&file).unwrap(), original_content);
+    }
+
+    #[tokio::test]
+    async fn test_delete_skips_file_changed_since_scan() {
+        let temp = tempfile::TempDir::new().unwrap();
+        let file = temp.path().join("x.rs");
+        let original_content = "// entirely different line\n";
+        std::fs::write(&file, original_content).unwrap();
+
+        let todo = delete_target(&file, 1, "// TODO: gone");
+        let (errors, _) = run_delete(vec![todo], temp.path().to_path_buf()).await;
+
+        assert_eq!(errors.len(), 1);
+        assert!(errors[0].contains("changed since the scan"), "{errors:?}");
+        assert_eq!(std::fs::read_to_string(&file).unwrap(), original_content);
+    }
+
+    #[tokio::test]
+    async fn test_delete_preserves_crlf() {
+        let temp = tempfile::TempDir::new().unwrap();
+        let file = temp.path().join("x.rs");
+        std::fs::write(&file, "keep one\r\n// TODO: gone\r\nkeep two\r\n").unwrap();
+
+        let todo = delete_target(&file, 2, "// TODO: gone");
+        let (errors, _) = run_delete(vec![todo], temp.path().to_path_buf()).await;
+
+        assert!(errors.is_empty(), "unexpected errors: {errors:?}");
+        assert_eq!(
+            std::fs::read_to_string(&file).unwrap(),
+            "keep one\r\nkeep two\r\n"
+        );
+    }
 }

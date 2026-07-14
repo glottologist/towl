@@ -192,5 +192,6 @@ pub enum TowlLlmError {
 `TowlLlmError` implements `is_retryable()` which returns `true` for:
 
 - `RateLimited` -- always retryable
+- `ParseError` -- LLM output is nondeterministic; a reprompt frequently yields well-formed JSON
 - `ApiError` with status >= 500 -- server errors
 - `ApiError` with no status -- network failures

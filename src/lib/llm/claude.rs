@@ -80,24 +80,8 @@ impl ClaudeProvider {
                 status: e.status().map(|s| s.as_u16()),
             })?;
 
-        let status = response.status().as_u16();
-        if status != 200 {
-            let retry_after = response
-                .headers()
-                .get("retry-after")
-                .and_then(|v| v.to_str().ok())
-                .and_then(|v| v.parse::<u64>().ok());
-
-            let body_text = response
-                .text()
-                .await
-                .unwrap_or_else(|_| "unable to read body".to_string());
-
-            return Err(TowlLlmError::classify_http_error(
-                status,
-                &body_text,
-                retry_after,
-            ));
+        if response.status().as_u16() != 200 {
+            return Err(TowlLlmError::from_response(response).await);
         }
 
         let json: serde_json::Value =
@@ -115,7 +99,7 @@ impl ClaudeProvider {
             .ok_or_else(|| TowlLlmError::ParseError {
                 message: "Missing content[0].text in response".to_string(),
             })?
-            .to_string(); // clone: &str -> owned String for return
+            .to_string();
 
         let usage = LlmUsage {
             input_tokens: json["usage"]["input_tokens"].as_u64().unwrap_or(0),
@@ -139,10 +123,10 @@ mod tests {
 
     #[test]
     fn test_claude_request_body_structure() {
-        let provider = ClaudeProvider::new("claude-opus-4-6", 4096).unwrap();
+        let provider = ClaudeProvider::new("claude-opus-4-8", 4096).unwrap();
         let body = provider.build_request_body("user content", "system prompt");
         let json: serde_json::Value = serde_json::from_str(&body).unwrap();
-        assert_eq!(json["model"], "claude-opus-4-6");
+        assert_eq!(json["model"], "claude-opus-4-8");
         assert_eq!(json["system"], "system prompt");
         assert_eq!(json["messages"][0]["role"], "user");
         assert_eq!(json["messages"][0]["content"], "user content");

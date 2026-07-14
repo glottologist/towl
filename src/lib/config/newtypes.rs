@@ -17,7 +17,7 @@ macro_rules! validated_newtype {
                 let value = s.into();
                 if value.len() > MAX_CONFIG_STRING_LENGTH {
                     return Err(TowlConfigError::ConfigValueTooLong {
-                        field: $field.to_string(), // clone: format string needed for error variant
+                        field: $field.to_string(),
                         length: value.len(),
                         max_length: MAX_CONFIG_STRING_LENGTH,
                     });
